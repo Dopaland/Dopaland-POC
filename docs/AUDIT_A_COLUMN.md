@@ -4,7 +4,7 @@
 
 **Method:** read-only inspection of the repository as it exists on disk today. No source files were changed to produce this report. Every claim below is backed by a file:line citation and, where one exists, a real logged artefact — file path, line count, and a representative excerpt.
 
-**Audit date:** 2026-08-22 (session date; see Finding 0 for why no commit-based date exists).
+**Audit date:** 2026-08-22 (original write-up; see Finding 0 for why no commit-based date existed at that time). **Updated 2026-08-24** with real commit hashes once version control was established — see the "UPDATE — 2026-08-24" section below Finding 0, and the "SUMMARY UPDATE" at the end. Original findings are preserved unedited; updates are added, not substituted, so the document's own history stays honest about what changed and when.
 
 ---
 
@@ -32,6 +32,43 @@ Where useful I've cited file modification timestamps (`mtime`) as a *weak, non-e
 
 ---
 
+## UPDATE — 2026-08-24: version control now exists
+
+Finding 0 above is preserved unedited as the historical record of what was
+true when this audit was first written — that is the honest record, and
+rewriting it to pretend the gap was never there would be exactly the kind of
+laundering this document exists to prevent.
+
+As of this update, git has been initialized in this repository, with a
+hardened `.gitignore` and a media/secret-blocking pre-commit hook in place
+**before** the first file was ever staged (see `PROVENANCE.md` and
+`docs/PRIVACY_EVIDENCE.md` for the full disclosure and the verification that
+the hook actually fires). Every item below now carries a real commit hash.
+
+**What a commit hash below does and does not mean, stated plainly:**
+- It means: this exact code, byte for byte, is inspectable by a third party
+  at that commit, in this repository, today.
+- It does **not** mean: the code was written on the date of that commit, or
+  that the commit history reflects when the underlying development work
+  happened. Every item's code predates this repository's git history — see
+  `PROVENANCE.md`. The commit hash evidences **current code state**, not
+  **authorship date**.
+- It does **not**, by itself, upgrade a PARTIAL finding to VERIFIED. Items 7
+  and 8 (blink, gaze) still lack a live-camera artefact generated *after*
+  their respective fixes — a commit hash proves the fixed code exists and is
+  pinned, not that it has been demonstrated working on a real camera. They
+  remain PARTIAL below, unchanged.
+
+All 11 items' current code lives in a single commit, `1854609` ("chore:
+baseline import of existing pipeline source") — every source file in this
+repository was added to version control simultaneously, in one baseline
+import, so "the most recent commit touching" any of these files is the same
+commit for all of them. That is itself worth stating plainly rather than
+letting eleven identical-looking hashes imply eleven independent
+verification events.
+
+---
+
 ## THE 11 ITEMS
 
 ### 1. Webcam capture pipeline, real-time, two-thread (T1 capture-only, T2 all processing)
@@ -39,7 +76,7 @@ Where useful I've cited file modification timestamps (`mtime`) as a *weak, non-e
 **VERIFIED**
 
 - **Files/functions:** `stage1_step4_vectors.py:1373` `capture_thread()` (T1); `stage1_step4_vectors.py:1403` `processing_thread()` (T2). `stage3_demo_ui.py` reuses `s1.capture_thread` **unmodified** as its own T1, and defines `stage3_demo_ui.py:1684` `stage3_processing_thread()` as its T2.
-- **Commit hash:** N/A — no git history exists (Finding 0).
+- **Commit hash:** `1854609` ("chore: baseline import of existing pipeline source") — see the 2026-08-24 update above for what this hash does and does not evidence.
 - **Artefact:** `logs/soak_log.jsonl` (84 lines) — every sample carries `capture_thread_alive` and `processing_thread_alive` as independent booleans, both `true` across all 82 samples of a 41-minute run (see Item 11).
 - **Separation verified by direct grep**, not just by reading the docstring: every call to `cv2.VideoCapture`, `cap.read()`, `cap.set()`, `cap.release()` in `stage1_step4_vectors.py` occurs **only** inside `capture_thread()` (lines 1375–1399). Zero occurrences anywhere else in the file. T2 never touches the camera.
 
@@ -48,8 +85,8 @@ Where useful I've cited file modification timestamps (`mtime`) as a *weak, non-e
 **VERIFIED**
 
 - **Files/functions:** `stage1_step4_vectors.py:1403–1436` (both landmarkers instantiated together in `processing_thread`); `stage3_demo_ui.py:1684+` (same pair, `stage3_processing_thread`).
-- **Commit hash:** N/A.
-- **Artefact:** `logs/session_*.jsonl` (17 files) and `logs/gate2_trials.jsonl` — sample records carry `head_pose.yaw_deg/pitch_deg/roll_deg` (from FaceLandmarker's transformation matrix) and V_pd is computed from `pose_world_landmarks` shoulder + nose positions (`POSE_SHOULDER_L/R`, `POSE_NOSE` — `stage1_step4_vectors.py:211-213`), which is genuine torso tracking, not face-only.
+- **Commit hash:** `1854609` ("chore: baseline import of existing pipeline source") — see the 2026-08-24 update above for what this hash does and does not evidence.
+- **Artefact:** `logs/session_*.jsonl` (19 files, re-counted precisely on 2026-08-24 — an earlier pass of this audit said 17, which was imprecise) and `logs/gate2_trials.jsonl` — sample records carry `head_pose.yaw_deg/pitch_deg/roll_deg` (from FaceLandmarker's transformation matrix) and V_pd is computed from `pose_world_landmarks` shoulder + nose positions (`POSE_SHOULDER_L/R`, `POSE_NOSE` — `stage1_step4_vectors.py:211-213`), which is genuine torso tracking, not face-only.
 - `output_face_blendshapes=False` confirmed at `stage1_step4_vectors.py:1415` — geometric-only, no trained-model shortcut, matching the stated thesis.
 
 ### 3. Sustained ≥15 FPS with full processing running
@@ -58,7 +95,7 @@ Where useful I've cited file modification timestamps (`mtime`) as a *weak, non-e
 
 - **Artefact:** `logs/soak_log.jsonl`, `soak_summary` record: `min_fps: 27.72`, `mean_fps: 29.35`, over 2486.9s. Every one of the 82 samples is therefore ≥27.7 FPS — comfortably and consistently above the 15 FPS bar, never dipping near it.
 - This run is confirmed to be **full processing**, not bare capture: the `agent_is_stub` field only appears in `stage3_demo_ui.py`'s `SoakTracker` records, meaning this soak includes vector computation, calibration, windowing, V/A mapping, and stub-agent calls — not just the camera loop.
-- **Commit hash:** N/A.
+- **Commit hash:** `1854609` ("chore: baseline import of existing pipeline source") — see the 2026-08-24 update above for what this hash does and does not evidence.
 
 ### 4. Candidate facial signals computed geometrically from landmarks
 
@@ -66,7 +103,7 @@ Where useful I've cited file modification timestamps (`mtime`) as a *weak, non-e
 
 - **Files/functions:** `stage1_step4_vectors.py` — `compute_v_bf` (line 272), `compute_v_es` (317), `compute_v_jc` (366), `compute_v_pd` (396), plus the two experimental additions `compute_v_so` (483) and `compute_gaze_direction` (567) and `BlinkDetector` (668).
 - All operate on `pose_normalize()`-corrected landmark coordinates (line 242) — 3D geometry, not blendshapes, not a trained classifier.
-- **Commit hash:** N/A.
+- **Commit hash:** `1854609` ("chore: baseline import of existing pipeline source") — see the 2026-08-24 update above for what this hash does and does not evidence.
 - **Related finding, not one of the 11 but directly relevant:** CLAUDE.md and in-code comments (e.g. `stage1_step4_vectors.py:808`) repeatedly refer to "the existing face<80px/yaw>35deg per-frame gate" as already built. It is **not**. `record["quality"]["face_width_px"]` is computed and logged (line 1565) but is never compared against 80 anywhere in the file. No yaw>35° check exists in the per-frame path either — `pose_normalize()` and `interocular_distance()` are unconditional, they never reject a frame. The only per-frame gate actually enforced is MediaPipe's own confidence floor (`CONFIDENCE_THRESHOLD=0.7`, passed as `min_face_presence_confidence`/`min_tracking_confidence`). The face-size/yaw half of the documented per-frame gate is aspirational text, not code. This matters directly for Q5 below.
 
 ### 5. Per-person WITHIN-SESSION neutral calibration
@@ -74,7 +111,7 @@ Where useful I've cited file modification timestamps (`mtime`) as a *weak, non-e
 **VERIFIED**
 
 - **File/function:** `stage1_step4_vectors.py:929` `class NeutralCalibrator`. Fixed `CALIBRATION_SECONDS=25.0` (line 161), frozen `reference` after completion (line 1004 `complete()`), `deviation()` method (line 1024) reports every subsequent sample relative to that person's own baseline.
-- **Commit hash:** N/A.
+- **Commit hash:** `1854609` ("chore: baseline import of existing pipeline source") — see the 2026-08-24 update above for what this hash does and does not evidence.
 - **Artefact:** sample records in `logs/session_*.jsonl` carry `calibration_status` and the frozen `calibration_neutral_ref` once complete.
 
 ### 6. Rolling-window statistics: avg, peak AND variance per vector
@@ -86,7 +123,7 @@ Where useful I've cited file modification timestamps (`mtime`) as a *weak, non-e
   return {"avg": float(arr.mean()), "peak": float(arr.max()), "variance": float(arr.var()), "n": len(vals)}
   ```
   All three (not two of three) are present for every vector, every 10s window (`WINDOW_SECONDS=10.0`, line 153).
-- **Commit hash:** N/A.
+- **Commit hash:** `1854609` ("chore: baseline import of existing pipeline source") — see the 2026-08-24 update above for what this hash does and does not evidence.
 - **Artefact:** `window_summary` records inside `logs/session_*.jsonl`.
 
 ### 7. Blink detection (flagged experimental / unvalidated)
@@ -94,18 +131,20 @@ Where useful I've cited file modification timestamps (`mtime`) as a *weak, non-e
 **PARTIAL**
 
 - **File/function:** `stage1_step4_vectors.py:668` `class BlinkDetector`. Code exists, is labeled `EXPERIMENTAL / UNVALIDATED` throughout, and — as of this session — was substantially reworked against real logged aperture evidence (relative close/reopen thresholds re-tuned from 0.6/0.85 to 0.87/0.90, tolerance for tracking-loss gaps mid-blink added, a refractory debounce added).
-- **Commit hash:** N/A.
+- **Commit hash:** `1854609` ("chore: baseline import of existing pipeline source") — see the 2026-08-24 update above for what this hash does and does not evidence.
 - **Artefact:** `logs/experimental_signals_log.jsonl` (128 records, spanning 2026-08-09 to 2026-08-15). This is a **real artefact from real camera sessions** — but it entirely **predates** this session's fix. Checked programmatically: **all 128 records report `blink.rate_per_min` as either `0.0` or `null`. Zero records show a nonzero blink rate.**
 - **What's missing:** a persisted log entry, generated on a real camera after the fix, showing a nonzero blink count. I do not have camera access in this environment to produce one myself. The fix is reasoned and simulation-tested (synthetic aperture sequences matching the evidence you supplied reproduce exactly 1 confirmed blink per real dip, and 0 false positives sitting still) — but "I ran synthetic Python sequences" is not the artefact standard this audit is holding everything else to, and I'm not going to pretend it is. **Reclassify as not-yet-demonstrated until a live run produces a post-fix log entry.**
+- **Now having a commit hash (`1854609`) does not change this.** The hash proves the fixed code is real and pinned; it does not supply the missing artefact. **Status remains PARTIAL.**
 
 ### 8. Coarse left/right/centre gaze orientation (flagged experimental / unvalidated)
 
 **PARTIAL**
 
 - **File/function:** `stage1_step4_vectors.py:567` `compute_gaze_direction()`. `GAZE_LABEL_SIGN` (line 564) was flipped from `+1` to `-1` this session after you reported the mirroring bug.
-- **Commit hash:** N/A.
+- **Commit hash:** `1854609` ("chore: baseline import of existing pipeline source") — see the 2026-08-24 update above for what this hash does and does not evidence.
 - **Artefact:** the same `logs/experimental_signals_log.jsonl`. One representative window record shows `label_counts: {LEFT: 2, RIGHT: 5, CENTER: 334, UNKNOWN: 12}` — real variety across all four labels, including `UNKNOWN` firing (the glasses/occlusion path is demonstrably reachable on real data). This is genuine evidence the **mechanism** works on a real camera.
 - **What's missing:** every one of those 128 records predates the sign fix, so they demonstrate the label mechanism working, but under the **mirrored** mapping. No log entry exists yet confirming the corrected (person's-own-left-reads-"LEFT") mapping on real camera data. Same caveat as Item 7 — verified in isolated synthetic tests only.
+- **Now having a commit hash (`1854609`) does not change this.** Same reasoning as Item 7. **Status remains PARTIAL.**
 
 ### 9. Consent + opt-out step
 
@@ -113,7 +152,7 @@ Where useful I've cited file modification timestamps (`mtime`) as a *weak, non-e
 
 - **File/function:** `stage1_step7_consent.py:108` `run_consent_gate()`.
 - Camera-free claim independently confirmed, not just taken from the docstring: grepped the file for `cv2`/`mediapipe` — the only match is the docstring's own sentence describing the guarantee; there is no actual `import cv2` or `import mediapipe` anywhere in the file.
-- **Commit hash:** N/A.
+- **Commit hash:** `1854609` ("chore: baseline import of existing pipeline source") — see the 2026-08-24 update above for what this hash does and does not evidence.
 - **Artefact:** `logs/consent_log.jsonl`, 41 real records, e.g. `{"event": "consent_given", "session_id": "990d58ac-...", "ts_utc": "2026-07-04T14:52:40..."}`.
 
 ### 10. Personality/agent read WITH full request/response logging to disk
@@ -122,7 +161,7 @@ Where useful I've cited file modification timestamps (`mtime`) as a *weak, non-e
 
 - **Files/functions:** `stage2_personality_agent.py:299` `call_agent()`, `:310` `log_agent_exchange()`, `:335` `run_stage2_on_window()`.
 - `log_agent_exchange` writes `prompt`, `response_text`, `model`, and `is_stub` for every single exchange (line 316–331).
-- **Commit hash:** N/A.
+- **Commit hash:** `1854609` ("chore: baseline import of existing pipeline source") — see the 2026-08-24 update above for what this hash does and does not evidence.
 - **Artefact:** `logs/agent_log.jsonl`, **622 real records**. Checked the `is_stub` distribution directly: **593 stub, 29 live** (`is_stub: False`, real `claude-sonnet-5` calls). Both code paths have real logged evidence, not just the stub.
 
 ### 11. Stability soak with no memory growth, FPS decay or thread deadlock
@@ -137,7 +176,7 @@ Where useful I've cited file modification timestamps (`mtime`) as a *weak, non-e
   ```
 - 2486.9s = **41 minutes 27 seconds**. Memory rose from 295.5→313.4MB (peak 335.9MB) then plateaued — bounded, not a runaway leak, though 41 minutes is a modest window for a *definitive* no-leak claim on its own. FPS never dipped below 27.72. No thread death, no exception, clean exit.
 - **This is one single soak run.** No second, longer, or repeated soak log exists anywhere in the repo.
-- **Commit hash:** N/A.
+- **Commit hash:** `1854609` ("chore: baseline import of existing pipeline source") — see the 2026-08-24 update above for what this hash does and does not evidence.
 
 ---
 
@@ -241,10 +280,21 @@ Exhaustive for `stage1_step4_vectors.py` (where essentially all measurement/dete
 
 ---
 
-## SUMMARY
+## SUMMARY (as originally written, 2026-08-22)
 
 **By code-and-artefact standard alone** (ignoring the commit-hash requirement): **9 VERIFIED, 2 PARTIAL, 0 NOT FOUND.**
 
 **By the client's own stated rule** (commit ID + artefact, or reclassify as not-yet-done): **0 of 11 items can currently produce a commit ID.** All 11 would have to be reclassified "not yet done" today, purely on that technicality, regardless of what the code does.
 
 **The finding you'll least want to hear:** it isn't Items 7 or 8 (blink/gaze) — those are honest, bounded, fixable gaps with a clear next step (run it on a real camera once). It's Finding 0. Nine of these eleven claims are backed by real code and real logged data that I'd stand behind — but right now, none of them can be handed to a client as "verified" under the rule the client themselves set, because there is no commit history to point to. That's a one-time, fixable problem (git init, `.gitignore` hardening, a media-blocking pre-commit hook, then real commits going forward) — but it has to be a decision you make, not one I make for you mid-audit.
+
+## SUMMARY UPDATE — 2026-08-24
+
+**By code-and-artefact standard alone:** unchanged — **9 VERIFIED, 2 PARTIAL, 0 NOT FOUND.** Nothing about the underlying code or artefacts changed today; only version control was established.
+
+**By the client's own stated rule** (commit ID + artefact, or reclassify as not-yet-done), re-evaluated now that a commit ID exists:
+
+- **9 of 11 items now satisfy the client's rule in full** — a real commit hash (`1854609`) *and* a real inspectable artefact both exist for Items 1, 2, 3, 4, 5, 6, 9, 10, 11.
+- **2 of 11 items (7, 8 — blink, gaze) still do not**, for a narrower, different reason than before: they now have a commit hash, but the only artefact that exists (`logs/experimental_signals_log.jsonl`) predates the fix and does not demonstrate the current code's behavior. A commit hash pointing at fixed code, next to an artefact showing the old broken code, does not satisfy "commit ID and inspectable artefact" for the claim being made — it satisfies it for a different, weaker claim ("this code exists"), not "this code works." **These two remain not-yet-verified under the client's rule**, exactly as before, just no longer for the git-history reason.
+
+The finding that mattered most on 2026-08-22 (no version control at all) is resolved. The finding that will matter most going forward is unchanged: Items 7 and 8 need one live-camera session run after the fix, logged, before they can honestly move to VERIFIED.
