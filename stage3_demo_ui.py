@@ -12,16 +12,20 @@ ONCE at import time (FONTS dict below), never per frame.
 
 This file is a DISPLAY LAYER over the already-built pipeline. It does
 NOT reimplement vector math, pose-normalization, the window-validity
-gate, calibration, or z-scoring -- all of that is imported from
-stage1_step4_vectors.py (aliased `s1` below) and used as-is. It also
-does not touch gate2_trials.jsonl, the capture tool, or any scoring
-script.
+gate, calibration, or z-scoring -- all of that is imported from the D1
+feature-block modules (features/geometry.py, features/x_core.py,
+features/episodes.py, features/attention.py -- see
+docs/D1_DEPENDENCY_MAP.md) and used as-is. `stage1_step4_vectors.py`
+(aliased `s1` below) is still used directly for the two-thread runtime
+state it owns (capture_thread, frame_lock/latest_frame/stop_event) and
+for anything not part of the D1 feature-block split. It also does not
+touch gate2_trials.jsonl, the capture tool, or any scoring script.
 
-V/A MAPPING: this file calls s1.map_to_valence_arousal() directly --
+V/A MAPPING: this file calls x_core.map_to_valence_arousal() directly --
 the CANONICAL Decision 18 implementation (Valence = z_es only,
 pleasure-side/single-source; Arousal = z_pd only). There is exactly
-one V/A formula in this codebase, defined once in
-stage1_step4_vectors.py; this file does not keep its own copy.
+one V/A formula in this codebase, defined once in features/x_core.py;
+this file does not keep its own copy.
 
 Threading stays exactly as CLAUDE.md mandates: Thread 1 is
 s1.capture_thread, reused unmodified (it only touches the webcam and
@@ -52,7 +56,7 @@ leave the process itself hanging, and "shutting down..." always prints
 on the way out. Presentation- and input-handling-only -- the two-thread
 split, locks, and Thread() construction themselves are unchanged. The
 same pass adds one more additive read in stage3_processing_thread:
-s1.compute_v_so() is called (reusing its own output, not recomputing
+attention.compute_v_so() is called (reusing its own output, not recomputing
 it) purely to surface its yaw_deg component, clearly labeled
 EXPERIMENTAL/UNVALIDATED -- never composited into any vector, never
 touching calibration/windowing/z-scoring/V-A mapping. Only yaw is ever
@@ -61,9 +65,9 @@ here, regardless of what compute_v_so itself computes internally.
 
 A further pass (EXPERIMENTAL SIGNALS PART 2: gaze L/R/C + blink rate)
 adds two more isolated, additive reads in stage3_processing_thread --
-s1.compute_gaze_direction() (a NEW function, reusing the same
+attention.compute_gaze_direction() (a NEW function, reusing the same
 landmarks/ratio approach _gaze_centering_score already uses) and
-s1.BlinkDetector (a NEW class watching V_es's own aperture value,
+attention.BlinkDetector (a NEW class watching V_es's own aperture value,
 read-only -- ear() itself is never touched). Neither is composited into
 any vector; gaze is horizontal-only by construction (no up/down, ever);
 blink reports "measuring..." rather than a number until enough
@@ -122,7 +126,8 @@ from mediapipe.tasks.python import BaseOptions
 from mediapipe.tasks.python import vision as mp_vision
 
 import stage1_step4_vectors as s1
-from stage1_step4_vectors import map_to_valence_arousal
+from features import geometry, x_core, episodes, attention
+from features.x_core import map_to_valence_arousal
 from stage1_step7_consent import run_consent_gate
 from stage2_personality_agent import run_stage2_on_window, parse_agent_pointers
 
@@ -927,7 +932,7 @@ latest_ui_state = {
     "face_detected": False,
     "pose_detected": False,
     "calibrated": False,
-    "calibration_seconds_remaining": s1.CALIBRATION_SECONDS,
+    "calibration_seconds_remaining": x_core.CALIBRATION_SECONDS,
     "z_scores": {"v_bf": None, "v_es": None, "v_pd": None, "v_jc": None},
     "va_point": {"valence": None, "arousal": None},
     "window_flagged": False,
@@ -1469,12 +1474,12 @@ _blink_badge_cache = {"key": _UNSET, "canvas": None}
 def _head_yaw_direction_label(yaw_deg):
     """CENTERED vs TURNED uses only magnitude, against the SAME threshold
     compute_v_so itself already uses for its own yaw contribution
-    (s1.ATTENTION_YAW_THRESHOLD_DEG) -- reused, not a new number. The
+    (attention.ATTENTION_YAW_THRESHOLD_DEG) -- reused, not a new number. The
     LEFT/RIGHT word additionally reads yaw_deg's sign; see
     HEAD_YAW_LABEL_SIGN above for that mapping's own caveat."""
     if yaw_deg is None:
         return "n/a"
-    if abs(yaw_deg) < s1.ATTENTION_YAW_THRESHOLD_DEG:
+    if abs(yaw_deg) < attention.ATTENTION_YAW_THRESHOLD_DEG:
         return "CENTERED"
     return "TURNED RIGHT" if (yaw_deg * HEAD_YAW_LABEL_SIGN) > 0 else "TURNED LEFT"
 
@@ -1716,8 +1721,8 @@ def stage3_processing_thread():
     )
 
     pd_buffer = deque()
-    window_acc = s1.WindowAccumulator()
-    calibrator = s1.NeutralCalibrator()
+    window_acc = episodes.WindowAccumulator()
+    calibrator = x_core.NeutralCalibrator()
     stream_start = time.perf_counter()
     cycle_count = 0
     fps_window_start = time.perf_counter()
@@ -1742,7 +1747,7 @@ def stage3_processing_thread():
     # counters, reset every time the experimental log record below is
     # written (same 10s cadence as window_acc's own flush, reused as a
     # shared clock tick -- WindowAccumulator itself is never touched).
-    blink_detector = s1.BlinkDetector()
+    blink_detector = attention.BlinkDetector()
     window_gaze_counts = {"LEFT": 0, "RIGHT": 0, "CENTER": 0, "UNKNOWN": 0}
     window_gaze_reliable_count = 0
     window_gaze_n_samples = 0
@@ -1754,7 +1759,7 @@ def stage3_processing_thread():
     # own "diagnose, don't blind-guess" instruction.
     window_aperture_samples = []
 
-    print(f"[Stage3] calibration starting -- relax your face for {s1.CALIBRATION_SECONDS:.0f}s...")
+    print(f"[Stage3] calibration starting -- relax your face for {x_core.CALIBRATION_SECONDS:.0f}s...")
 
     while not s1.stop_event.is_set():
         with s1.frame_lock:
@@ -1766,7 +1771,7 @@ def stage3_processing_thread():
         cycle_start = time.perf_counter()
         timestamp_ms = int((cycle_start - stream_start) * 1000)
 
-        clahe_frame = s1.apply_clahe(frame)
+        clahe_frame = geometry.apply_clahe(frame)
         rgb_frame = cv2.cvtColor(clahe_frame, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
@@ -1787,12 +1792,12 @@ def stage3_processing_thread():
         if face_result.face_landmarks and face_result.facial_transformation_matrixes:
             lms = face_result.face_landmarks[0]
             matrix = face_result.facial_transformation_matrixes[0]
-            normalized_pts = s1.pose_normalize(lms, matrix, w, h)
-            io_dist = s1.interocular_distance(normalized_pts)
-            yaw, pitch, roll = s1.yaw_pitch_roll_from_matrix(matrix)
-            v_bf, bf_components = s1.compute_v_bf(normalized_pts, io_dist)
-            v_es, es_components = s1.compute_v_es(normalized_pts, io_dist)
-            v_jc, jc_components = s1.compute_v_jc(normalized_pts, io_dist)
+            normalized_pts = geometry.pose_normalize(lms, matrix, w, h)
+            io_dist = geometry.interocular_distance(normalized_pts)
+            yaw, pitch, roll = geometry.yaw_pitch_roll_from_matrix(matrix)
+            v_bf, bf_components = x_core.compute_v_bf(normalized_pts, io_dist)
+            v_es, es_components = x_core.compute_v_es(normalized_pts, io_dist)
+            v_jc, jc_components = x_core.compute_v_jc(normalized_pts, io_dist)
 
             face_detected = True
             window_composite["v_bf"] = v_bf
@@ -1804,7 +1809,7 @@ def stage3_processing_thread():
 
             # HORIZONTAL HEAD ORIENTATION (experimental, pilot, UNVALIDATED --
             # CLAUDE.md's "Attention / screen-orientation -- PILOT, not POC"
-            # note). Calls s1.compute_v_so() unchanged -- reusing its own
+            # note). Calls attention.compute_v_so() unchanged -- reusing its own
             # output, not recomputing or re-deriving yaw a second way -- but
             # only the "yaw_deg" field of its returned components is ever
             # kept. compute_v_so's own return value (_v_so, the blended
@@ -1815,7 +1820,7 @@ def stage3_processing_thread():
             # imply a validated orientation reading this pipeline cannot
             # honestly make. yaw_deg alone is the one component CLAUDE.md's
             # own finding says is reliable.
-            _v_so, so_components = s1.compute_v_so(normalized_pts, yaw, pitch)
+            _v_so, so_components = attention.compute_v_so(normalized_pts, yaw, pitch)
             head_yaw_deg = so_components["yaw_deg"]
 
             # EXPERIMENTAL SIGNALS, PART 2 -- gaze L/R/C (isolated new
@@ -1824,20 +1829,20 @@ def stage3_processing_thread():
             # and blink-detector input (V_es's OWN aperture value, read
             # straight off es_components -- no new landmark geometry).
             # Neither is composited into any affect vector.
-            gaze_label, gaze_reliable, _gaze_raw_shift = s1.compute_gaze_direction(normalized_pts)
+            gaze_label, gaze_reliable, _gaze_raw_shift = attention.compute_gaze_direction(normalized_pts)
             aperture_this_cycle = es_components["aperture"]
 
         if pose_result.pose_world_landmarks:
             world = pose_result.pose_world_landmarks[0]
-            nose_pos = np.array([world[s1.POSE_NOSE].x, world[s1.POSE_NOSE].y, world[s1.POSE_NOSE].z])
+            nose_pos = np.array([world[geometry.POSE_NOSE].x, world[geometry.POSE_NOSE].y, world[geometry.POSE_NOSE].z])
             shoulder_mid = np.array(
                 [
-                    (world[s1.POSE_SHOULDER_L].x + world[s1.POSE_SHOULDER_R].x) / 2.0,
-                    (world[s1.POSE_SHOULDER_L].y + world[s1.POSE_SHOULDER_R].y) / 2.0,
-                    (world[s1.POSE_SHOULDER_L].z + world[s1.POSE_SHOULDER_R].z) / 2.0,
+                    (world[geometry.POSE_SHOULDER_L].x + world[geometry.POSE_SHOULDER_R].x) / 2.0,
+                    (world[geometry.POSE_SHOULDER_L].y + world[geometry.POSE_SHOULDER_R].y) / 2.0,
+                    (world[geometry.POSE_SHOULDER_L].z + world[geometry.POSE_SHOULDER_R].z) / 2.0,
                 ]
             )
-            v_pd, _pd_components = s1.compute_v_pd(pd_buffer, nose_pos, shoulder_mid, cycle_start)
+            v_pd, _pd_components = x_core.compute_v_pd(pd_buffer, nose_pos, shoulder_mid, cycle_start)
             pose_detected = True
             window_composite["v_pd"] = v_pd
 
@@ -1880,14 +1885,14 @@ def stage3_processing_thread():
             ref = calibrator.reference
             for key in ("v_bf", "v_es", "v_pd"):
                 deviation_composite[key] = calibrator.deviation(key, window_composite.get(key))
-            z_scores["v_bf"] = s1._z_score(deviation_composite["v_bf"], ref["composite"]["v_bf"]["std"])
-            z_scores["v_es"] = s1._z_score(deviation_composite["v_es"], ref["composite"]["v_es"]["std"])
-            z_scores["v_pd"] = s1._z_score(deviation_composite["v_pd"], ref["composite"]["v_pd"]["std"])
+            z_scores["v_bf"] = x_core._z_score(deviation_composite["v_bf"], ref["composite"]["v_bf"]["std"])
+            z_scores["v_es"] = x_core._z_score(deviation_composite["v_es"], ref["composite"]["v_es"]["std"])
+            z_scores["v_pd"] = x_core._z_score(deviation_composite["v_pd"], ref["composite"]["v_pd"]["std"])
 
             jc_mean = ref["covariates"]["v_jc"]["mean"]
             jc_std = ref["covariates"]["v_jc"]["std"]
             jc_dev = (window_covariate["v_jc"] - jc_mean) if (window_covariate["v_jc"] is not None and jc_mean is not None) else None
-            z_scores["v_jc"] = s1._z_score(jc_dev, jc_std)
+            z_scores["v_jc"] = x_core._z_score(jc_dev, jc_std)
 
             # Decision 18, live per-frame point -- canonical formula, see
             # stage1_step4_vectors.map_to_valence_arousal().
@@ -1968,10 +1973,10 @@ def stage3_processing_thread():
                         # like and what boundary they were judged against.
                         "raw_aperture_samples": window_aperture_samples,
                         "aperture_thresholds": {
-                            "plausible_min": s1.BLINK_APERTURE_PLAUSIBLE_MIN,
-                            "plausible_max": s1.BLINK_APERTURE_PLAUSIBLE_MAX,
-                            "close_fraction": s1.BLINK_CLOSE_FRACTION,
-                            "reopen_fraction": s1.BLINK_REOPEN_FRACTION,
+                            "plausible_min": attention.BLINK_APERTURE_PLAUSIBLE_MIN,
+                            "plausible_max": attention.BLINK_APERTURE_PLAUSIBLE_MAX,
+                            "close_fraction": attention.BLINK_CLOSE_FRACTION,
+                            "reopen_fraction": attention.BLINK_REOPEN_FRACTION,
                         },
                         "unvalidated": True,
                         "label": "approximate blink rate from eye-aperture threshold crossings -- EXPERIMENTAL, coarse heuristic, not a validated physiological measure",

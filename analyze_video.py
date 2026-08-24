@@ -83,6 +83,7 @@ from mediapipe.tasks.python import BaseOptions
 from mediapipe.tasks.python import vision as mp_vision
 
 import stage1_step4_vectors as s1
+from features import geometry, x_core, episodes, attention
 from stage2_personality_agent import zscore_window, call_agent, parse_agent_pointers, log_agent_exchange
 
 SCHEMA_VERSION = "2.0"  # 2.0 adds Mode B (uncalibrated) -- Mode A's own record shape is unchanged from 1.0
@@ -233,9 +234,9 @@ def _is_usable_calibration(reference, frames_total, frames_detected):
         return False, ["no frames were read during the calibration window"]
 
     detect_rate = frames_detected / frames_total
-    if detect_rate < s1.DETECT_RATE_FLOOR:
+    if detect_rate < episodes.DETECT_RATE_FLOOR:
         reasons.append(
-            f"face detected in only {detect_rate:.0%} of calibration frames (< {s1.DETECT_RATE_FLOOR:.0%} floor)"
+            f"face detected in only {detect_rate:.0%} of calibration frames (< {episodes.DETECT_RATE_FLOOR:.0%} floor)"
         )
     for key in ("v_es", "v_pd"):
         std = reference.get("composite", {}).get(key, {}).get("std")
@@ -266,7 +267,7 @@ def _build_timeline_entry(summary, reference, mode_b=False):
     that only looks at field names -- plus "validated" and "label" are
     the FIRST keys in the dict so the caveat is unmissable."""
     window_z = zscore_window(summary, reference)
-    va = s1.map_to_valence_arousal(
+    va = x_core.map_to_valence_arousal(
         summary["composite"]["v_bf"]["avg"],
         summary["composite"]["v_es"]["avg"],
         summary["composite"]["v_pd"]["avg"],
@@ -282,7 +283,7 @@ def _build_timeline_entry(summary, reference, mode_b=False):
         "t_end_sec": round(summary["window_end_monotonic"], 2),
         "timestamp": _format_timestamp(summary["window_start_monotonic"]),
         "window_seconds": round(summary["window_seconds"], 2),
-        "partial_window": summary["window_seconds"] < s1.WINDOW_SECONDS - 0.5,
+        "partial_window": summary["window_seconds"] < geometry.WINDOW_SECONDS - 0.5,
         # tanh-bounded point from the SAME canonical function the live UI
         # plots -- included for direct reuse by any future review UI,
         # in both modes (it's a display convenience, not a validation claim).
@@ -407,8 +408,8 @@ def _run_mode_a(video_path, fps):
     pose_landmarker = _make_pose_landmarker()
 
     pd_buffer = deque()
-    window_acc = s1.WindowAccumulator()
-    calibrator = s1.NeutralCalibrator()
+    window_acc = episodes.WindowAccumulator()
+    calibrator = x_core.NeutralCalibrator()
 
     timeline = []
     frame_index = 0
@@ -419,7 +420,7 @@ def _run_mode_a(video_path, fps):
     last_video_time = 0.0
 
     print(f"[analyze_video] opening {video_path} ({fps:.1f} fps)")
-    print(f"[analyze_video] Mode A: calibrating off the first {s1.CALIBRATION_SECONDS:.0f}s of video time...")
+    print(f"[analyze_video] Mode A: calibrating off the first {x_core.CALIBRATION_SECONDS:.0f}s of video time...")
 
     try:
         while True:
@@ -432,7 +433,7 @@ def _run_mode_a(video_path, fps):
             n_frames_total += 1
             last_video_time = video_time
 
-            clahe_frame = s1.apply_clahe(frame)
+            clahe_frame = geometry.apply_clahe(frame)
             rgb_frame = cv2.cvtColor(clahe_frame, cv2.COLOR_BGR2RGB)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
@@ -448,12 +449,12 @@ def _run_mode_a(video_path, fps):
             if face_result.face_landmarks and face_result.facial_transformation_matrixes:
                 lms = face_result.face_landmarks[0]
                 matrix = face_result.facial_transformation_matrixes[0]
-                normalized_pts = s1.pose_normalize(lms, matrix, w, h)
-                io_dist = s1.interocular_distance(normalized_pts)
-                yaw, pitch, roll = s1.yaw_pitch_roll_from_matrix(matrix)
-                v_bf, bf_components = s1.compute_v_bf(normalized_pts, io_dist)
-                v_es, es_components = s1.compute_v_es(normalized_pts, io_dist)
-                v_jc, jc_components = s1.compute_v_jc(normalized_pts, io_dist)
+                normalized_pts = geometry.pose_normalize(lms, matrix, w, h)
+                io_dist = geometry.interocular_distance(normalized_pts)
+                yaw, pitch, roll = geometry.yaw_pitch_roll_from_matrix(matrix)
+                v_bf, bf_components = x_core.compute_v_bf(normalized_pts, io_dist)
+                v_es, es_components = x_core.compute_v_es(normalized_pts, io_dist)
+                v_jc, jc_components = x_core.compute_v_jc(normalized_pts, io_dist)
 
                 face_detected = True
                 window_composite["v_bf"] = v_bf
@@ -466,15 +467,15 @@ def _run_mode_a(video_path, fps):
 
             if pose_result.pose_world_landmarks:
                 world = pose_result.pose_world_landmarks[0]
-                nose_pos = np.array([world[s1.POSE_NOSE].x, world[s1.POSE_NOSE].y, world[s1.POSE_NOSE].z])
+                nose_pos = np.array([world[geometry.POSE_NOSE].x, world[geometry.POSE_NOSE].y, world[geometry.POSE_NOSE].z])
                 shoulder_mid = np.array(
                     [
-                        (world[s1.POSE_SHOULDER_L].x + world[s1.POSE_SHOULDER_R].x) / 2.0,
-                        (world[s1.POSE_SHOULDER_L].y + world[s1.POSE_SHOULDER_R].y) / 2.0,
-                        (world[s1.POSE_SHOULDER_L].z + world[s1.POSE_SHOULDER_R].z) / 2.0,
+                        (world[geometry.POSE_SHOULDER_L].x + world[geometry.POSE_SHOULDER_R].x) / 2.0,
+                        (world[geometry.POSE_SHOULDER_L].y + world[geometry.POSE_SHOULDER_R].y) / 2.0,
+                        (world[geometry.POSE_SHOULDER_L].z + world[geometry.POSE_SHOULDER_R].z) / 2.0,
                     ]
                 )
-                v_pd, _pd_components = s1.compute_v_pd(pd_buffer, nose_pos, shoulder_mid, video_time)
+                v_pd, _pd_components = x_core.compute_v_pd(pd_buffer, nose_pos, shoulder_mid, video_time)
                 window_composite["v_pd"] = v_pd
 
             if not calibrator.is_calibrated():
@@ -524,7 +525,7 @@ def _run_mode_a(video_path, fps):
             "outcome": "fallback_to_mode_b",
             "reasons": [
                 f"video is only {last_video_time:.1f}s long -- shorter than the required "
-                f"{s1.CALIBRATION_SECONDS:.0f}s Mode-A calibration segment, so there is no neutral "
+                f"{x_core.CALIBRATION_SECONDS:.0f}s Mode-A calibration segment, so there is no neutral "
                 f"baseline from the first part of the video."
             ],
         }
@@ -572,7 +573,7 @@ def _run_mode_b(video_path, fps, fallback_reasons):
     pose_landmarker = _make_pose_landmarker()
 
     pd_buffer = deque()
-    window_acc = s1.WindowAccumulator()
+    window_acc = episodes.WindowAccumulator()
 
     timeline = []
     face_samples = []  # for _detect_face_instability -- position/scale per detected frame
@@ -600,7 +601,7 @@ def _run_mode_b(video_path, fps, fallback_reasons):
             if frame_diag_px is None:
                 frame_diag_px = (w ** 2 + h ** 2) ** 0.5
 
-            clahe_frame = s1.apply_clahe(frame)
+            clahe_frame = geometry.apply_clahe(frame)
             rgb_frame = cv2.cvtColor(clahe_frame, cv2.COLOR_BGR2RGB)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
@@ -616,12 +617,12 @@ def _run_mode_b(video_path, fps, fallback_reasons):
             if face_result.face_landmarks and face_result.facial_transformation_matrixes:
                 lms = face_result.face_landmarks[0]  # only ever the first face -- no individual tracking (task hard constraint)
                 matrix = face_result.facial_transformation_matrixes[0]
-                normalized_pts = s1.pose_normalize(lms, matrix, w, h)
-                io_dist = s1.interocular_distance(normalized_pts)
-                yaw, pitch, roll = s1.yaw_pitch_roll_from_matrix(matrix)
-                v_bf, bf_components = s1.compute_v_bf(normalized_pts, io_dist)
-                v_es, es_components = s1.compute_v_es(normalized_pts, io_dist)
-                v_jc, jc_components = s1.compute_v_jc(normalized_pts, io_dist)
+                normalized_pts = geometry.pose_normalize(lms, matrix, w, h)
+                io_dist = geometry.interocular_distance(normalized_pts)
+                yaw, pitch, roll = geometry.yaw_pitch_roll_from_matrix(matrix)
+                v_bf, bf_components = x_core.compute_v_bf(normalized_pts, io_dist)
+                v_es, es_components = x_core.compute_v_es(normalized_pts, io_dist)
+                v_jc, jc_components = x_core.compute_v_jc(normalized_pts, io_dist)
 
                 face_detected = True
                 window_composite["v_bf"] = v_bf
@@ -638,21 +639,21 @@ def _run_mode_b(video_path, fps, fallback_reasons):
                 # re-centered on the face itself (see its docstring), so it
                 # cannot tell us WHERE on screen the face is -- only `lms`
                 # (raw, normalized [0,1] image coords) can.
-                cx = float((lms[s1.IRIS_LEFT_CENTER].x + lms[s1.IRIS_RIGHT_CENTER].x) / 2.0) * w
-                cy = float((lms[s1.IRIS_LEFT_CENTER].y + lms[s1.IRIS_RIGHT_CENTER].y) / 2.0) * h
+                cx = float((lms[geometry.IRIS_LEFT_CENTER].x + lms[geometry.IRIS_RIGHT_CENTER].x) / 2.0) * w
+                cy = float((lms[geometry.IRIS_LEFT_CENTER].y + lms[geometry.IRIS_RIGHT_CENTER].y) / 2.0) * h
                 face_samples.append({"t": video_time, "x": cx, "y": cy, "scale": io_dist, "n_faces": n_faces_this_frame})
 
             if pose_result.pose_world_landmarks:
                 world = pose_result.pose_world_landmarks[0]
-                nose_pos = np.array([world[s1.POSE_NOSE].x, world[s1.POSE_NOSE].y, world[s1.POSE_NOSE].z])
+                nose_pos = np.array([world[geometry.POSE_NOSE].x, world[geometry.POSE_NOSE].y, world[geometry.POSE_NOSE].z])
                 shoulder_mid = np.array(
                     [
-                        (world[s1.POSE_SHOULDER_L].x + world[s1.POSE_SHOULDER_R].x) / 2.0,
-                        (world[s1.POSE_SHOULDER_L].y + world[s1.POSE_SHOULDER_R].y) / 2.0,
-                        (world[s1.POSE_SHOULDER_L].z + world[s1.POSE_SHOULDER_R].z) / 2.0,
+                        (world[geometry.POSE_SHOULDER_L].x + world[geometry.POSE_SHOULDER_R].x) / 2.0,
+                        (world[geometry.POSE_SHOULDER_L].y + world[geometry.POSE_SHOULDER_R].y) / 2.0,
+                        (world[geometry.POSE_SHOULDER_L].z + world[geometry.POSE_SHOULDER_R].z) / 2.0,
                     ]
                 )
-                v_pd, _pd_components = s1.compute_v_pd(pd_buffer, nose_pos, shoulder_mid, video_time)
+                v_pd, _pd_components = x_core.compute_v_pd(pd_buffer, nose_pos, shoulder_mid, video_time)
                 window_composite["v_pd"] = v_pd
 
             # No calibration phase at all: window_composite (raw composite
@@ -720,7 +721,7 @@ def _failed_result(video_path, fps, video_duration_sec, mode, failure_code, reas
     }
     if mode == "A_calibrated":
         result["calibration"] = {
-            "calibration_seconds_target": s1.CALIBRATION_SECONDS,
+            "calibration_seconds_target": x_core.CALIBRATION_SECONDS,
             "frames_seen": calibration_frames_total,
             "frames_face_detected": calibration_frames_detected,
             "detect_rate": (calibration_frames_detected / calibration_frames_total) if calibration_frames_total else None,
@@ -781,7 +782,7 @@ def _ok_result(video_path, fps, video_duration_sec, reference, calibration_frame
         "failure_code": None,
         "failure_reasons": [],
         "calibration": {
-            "calibration_seconds_target": s1.CALIBRATION_SECONDS,
+            "calibration_seconds_target": x_core.CALIBRATION_SECONDS,
             "calibration_seconds_actual": round(reference["calibration_seconds"], 2),
             "frames_seen": calibration_frames_total,
             "frames_face_detected": calibration_frames_detected,
