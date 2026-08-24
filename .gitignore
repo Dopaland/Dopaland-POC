@@ -61,8 +61,16 @@ models/*.task
 
 # --- Raw/derived data logs. The manifest gets committed, not the data
 # itself (CLAUDE.md TRAINING-GRADE DATA). See PROVENANCE.md for the open
-# item on this directory's physical location. ---
-logs/
+# item on this directory's physical location.
+#
+# Pattern is `logs/*` + a negation, NOT a blanket `logs/` -- git cannot
+# re-include a file inside a directory that the directory-level pattern
+# itself excluded (a bare `logs/` stops git from even looking inside it),
+# so the directory has to stay traversable and every individual file
+# excluded instead. This is what lets logs/variant_log.jsonl be tracked
+# (Gate 0 provenance log) while every other file in logs/ stays out. ---
+logs/*
+!logs/variant_log.jsonl
 
 # --- Python / build artefacts ---
 venv/
