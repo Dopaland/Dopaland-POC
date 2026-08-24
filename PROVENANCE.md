@@ -20,6 +20,47 @@ assumed from the `.gitignore` rules.
 From this commit onward, every material change to this repository is a dated
 commit.
 
+## Pre-commit hook verification
+
+Before the pre-commit hook was trusted, it was tested against two synthetic
+files, both named `test_guard.txt`: one containing real PNG magic bytes
+(`\x89PNG\r\n\x1a\n` followed by random binary padding), and one containing
+an `ANTHROPIC_API_KEY` assignment with a synthetic, randomly-generated
+high-entropy value in the same `sk-ant-` key format this project's real keys
+use. Both files were created solely to exercise the hook and contained no
+participant data, no biometric data, and no real credential of any kind.
+
+(This section originally quoted that synthetic value directly. Doing so
+tripped this repository's own pre-commit hook on the commit that added this
+section — the hook does not distinguish a fake key quoted for documentation
+from a real one, which is the correct, conservative failure mode. Rewritten
+to describe the test without reproducing a string in that shape.)
+
+The first attempt at the magic-bytes test did not trigger the hook. Before
+that was diagnosed, `git commit` was run and it succeeded, creating one
+commit — `178390c`, message "test: attempt to commit disguised PNG" —
+containing only that synthetic test file. Diagnosis found the cause: git's
+`autocrlf` line-ending normalization had altered the file's bytes on the way
+into the index, so the staged content no longer matched a PNG signature; the
+hook was reading correctly, the test file did not survive being staged
+intact. That commit was removed via `git update-ref -d HEAD` before any
+other commit existed in this repository — at the time of removal it was the
+sole, unpublished, parentless commit on this branch, with no remote and
+nothing built on top of it.
+
+The test file was then rebuilt with random binary padding so it would
+survive normalization intact, and both cases (magic bytes, key-like string)
+were re-run and confirmed to correctly block a commit. Both test files were
+deleted before any real content was staged.
+
+The remaining object data from the removed commit stayed present but
+unreachable in this repository's object store. `git reflog expire
+--expire=now --all` followed by `git gc --prune=now` was run to remove it,
+so a client running `git fsck` finds a clean object store with no dangling
+objects. This removed only the unreachable synthetic-test objects; it did
+not alter, rewrite, or remove any of the real commits in this repository's
+history.
+
 ## Open item: raw data location
 
 `logs/` is excluded from version control (`.gitignore`) and will never be
