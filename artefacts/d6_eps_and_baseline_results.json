@@ -1,0 +1,285 @@
+{
+  "config": {
+    "n_boot": 200,
+    "seeds": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "eps_grid": [
+      1e-06,
+      1e-12,
+      1e-15
+    ],
+    "realistic_cell": {
+      "minutes": 45,
+      "rare_freq": 0.05
+    },
+    "worst_cell": {
+      "minutes": 25,
+      "rare_freq": 0.02
+    },
+    "realistic_half_width_from_addendum2": 0.0166,
+    "worst_half_width_from_addendum2": 0.0246,
+    "delta_grid": [
+      0.02,
+      0.05,
+      0.1,
+      0.15,
+      0.2
+    ]
+  },
+  "eps_sensitivity": [
+    {
+      "label": "eps=1e-06",
+      "n_seeds": 5,
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "n_boot": 200,
+      "method": "refit_per_replicate",
+      "n_sessions": 3,
+      "episodes_per_session": 270,
+      "trials_per_episode": 5,
+      "n_classes": 5,
+      "n_rare_classes": 2,
+      "rare_class_frequency": 0.05,
+      "effect_size": 0.3,
+      "missingness_rate": 0.05,
+      "n_trials_total": 4050,
+      "effect_size_realized_corr_mean": 0.37211364175914996,
+      "delta_point_median": 0.027229361284419218,
+      "delta_point_mean": 0.026891671604872557,
+      "ci_half_width_median": 0.014776468553596501,
+      "ci_half_width_mean": 0.01656584592513597,
+      "ci_half_width_min": 0.013270886876398104,
+      "ci_half_width_max": 0.021300066560316595,
+      "frac_seeds_ci_excludes_zero": 0.8,
+      "delta_negative_control_median": -0.0016849893727184373,
+      "delta_negative_control_max_abs": 0.002055783099167652,
+      "eps": 1e-06,
+      "half_width_mean": 0.01656584592513597,
+      "half_width_std": 0.00299038446733981,
+      "delta_mean": 0.026891671604872557,
+      "decidability_mean": 1.7003265922476802
+    },
+    {
+      "label": "eps=1e-12",
+      "n_seeds": 5,
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "n_boot": 200,
+      "method": "refit_per_replicate",
+      "n_sessions": 3,
+      "episodes_per_session": 270,
+      "trials_per_episode": 5,
+      "n_classes": 5,
+      "n_rare_classes": 2,
+      "rare_class_frequency": 0.05,
+      "effect_size": 0.3,
+      "missingness_rate": 0.05,
+      "n_trials_total": 4050,
+      "effect_size_realized_corr_mean": 0.37211364175914996,
+      "delta_point_median": 0.027229361284419218,
+      "delta_point_mean": 0.026891671604872557,
+      "ci_half_width_median": 0.014776468553596501,
+      "ci_half_width_mean": 0.01656584592513597,
+      "ci_half_width_min": 0.013270886876398104,
+      "ci_half_width_max": 0.021300066560316595,
+      "frac_seeds_ci_excludes_zero": 0.8,
+      "delta_negative_control_median": -0.0016849893727184373,
+      "delta_negative_control_max_abs": 0.002055783099167652,
+      "eps": 1e-12,
+      "half_width_mean": 0.01656584592513597,
+      "half_width_std": 0.00299038446733981,
+      "delta_mean": 0.026891671604872557,
+      "decidability_mean": 1.7003265922476802
+    },
+    {
+      "label": "eps=1e-15",
+      "n_seeds": 5,
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "n_boot": 200,
+      "method": "refit_per_replicate",
+      "n_sessions": 3,
+      "episodes_per_session": 270,
+      "trials_per_episode": 5,
+      "n_classes": 5,
+      "n_rare_classes": 2,
+      "rare_class_frequency": 0.05,
+      "effect_size": 0.3,
+      "missingness_rate": 0.05,
+      "n_trials_total": 4050,
+      "effect_size_realized_corr_mean": 0.37211364175914996,
+      "delta_point_median": 0.027229361284419218,
+      "delta_point_mean": 0.026891671604872557,
+      "ci_half_width_median": 0.014776468553596501,
+      "ci_half_width_mean": 0.01656584592513597,
+      "ci_half_width_min": 0.013270886876398104,
+      "ci_half_width_max": 0.021300066560316595,
+      "frac_seeds_ci_excludes_zero": 0.8,
+      "delta_negative_control_median": -0.0016849893727184373,
+      "delta_negative_control_max_abs": 0.002055783099167652,
+      "eps": 1e-15,
+      "half_width_mean": 0.01656584592513597,
+      "half_width_std": 0.00299038446733981,
+      "delta_mean": 0.026891671604872557,
+      "decidability_mean": 1.7003265922476802
+    }
+  ],
+  "baseline_levels": {
+    "uniform": {
+      "mean": 1.6094379124341,
+      "std": 2.220446049250313e-16,
+      "min": 1.6094379124340998,
+      "max": 1.6094379124340998,
+      "per_seed": [
+        1.6094379124340998,
+        1.6094379124340998,
+        1.6094379124340998,
+        1.6094379124340998,
+        1.6094379124340998
+      ]
+    },
+    "marginal": {
+      "mean": 1.3959705857413713,
+      "std": 0.06572720309996667,
+      "min": 1.2960692879150053,
+      "max": 1.4705508090201709,
+      "per_seed": [
+        1.2960692879150053,
+        1.3625996340335003,
+        1.4705508090201709,
+        1.3851802703490323,
+        1.4654529273891472
+      ]
+    },
+    "m0b": {
+      "mean": 1.3368877584087422,
+      "std": 0.05770579175666682,
+      "min": 1.2551243024696153,
+      "max": 1.4154917340315383,
+      "per_seed": [
+        1.2551243024696153,
+        1.30172470711956,
+        1.4154917340315383,
+        1.3259226577677428,
+        1.386175390655254
+      ]
+    },
+    "marginal_freqs_per_seed": [
+      [
+        0.21069958847736625,
+        0.3226337448559671,
+        0.38641975308641974,
+        0.03292181069958848,
+        0.047325102880658436
+      ],
+      [
+        0.4683127572016461,
+        0.19053497942386832,
+        0.2353909465020576,
+        0.07860082304526748,
+        0.027160493827160494
+      ],
+      [
+        0.36131687242798355,
+        0.14938271604938272,
+        0.24362139917695474,
+        0.05102880658436214,
+        0.19465020576131686
+      ],
+      [
+        0.1617283950617284,
+        0.3592592592592593,
+        0.18271604938271604,
+        0.019753086419753086,
+        0.2765432098765432
+      ],
+      [
+        0.18230452674897119,
+        0.3148148148148148,
+        0.1925925925925926,
+        0.26707818930041155,
+        0.043209876543209874
+      ]
+    ],
+    "n_classes": 5,
+    "ln_n_classes": 1.6094379124341003
+  },
+  "conversion_table": [
+    {
+      "delta_nats": 0.02,
+      "relative_reduction_pct": 1.4960119033332615,
+      "perplexity_m0b": 3.80717619587614,
+      "perplexity_after_delta": 3.7317890562428517,
+      "perplexity_reduction": 0.07538713963328814,
+      "ratio_to_realistic_half_width": 1.2048192771084338,
+      "resolvable_at_realistic": true,
+      "ratio_to_worst_half_width": 0.8130081300813008,
+      "resolvable_at_worst": false
+    },
+    {
+      "delta_nats": 0.05,
+      "relative_reduction_pct": 3.740029758333154,
+      "perplexity_m0b": 3.80717619587614,
+      "perplexity_after_delta": 3.6214980217760777,
+      "perplexity_reduction": 0.18567817410006215,
+      "ratio_to_realistic_half_width": 3.0120481927710845,
+      "resolvable_at_realistic": true,
+      "ratio_to_worst_half_width": 2.032520325203252,
+      "resolvable_at_worst": true
+    },
+    {
+      "delta_nats": 0.1,
+      "relative_reduction_pct": 7.480059516666308,
+      "perplexity_m0b": 3.80717619587614,
+      "perplexity_after_delta": 3.4448754790845326,
+      "perplexity_reduction": 0.36230071679160725,
+      "ratio_to_realistic_half_width": 6.024096385542169,
+      "resolvable_at_realistic": true,
+      "ratio_to_worst_half_width": 4.065040650406504,
+      "resolvable_at_worst": true
+    },
+    {
+      "delta_nats": 0.15,
+      "relative_reduction_pct": 11.220089274999461,
+      "perplexity_m0b": 3.80717619587614,
+      "perplexity_after_delta": 3.276866919446202,
+      "perplexity_reduction": 0.530309276429938,
+      "ratio_to_realistic_half_width": 9.036144578313253,
+      "resolvable_at_realistic": true,
+      "ratio_to_worst_half_width": 6.097560975609756,
+      "resolvable_at_worst": true
+    },
+    {
+      "delta_nats": 0.2,
+      "relative_reduction_pct": 14.960119033332616,
+      "perplexity_m0b": 3.80717619587614,
+      "perplexity_after_delta": 3.1170522339502384,
+      "perplexity_reduction": 0.6901239619259014,
+      "ratio_to_realistic_half_width": 12.048192771084338,
+      "resolvable_at_realistic": true,
+      "ratio_to_worst_half_width": 8.130081300813009,
+      "resolvable_at_worst": true
+    }
+  ],
+  "wall_clock_seconds": 659.5094182491302
+}
