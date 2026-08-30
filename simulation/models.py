@@ -85,7 +85,17 @@ def macro_f1(y_true, y_pred, n_classes):
     """Unweighted mean of per-class F1. Standard macro-F1 -- no class
     weighting, so a class with few samples counts as much as a common one
     (this is what makes it the natural default for an imbalanced,
-    drifting-frequency class distribution like A4's)."""
+    drifting-frequency class distribution like A4's).
+
+    HARD-DECISION STATISTIC: y_pred is the model's argmax class, not its
+    probability distribution -- everything the model knew about its own
+    uncertainty is discarded before this function ever sees it. That is
+    exactly the property the D0PA1 primary-metric comparison (see
+    docs/D6_SIMULATION.md section 11) investigates: this discarding is
+    what makes macro-F1 weight rare classes heavily (a single flipped
+    argmax on a rare class moves the metric a lot) and what allows Delta
+    to collapse to an exact zero when two models happen to agree on every
+    argmax despite disagreeing on confidence."""
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
     f1s = []
@@ -98,3 +108,41 @@ def macro_f1(y_true, y_pred, n_classes):
         f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
         f1s.append(f1)
     return float(np.mean(f1s))
+
+
+LOG_LOSS_CLIP_EPS = 1e-15  # matches scikit-learn's historical log_loss default; see neg_log_loss's own docstring for the sensitivity check
+
+
+def neg_log_loss(y_true, proba, n_classes, eps=LOG_LOSS_CLIP_EPS):
+    """D0PA1 primary-metric comparison (docs/D6_SIMULATION.md section 11):
+    the ORIENTED UTILITY for multiclass log loss. Log loss itself is
+    LOWER-IS-BETTER; U = -log_loss makes higher U better and
+    Delta = U(with) - U(without) > 0 mean "improvement", the SAME
+    orientation convention macro_f1's Delta already uses -- callers never
+    need to flip a sign depending on which metric is active.
+
+    PROPER SCORING RULE, uses the FULL predicted probability distribution
+    (proba, shape (n_samples, n_classes)) -- never the argmax. This is the
+    entire point of comparing against macro_f1: a model that shifts its
+    confidence without ever flipping its winning class moves log loss but
+    leaves macro-F1 completely unchanged.
+
+    CLIPPING (stated, not hidden -- it affects the number): proba is
+    clipped to [eps, 1-eps] before taking a log, then each row is
+    RENORMALIZED to sum to 1 again (standard practice, avoids a subtle
+    bias from clipping only the true-class column and leaving the rest of
+    the row unclipped-and-therefore-relatively-too-large). Without
+    clipping, a model assigning probability exactly 0 to the true class
+    would make log loss infinite from a single trial -- eps=1e-15 is
+    scikit-learn's historical default for this exact reason. See
+    docs/D6_SIMULATION.md section 11's sensitivity check for how much the
+    reported Delta moves at eps=1e-12 and eps=1e-9 instead.
+    """
+    y_true = np.asarray(y_true)
+    proba = np.asarray(proba, dtype=float)
+    n = len(y_true)
+    clipped = np.clip(proba, eps, 1.0 - eps)
+    clipped = clipped / clipped.sum(axis=1, keepdims=True)
+    true_class_prob = clipped[np.arange(n), y_true]
+    log_loss = -np.mean(np.log(true_class_prob))
+    return float(-log_loss)
