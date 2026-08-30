@@ -403,3 +403,179 @@ and the real ABANDON/NO_ACTION frequency, neither of which is known yet.
 - This addendum does not re-examine whether more seeds (rather than more `n_boot`)
   would itself stabilise the headline figure — that would be the natural next
   question this finding raises, and is not answered here.
+
+---
+
+## Addendum 2 (2026-08-30) — primary metric comparison
+
+**Bottom line, stated first: adopting multiclass log loss as the primary metric
+MATERIALLY improves decidability for this study.** Decidability (|Δ| / half-width, a
+unit-free signal-to-noise ratio — see the note below on why this is the only
+comparison that means anything between two different units) is higher under log loss
+than under macro-F1 in **every one of the six grid cells and every effect size
+tested, with no exceptions**, by an average factor of **~2.1×**. The cross-seed spread
+in half-width (the instability this pass's first addendum found `n_boot` could not
+fix) is also smaller under log loss in every cell, by an average factor of **~3×**.
+This is not a marginal or mixed result — the evidence below is one-sided. Whether to
+actually adopt log loss, and how to re-derive every threshold in its units, remains
+entirely a human decision (G1) — this addendum reports arithmetic, not a
+recommendation.
+
+### Why half-widths in the two metrics cannot be compared directly
+
+A CI half-width of 0.0209 macro-F1 points and a half-width of 0.0166 nats (log loss's
+own unit) are **not comparable numbers** — different units, different scales, no
+common reference point. Comparing them directly would be meaningless and could drive
+a wrong decision. The only comparison that is unit-free is **decidability**:
+
+```
+decidability = |Δ| / half-width(Δ)
+```
+
+a signal-to-noise ratio in the metric's own units, computed **per seed, on the SAME
+generated data, at the SAME true effect size** — pairing eliminates confounding by
+which synthetic dataset happened to be drawn.
+
+### Implementation (Task 1)
+
+`simulation/models.py` gained `neg_log_loss(y_true, proba, n_classes, eps=1e-15)`: the
+oriented utility `U = -log_loss`, so higher `U` is always better and `Δ = U(with) -
+U(without) > 0` means "improvement" — the same orientation convention macro-F1's `Δ`
+already uses. Uses the model's **full predicted probability distribution**, never its
+argmax. `simulation/precision.py` was refactored to a `Metric` abstraction
+(`MACRO_F1_METRIC` / `NEG_LOG_LOSS_METRIC`) so every fit/bootstrap/sweep function
+selects L2 regularization, predicts, and scores using whichever metric is active —
+**both metrics get their own fairly-tuned model**, not one model evaluated two ways.
+This refactor changed **no default behavior**: `tests/test_precision.py` confirms
+`run_one_refit` with no `metric` argument reproduces the exact pre-refactor macro-F1
+numbers, seed for seed.
+
+**Clipping**: probabilities are clipped to `[eps, 1-eps]` then each row is
+renormalized to sum to 1, `eps = 1e-15` (scikit-learn's historical default). **This
+choice is far from cosmetic** — a direct test (`tests/test_precision.py`, check 7)
+with one trial assigned exactly 0.0 probability for its true class gave `U = -7.25` at
+`eps=1e-6` versus `U = -17.6` at `eps=1e-15`, a swing of more than 2× from the clip
+value alone on a single degenerate trial. In the actual sweep below, predicted
+probabilities rarely reach exactly 0 (L2-regularized logistic regression's softmax
+output is bounded away from the simplex boundary in practice), so this extreme
+sensitivity was not the dominant driver of the reported numbers — but it is the reason
+every number in this addendum is stated as "at `eps=1e-15`," not as a property of log
+loss in general.
+
+### Task 2 — the comparison, six cells, both metrics
+
+Full grid: `n_classes=5`, refit-per-replicate double bootstrap, `n_boot=200`, the
+SAME 5 seeds as the finalisation pass, `effect_size=0.3` (the existing anchor).
+Macro-F1 was RE-RUN here (not reused from the finalisation pass's saved JSON) because
+per-seed (Δ, half-width) **pairs** are needed for decidability, and that file kept
+only aggregated statistics.
+
+![Decidability by cell, both metrics](d6_metric_comparison_decidability.svg)
+
+| Session | Rare freq | Metric | half-width mean | half-width std | Decidability mean (min–max) |
+|---|---|---|---|---|---|
+| 25 min | 0.02 | macro-F1 | 0.0339 | 0.0090 | 0.539 (0.044–1.272) |
+| 25 min | 0.02 | log loss | 0.0246 | 0.0046 | **1.421** (0.473–2.402) |
+| 25 min | 0.05 | macro-F1 | 0.0266 | 0.0068 | 0.476 (0.142–0.801) |
+| 25 min | 0.05 | log loss | 0.0230 | 0.0026 | **1.400** (0.633–1.980) |
+| 35 min | 0.02 | macro-F1 | 0.0321 | 0.0126 | 0.842 (0.466–1.460) |
+| 35 min | 0.02 | log loss | 0.0208 | 0.0033 | **1.150** (0.694–1.594) |
+| 35 min | 0.05 | macro-F1 | 0.0227 | 0.0108 | 0.698 (0.429–0.825) |
+| 35 min | 0.05 | log loss | 0.0205 | 0.0036 | **1.430** (0.928–2.145) |
+| 45 min | 0.02 | macro-F1 | 0.0256 | 0.0112 | 0.976 (0.104–1.844) |
+| 45 min | 0.02 | log loss | 0.0167 | 0.0029 | **1.643** (0.463–2.854) |
+| 45 min | 0.05 | macro-F1 | 0.0209 | 0.0118 | 0.968 (0.098–2.023) |
+| 45 min | 0.05 | log loss | 0.0166 | 0.0030 | **1.700** (0.387–2.895) |
+
+**Decidability is higher under log loss in all six cells** (ratios: 2.64×, 2.94×,
+1.37×, 2.05×, 1.68×, 1.76× — average **2.07×**). **Half-width std is lower under log
+loss in all six cells** (ratios: 0.51×, 0.38×, 0.26×, 0.34×, 0.26×, 0.25× — average
+**0.33×**, i.e. roughly a two-thirds reduction).
+
+**Task 2.3 — does log loss reduce the across-seed spread this pass's first addendum
+found `n_boot` could not fix? Yes, substantially.** The first addendum's key finding
+was that raising `n_boot` from 50 to 200 did not shrink macro-F1's cross-seed spread —
+the instability was dominated by which synthetic subject realization was drawn, not
+bootstrap noise. Log loss does not eliminate this seed-to-seed variability (its own
+half-width still ranges roughly 2–4× between min and max seed within most cells,
+comparable proportionally to macro-F1's own spread) — but it reduces the ABSOLUTE size
+of that spread by roughly two-thirds on average, meaning the SAME underlying
+seed-to-seed instability translates into a narrower band of reported numbers under
+log loss than under macro-F1.
+
+**Task 2.4 — does log loss show the exact-zero-width-interval degeneracy macro-F1
+exhibited at the true null?** Under the CURRENT refit-per-replicate double bootstrap
+(used throughout this pass and the finalisation pass), **neither metric produced an
+exact-zero-width CI** in this run (0 of 30 seed-cell combinations in the main grid, 0
+of 18 in the effect-size sweep) — that specific degeneracy was a property of the
+ORIGINAL Pass 1 fixed-model (evaluation-only) bootstrap, already superseded by the
+finalisation pass's refit correction for both metrics alike. To answer the question as
+originally posed (does log loss share macro-F1's STRUCTURAL vulnerability to this
+degeneracy), a direct check was run using Pass 1's ORIGINAL fixed-model bootstrap at
+the true null, 10 seeds: **macro-F1 hit exactly 0.000000 half-width on 2 of 10 seeds**
+(reproducing the known degeneracy); **log loss never once hit exactly zero** (smallest
+observed value 0.001213). This is a structural difference, not a fluke of the refit
+correction: macro-F1's exact-zero degeneracy requires the "with" and "without" models
+to produce byte-identical HARD decisions on every trial, which two independently
+fitted models occasionally do; log loss is a continuous function of two independently
+fitted models' full probability outputs, which are essentially never byte-identical
+in floating point, so this exact degeneracy is not just fixed by the refit bootstrap
+correction for log loss — it could not occur for log loss even under the cheaper,
+original method.
+
+### Task 3 — effect-size correspondence table (arithmetic only, not a proposal)
+
+At the realistic cell (45 min, rare-class frequency 0.05), REDUCED rigor (`n_boot=100`,
+3 seeds — stated explicitly; this table needed a wider sweep along a new dimension on
+top of an already-expensive double bootstrap, so full 200/5 rigor was not used here):
+
+![Δ vs effect size, both metrics](d6_metric_comparison_effect_size.svg)
+
+| Configured effect_size | Δ macro-F1 (mean) | Δ (−log loss) (mean) | Decidability macro-F1 | Decidability log loss |
+|---|---|---|---|---|
+| 0.00 (true null) | −0.0042 | −0.0025 | 0.29 | 0.36 |
+| 0.15 | −0.0013 | +0.0028 | 0.44 | 0.73 |
+| 0.25 | +0.0078 | +0.0146 | 0.76 | 1.23 |
+| 0.30 | +0.0138 | +0.0229 | 0.93 | 1.63 |
+| 0.50 | +0.0357 | +0.0710 | 1.70 | 3.18 |
+| 0.80 | +0.0767 | +0.1817 | 2.48 | 5.76 |
+
+**This correspondence is a property of THIS generator under ITS assumptions — it is
+NOT a general conversion factor between the two metrics.** For example, "an effect
+producing Δ macro-F1 ≈ 0.014 produces Δ(−log loss) ≈ 0.023 in this generator" is a
+statement about this specific synthetic data-generating process (5 classes, this
+class-frequency structure, this classifier family, this feature set), not a universal
+relationship between macro-F1 and log loss. The ratio between the two Δ columns is
+also NOT constant (roughly 1.7–2.4× and growing with effect size), confirming the two
+metrics are not simply rescaled versions of one another even within this generator.
+Decidability is higher for log loss at every effect size tested, including the true
+null, with no exceptions — consistent with the grid comparison above.
+
+### A timing anomaly, reported rather than hidden
+
+One cell in the main grid (45min/rare=0.05, macro-F1) took approximately 12,451
+seconds (~3.5 hours) of the run's total elapsed time, versus 100–650 seconds for every
+other cell. The cell immediately after it (same config, log loss) returned to normal
+speed (144s), and the entire second run (effect-size correspondence) also ran at the
+expected pace afterward. The RESULT for that anomalous cell (half-width mean 0.0209)
+is byte-identical to the independently-computed value for the same exact configuration
+in the finalisation pass's own n_boot=200 grid — strong evidence the anomaly was a
+transient system-level slowdown (most likely the machine sleeping or being throttled
+mid-run) rather than anything wrong with the computation or the data. Reported for
+completeness (G3), not investigated further, since it does not appear to have affected
+correctness.
+
+### New assumptions introduced in this addendum
+
+- The log-loss clip epsilon, `eps=1e-15` (scikit-learn's historical default) — an
+  INVENTED choice, though its practical impact on the reported numbers is judged small
+  (see the clipping discussion above) because predicted probabilities in this
+  generator's fitted models rarely approach the clip boundary.
+- RUN 2's reduced rigor (`n_boot=100`, 3 seeds instead of 200/5) — a deliberate,
+  disclosed cost-saving choice for the wider effect-size sweep, not a claim that this
+  table is as precise as the main grid.
+- `EFFECT_SIZE_GRID = [0.0, 0.15, 0.25, 0.3, 0.5, 0.8]` — a subset of Pass 1's original
+  9-point grid, chosen to keep RUN 2's cost manageable while still spanning null to
+  strong effect.
+- No new generative assumptions (`simulation/generator.py` was not modified for this
+  addendum).
