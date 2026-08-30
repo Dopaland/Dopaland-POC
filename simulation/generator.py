@@ -52,6 +52,20 @@ class GeneratorConfig:
     trials_per_episode: int = 5
     n_classes: int = 3
 
+    # --- class structure (Pass 2): the client's task harness presents
+    # THREE REGIONS, FORCED CHOICE, plus ABANDON and NO_ACTION as REAL
+    # classes (not excluded trials) -- five classes total, not three.
+    # n_rare_classes counts how many of the LAST n_rare_classes indices in
+    # [0, n_classes) are "rare" (ABANDON, NO_ACTION): each is calibrated to
+    # a target marginal frequency of rare_class_frequency, with the
+    # remaining (n_classes - n_rare_classes) "choice" classes sharing the
+    # rest of the probability mass evenly. Default 0 (all classes share
+    # mass via the ORIGINAL random base_logits, unchanged) preserves Pass 1
+    # behavior exactly for n_classes=3 comparisons -- this is a additive
+    # capability, not a retroactive change to Pass 1's generator output.
+    n_rare_classes: int = 0
+    rare_class_frequency: float = 0.05
+
     # --- A1: serial dependence -- AR(1) on a latent propensity ---
     # z_t = ar1_phi * z_{t-1} + eps_t,  eps_t ~ N(0, sigma_t^2)
     # phi in (-1, 1) for stationarity. Restarted at z=0 at the start of
@@ -112,6 +126,17 @@ class GeneratorConfig:
             raise ValueError("missingness_mean_run_length must be >= 1 trial")
         if self.n_classes < 2:
             raise ValueError("n_classes must be >= 2")
+        if not (0 <= self.n_rare_classes < self.n_classes):
+            raise ValueError(f"n_rare_classes must be in [0, n_classes), got {self.n_rare_classes} for n_classes={self.n_classes}")
+        if self.n_rare_classes > 0:
+            if not (0.0 < self.rare_class_frequency < 1.0):
+                raise ValueError(f"rare_class_frequency must be in (0,1), got {self.rare_class_frequency}")
+            if self.n_rare_classes * self.rare_class_frequency >= 1.0:
+                raise ValueError(
+                    f"n_rare_classes ({self.n_rare_classes}) * rare_class_frequency "
+                    f"({self.rare_class_frequency}) must be < 1.0 -- no probability mass "
+                    "would be left for the non-rare classes"
+                )
 
 
 def _softmax(logits):
@@ -168,7 +193,24 @@ def generate(config: GeneratorConfig):
     rng = np.random.default_rng(config.seed)
     n_classes = config.n_classes
 
-    base_logits = rng.normal(scale=0.5, size=n_classes)
+    if config.n_rare_classes > 0:
+        # Calibrate base_logits so the RARE classes (the last n_rare_classes
+        # indices) sit at their target marginal frequency and the remaining
+        # "choice" classes evenly share what's left -- solved exactly via
+        # log(target_prob) (softmax is invariant to an additive constant, so
+        # this is exact up to that constant), then given a small random
+        # jitter for per-seed realism that does not materially move the
+        # calibrated target. A2/A3/A4 still perturb the realized marginal
+        # away from this baseline over the course of a session/study, same
+        # as the n_rare_classes=0 path below.
+        n_common = n_classes - config.n_rare_classes
+        common_mass = 1.0 - config.n_rare_classes * config.rare_class_frequency
+        target_probs = np.array(
+            [common_mass / n_common] * n_common + [config.rare_class_frequency] * config.n_rare_classes
+        )
+        base_logits = np.log(target_probs) + rng.normal(scale=0.05, size=n_classes)
+    else:
+        base_logits = rng.normal(scale=0.5, size=n_classes)
     drift_direction = _zero_mean_unit_vector(rng, n_classes)
     z_loading = _zero_mean_unit_vector(rng, n_classes)  # how z_t maps onto each class's logit
 
