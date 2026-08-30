@@ -623,3 +623,86 @@ finalisation pass's value for the identical configuration exactly,
 indicating a transient system-level slowdown (not investigated further)
 rather than a computation error. See
 `artefacts/precision_analysis_v2.md`'s Addendum 2 for the full account.
+
+## 12. Clipping epsilon as a pre-registered parameter, and baseline levels (2026-08-30)
+
+Full numeric results and the client-facing writeup live in
+`artefacts/precision_analysis_v2.md`'s "Addendum 3". This section
+documents the CODE: `simulation/config.py` (new), the one-line change to
+`simulation/models.py`, and `simulation/run_eps_and_baseline_analysis.py`
+(new driver).
+
+### 12.1 `simulation/config.py` — minimal, not the full Gate 0 system
+
+A single frozen dataclass, `PreRegisteredConfig`, with one field
+(`log_loss_clip_eps: float = 1e-15`) and a `config_hash()` method
+identical in spirit to `controls/null_input.py`'s `NullInputConfig` (a
+short SHA-256 prefix of the config's own JSON representation). The
+module docstring states explicitly that this is NOT the Gate 0
+provenance system CLAUDE.md's D0PA1 section describes (experiment ID,
+pinned dependencies, variant log, canonical log schema, data manifest) --
+none of that exists. Adding a field to `PreRegisteredConfig` is reserved
+for quantities that change a REPORTED METRIC's value, not ordinary
+engineering constants (the L2 grid, split fractions, etc. stay where they
+are — they affect model SELECTION, not what a fixed model's score means).
+
+`simulation/models.py`'s `LOG_LOSS_CLIP_EPS` is now `PRE_REGISTERED_CONFIG.
+log_loss_clip_eps` rather than a bare literal — a one-line change,
+verified (not assumed) to produce the same value via
+`tests/test_config.py`'s `check_models_sources_eps_from_config`.
+
+### 12.2 Sensitivity measured on real fitted output, not just the pathological case
+
+`simulation/run_eps_and_baseline_analysis.py`'s `run_eps_sensitivity()`
+builds three ad hoc `Metric` instances via
+`functools.partial(neg_log_loss, eps=eps_value)` (no change to
+`simulation/precision.py` was needed — `Metric.fn` accepts any
+`(y_true, proba, n_classes)`-shaped callable, and a `partial` satisfies
+that contract) and runs the full refit double-bootstrap
+(`sweep_multi_seed_refit`) at the realistic cell for each of
+`eps in {1e-6, 1e-12, 1e-15}`, same 5 seeds, `n_boot=200`.
+
+**Result: bit-identical output at all three eps values** (verified by
+direct equality comparison on the raw floats in
+`artefacts/d6_eps_and_baseline_results.json`, not by comparing
+rounded/displayed numbers). This is consistent with, and now confirms
+with a real measurement, Addendum 2's own stated expectation that fitted
+probabilities in this generator's L2-regularized logistic regression
+models rarely approach the clip boundary.
+
+### 12.3 Baseline levels (`simulation/run_eps_and_baseline_analysis.py`)
+
+Three functions, one per reference point:
+- `uniform_predictor_log_loss`: closed-form `ln(n_classes)`, computed
+  (not assumed) by actually constructing a uniform probability matrix and
+  calling `neg_log_loss` on it, so the "exact, zero variance" claim in
+  the addendum is a verified property, not an assertion.
+- `marginal_predictor_log_loss`: empirical class frequency estimated from
+  the TRAIN split only (the same no-leakage discipline
+  `build_features`'s signal-imputation mean already uses elsewhere in
+  this codebase), applied as a constant prediction to every test trial.
+- `m0b_log_loss`: calls `compute_delta(..., metric=NEG_LOG_LOSS_METRIC)`
+  and reads `-delta_result.u_without` -- this is DELIBERATE reuse, not a
+  parallel re-implementation: "M0b" in this addendum is guaranteed to be
+  the exact same fitted model object every other Δ in this study is
+  compared against, because it IS that object, not a separately
+  maintained stand-in for it.
+
+All three are reported as plain log loss (nats, lower is better) rather
+than the oriented `U = -log_loss` convention used everywhere else in this
+codebase — a presentation choice for this addendum's baseline table
+(reductions and perplexity read more naturally in positive nats), stated
+explicitly so it is not mistaken for a change to the oriented-utility
+convention used in Δ computations.
+
+### 12.4 Conversion table -- pure arithmetic, no `Metric` or generator code involved
+
+`build_conversion_table()` takes the M0b mean and a list of candidate δ
+values and computes relative reduction, perplexity before/after, and the
+ratio of δ to each of the two already-known half-widths (Addendum 2's
+realistic-cell and worst-cell values, `0.0166` and `0.0246` -- read from
+that addendum, not re-derived by a new sweep). No new simulation run
+underlies this table; it is a pure function of numbers already
+established. The "resolvable" fields are booleans computed as
+`ratio > 1.0` -- reported as data, never printed as, or worded like, a
+RETAIN/DROP/INCONCLUSIVE verdict (G1).
