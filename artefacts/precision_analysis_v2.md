@@ -245,3 +245,161 @@ theoretically-expected direction before being adopted.
   combined. If the client can supply even a rough real estimate, re-running §3's sweep
   at that value would sharpen this analysis considerably more than any other single
   action available right now.
+
+---
+
+## Addendum (2026-08-30) — bootstrap precision and the joint grid
+
+**This addendum supersedes this document's own headline figure (0.0149 macro-F1
+points, §2/§4) for PLANNING purposes.** The reason: §2's number was computed at
+`n_boot=50` (Monte Carlo noise not yet quantified) and at a single factor combination
+(45-minute sessions, rare-class frequency 0.05) while the OTHER factor was held at its
+own most favourable value. Neither condition holds for the real study, which will
+combine whatever the real session length and real rare-class frequency turn out to be
+— the number below is what actually governs planning until those two real values are
+known. **v1 and v2's own sections above are left completely unchanged** — this
+addendum is new content appended below them, not a correction overwriting what was
+already reported.
+
+### Headline: the achievable precision is worse than v2 reported, and highly variable
+
+At the worst combination of assumptions this simulation tested (25-minute sessions,
+rare-class frequency 0.02), the mean bootstrap CI half-width across 5 seeds is
+**0.0339** macro-F1 points — individual seeds ranged as high as **0.0444**. This is
+**larger than the smaller candidate δ (0.03) by itself**. At this combination, a δ of
+0.03 has **no true effect size for which DROP is even reachable** — every non-negative
+true Δ from 0 up to roughly 0.064 resolves to INCONCLUSIVE, and only Δ ≥ 0.064 permits
+RETAIN. This is not a bad result to report — it is exactly the kind of finding this
+simulation exists to surface before, not after, a δ is signed.
+
+### Task 1 — stabilising the estimate
+
+**Replicate count and cost.** Raised from Pass 2's `n_boot=50` to `n_boot=200` (a 4x
+increase) for every figure in this addendum. The full 6-cell joint grid (Task 2) at
+`n_boot=200`, 5 seeds, ran in **975 seconds (≈16.3 minutes)** wall-clock — well within
+budget, so 200 was used as planned rather than reduced further for speed.
+
+**Monte Carlo spread, and what it actually shows.** At the original Pass 2 cell
+(45-minute sessions, rare-class frequency 0.05), raising `n_boot` from 50 to 200 gave:
+
+| n_boot | mean | std | min | max | range (max−min) |
+|---|---|---|---|---|---|
+| 50 (Pass 2) | 0.0179 | *(not computed in Pass 2)* | 0.0098 | 0.0321 | 0.0223 |
+| 200 (this addendum) | 0.0209 | 0.0118 | 0.0126 | 0.0433 | 0.0307 |
+
+**The spread did NOT shrink when `n_boot` quadrupled — if anything the observed range
+widened.** This is the key methodological finding of Task 1: the instability in the
+reported half-width is **not primarily bootstrap resampling noise** (which more
+replicates would fix) — it is **variability across which synthetic data realization
+(seed) is drawn**, which a larger `n_boot` cannot address at all, because `n_boot`
+only controls how precisely the CI is estimated FOR one fixed dataset, not how much
+that CI would differ across different, equally-plausible datasets. Practically: the
+answer to "is this a 0.0149 ± 0.004 or 0.0149 ± 0.0005 situation" is neither — it is
+closer to **a genuinely wide underlying distribution (std comparable to or larger than
+the mean itself in several cells, see the full grid below)**, and no amount of
+additional bootstrap replicates within one run will narrow it. Only more independent
+seeds (more simulated "alternate realities" for this one subject) characterize that
+distribution better — `n_boot` and `n_seeds` answer different questions, and this
+addendum's finding is that the SEED dimension, not the bootstrap dimension, is where
+the real uncertainty lives.
+
+### Task 2 — the joint grid
+
+Full 3×2 grid, `n_classes=5`, refit-per-replicate double bootstrap, `n_boot=200`,
+5 seeds (seeds 1–5, the same set Pass 2 used):
+
+| Session length | Rare-class freq | N (trials) | mean half-width | std | min | max |
+|---|---|---|---|---|---|---|
+| 25 min | 0.02 | 2,250 | **0.0339** | 0.0090 | 0.0190 | 0.0444 |
+| 25 min | 0.05 | 2,250 | 0.0266 | 0.0068 | 0.0189 | 0.0388 |
+| 35 min | 0.02 | 3,150 | 0.0321 | 0.0126 | 0.0128 | 0.0467 |
+| 35 min | 0.05 | 3,150 | 0.0227 | 0.0108 | 0.0134 | 0.0416 |
+| 45 min | 0.02 | 4,050 | 0.0256 | 0.0112 | 0.0134 | 0.0442 |
+| 45 min | 0.05 | 4,050 | 0.0209 | 0.0118 | 0.0126 | 0.0433 |
+
+Every row above has its own genuinely large std relative to its mean (roughly 30–55%
+relative standard deviation throughout) — this is not specific to the worst cell, it
+is a property of the whole grid at this seed count.
+
+### Worst cell, named explicitly
+
+**25-minute sessions × rare-class frequency 0.02 — mean half-width 0.0339** (std
+0.0090, individual seeds up to 0.0444). This matches the pre-stated expectation
+exactly: both factors independently make precision worse (shorter sessions = less
+data; rarer classes = more macro-F1 variance from the minority classes), and they
+compound rather than cancel. **The ranking across all six cells matched expectation in
+both dimensions with no surprises**: within each rare-class frequency, half-width
+decreases monotonically as session length increases (25>35>45 min); within each
+session length, `rare_freq=0.02` gives a wider half-width than `rare_freq=0.05` at
+every one of the three session lengths. The only non-obvious observation was the SIZE
+of the per-seed spread (above), not the direction of any ranking.
+
+### Task 3 — verdict map at the worst cell, beside Pass 2's original map
+
+Both tables apply the identical arithmetic rule (`RETAIN`: CI lower bound > δ; `DROP`:
+CI upper bound < δ; `INCONCLUSIVE`: CI spans δ) to a range of hypothetical true Δ
+values. Neither table states or implies which δ, or which planning assumption, should
+be adopted (G1).
+
+**Optimistic (Pass 2's original map): 45 min / rare=0.05, half-width = 0.0149**
+
+| True Δ | δ=0.03 | δ=0.05 |
+|---|---|---|
+| 0.00–0.01 | DROP | DROP |
+| 0.02–0.04 | INCONCLUSIVE | DROP (0.02–0.03), INCONCLUSIVE (0.04) |
+| 0.05–0.06 | RETAIN | INCONCLUSIVE |
+| ≥0.07 | RETAIN | RETAIN |
+
+- δ=0.03: forced-INCONCLUSIVE for true Δ ∈ (0.0151, 0.0449); DROP for Δ ∈ [0, 0.0151];
+  RETAIN reachable for Δ ≥ 0.0449.
+- δ=0.05: forced-INCONCLUSIVE for true Δ ∈ (0.0351, 0.0649); DROP for Δ ∈ [0, 0.0351];
+  RETAIN reachable for Δ ≥ 0.0649.
+
+**Pessimistic (this addendum): 25 min / rare=0.02 (worst cell), half-width = 0.0339**
+
+| True Δ | δ=0.03 | δ=0.05 |
+|---|---|---|
+| 0.00–0.06 | INCONCLUSIVE (no Δ in this range gives DROP) | DROP (0.00–0.01), INCONCLUSIVE (0.02–0.06) |
+| 0.07–0.08 | RETAIN | INCONCLUSIVE |
+| ≥0.09 | RETAIN | RETAIN |
+
+- δ=0.03: forced-INCONCLUSIVE for true Δ ∈ (−0.0039, 0.0639) — since Δ is
+  non-negative in this study, **every non-negative true Δ below 0.0639 is
+  INCONCLUSIVE and DROP IS NOT REACHABLE AT ALL** for any plausible non-negative
+  effect size at this δ. RETAIN reachable only for Δ ≥ 0.0639.
+- δ=0.05: forced-INCONCLUSIVE for true Δ ∈ (0.0161, 0.0839); DROP for Δ ∈ [0, 0.0161];
+  RETAIN reachable for Δ ≥ 0.0839.
+
+**Side-by-side reading of the arithmetic** (stated, not recommended): the pessimistic
+map's INCONCLUSIVE zone is roughly **2.3× wider** than the optimistic map's for both δ
+values, and for δ=0.03 specifically, the pessimistic map removes DROP as a reachable
+outcome entirely for any non-negative effect below the RETAIN boundary. Which of the
+two planning assumptions (optimistic or pessimistic) is closer to the real study is
+not something this simulation can determine — that depends on the real session length
+and the real ABANDON/NO_ACTION frequency, neither of which is known yet.
+
+### New assumptions introduced in this addendum
+
+- `n_boot=200` for all figures in this addendum (Task 1.1) — a specific, stated choice,
+  not defaulted.
+- 5 seeds (1–5), the same set Pass 2 used — chosen for direct comparability with Pass
+  2's own numbers, not re-derived independently.
+- No new generative assumptions were introduced — this addendum runs the SAME
+  generator and analysis code as Pass 2 (`simulation/generator.py`,
+  `simulation/precision.py`, unmodified) across a wider grid and a larger `n_boot`. See
+  `docs/D6_SIMULATION.md` section 10 for the code-level account.
+
+### Limitations specific to this addendum
+
+- **Only 5 seeds** underlie every mean/std/min/max above. With `n=5`, the std and
+  range are themselves noisy estimates of the true seed-to-seed variability — the
+  qualitative finding ("the spread is large and n_boot doesn't fix it") is robust, but
+  the exact std values would likely shift with more seeds.
+- The worst cell was identified by comparing MEAN half-width across the 6 cells;
+  ranking by median would not change which cell is worst here (25min/rare=0.02's
+  median, 0.0384, is also the highest of the six), but is worth stating since mean and
+  median diverge noticeably within some cells (evidence of the same seed-driven
+  skew noted above).
+- This addendum does not re-examine whether more seeds (rather than more `n_boot`)
+  would itself stabilise the headline figure — that would be the natural next
+  question this finding raises, and is not answered here.
