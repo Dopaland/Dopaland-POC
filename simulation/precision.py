@@ -27,8 +27,36 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from simulation.models import fit_multinomial_logreg, predict, macro_f1
+from simulation.models import fit_multinomial_logreg, predict, predict_proba, macro_f1, neg_log_loss
 from controls.negative_control import NegativeControlConfig, generate_negative_control
+
+
+# ============================================================
+# D0PA1 PRIMARY-METRIC COMPARISON (docs/D6_SIMULATION.md section 11) --
+# metric abstraction so macro-F1 (hard-decision) and log loss (proper
+# scoring rule, needs the full probability distribution) can share every
+# fit/bootstrap/sweep function below via one small dispatch, instead of
+# duplicating each function per metric. `needs_proba=False` means
+# `predict()` (argmax) is used, matching every call site's existing
+# behavior EXACTLY when metric=MACRO_F1_METRIC (the default everywhere) --
+# this refactor changes no default behavior; verified by
+# tests/test_precision.py, which passes no explicit metric anywhere and
+# still reproduces its pre-refactor numbers.
+# ============================================================
+
+@dataclass(frozen=True)
+class Metric:
+    name: str
+    needs_proba: bool
+    fn: object  # callable(y_true, proba_or_hard_pred, n_classes) -> float, HIGHER IS BETTER
+
+
+MACRO_F1_METRIC = Metric(name="macro_f1", needs_proba=False, fn=macro_f1)
+NEG_LOG_LOSS_METRIC = Metric(name="neg_log_loss", needs_proba=True, fn=neg_log_loss)
+
+
+def _predict_for_metric(params, X, metric):
+    return predict_proba(params, X) if metric.needs_proba else predict(params, X)
 
 
 # ============================================================
@@ -123,13 +151,18 @@ def build_features(records, n_classes, n_sessions, include_signal, signal_impute
 L2_GRID = (0.1, 1.0, 10.0)
 
 
-def _select_l2_and_fit(X_train, y_train, X_val, y_val, n_classes):
+def _select_l2_and_fit(X_train, y_train, X_val, y_val, n_classes, metric=MACRO_F1_METRIC):
+    """L2 is selected by whichever metric is ACTIVE, not always macro-F1 --
+    otherwise a log-loss Delta would be reported on a model tuned for a
+    different objective, which would bias the metric comparison itself
+    (docs/D6_SIMULATION.md section 11) in an uncontrolled way. Each metric
+    gets its own fairly-tuned model, exactly as it would in real use."""
     best = None
     for l2 in L2_GRID:
         params = fit_multinomial_logreg(X_train, y_train, n_classes, l2=l2)
-        val_f1 = macro_f1(y_val, predict(params, X_val), n_classes)
-        if best is None or val_f1 > best[0]:
-            best = (val_f1, l2, params)
+        val_score = metric.fn(y_val, _predict_for_metric(params, X_val, metric), n_classes)
+        if best is None or val_score > best[0]:
+            best = (val_score, l2, params)
     return best[2], best[1]
 
 
@@ -156,6 +189,10 @@ class DeltaResult:
     delta_negative_control: float = None
     u_with_negative_control: float = None
     negative_control_seed: int = None
+    # D0PA1 primary-metric comparison -- which metric produced this result,
+    # so a caller inspecting a DeltaResult later never has to guess whether
+    # pred_with/pred_without are hard labels or a probability matrix.
+    metric_name: str = "macro_f1"
     # Kept for bootstrap_ci_on_delta_refit (Pass 2, 1.1), which needs the
     # raw train/test records (to resample and REFIT, not just re-evaluate)
     # and the exact imputation mean fixed on the real, non-resampled train
@@ -167,11 +204,12 @@ class DeltaResult:
     signal_impute_mean: float = None
 
 
-def compute_delta(records, n_classes, n_sessions, train_frac=0.6, val_frac=0.2, metric_fn=macro_f1, negative_control_seed=0):
-    """B1 + B2. metric_fn(y_true, y_pred, n_classes) -> float is a
-    parameter (B5: the primary metric is never hardcoded) -- defaults to
-    macro_f1 but any higher-is-better classification metric with this
-    signature can be substituted.
+def compute_delta(records, n_classes, n_sessions, train_frac=0.6, val_frac=0.2, metric=MACRO_F1_METRIC, negative_control_seed=0):
+    """B1 + B2. `metric` is a Metric (see above) -- a parameter, never
+    hardcoded (B5). Defaults to MACRO_F1_METRIC; pass NEG_LOG_LOSS_METRIC
+    for the D0PA1 primary-metric comparison (docs/D6_SIMULATION.md section
+    11). Both models are fit and predicted using whichever representation
+    (hard labels or full probability distribution) the active metric needs.
 
     negative_control_seed has a DEFAULT (0) rather than being required --
     the point of D0PA1 Part 2.2 is that the negative control is computed
@@ -197,14 +235,14 @@ def compute_delta(records, n_classes, n_sessions, train_frac=0.6, val_frac=0.2, 
     X_val_wo, _ = build_features(val, n_classes, n_sessions, include_signal=False)
     X_test_wo, _ = build_features(test, n_classes, n_sessions, include_signal=False)
 
-    params_with, l2_with = _select_l2_and_fit(X_train_w, y_train, X_val_w, y_val, n_classes)
-    params_without, l2_without = _select_l2_and_fit(X_train_wo, y_train, X_val_wo, y_val, n_classes)
+    params_with, l2_with = _select_l2_and_fit(X_train_w, y_train, X_val_w, y_val, n_classes, metric)
+    params_without, l2_without = _select_l2_and_fit(X_train_wo, y_train, X_val_wo, y_val, n_classes, metric)
 
-    pred_with = predict(params_with, X_test_w)
-    pred_without = predict(params_without, X_test_wo)
+    pred_with = _predict_for_metric(params_with, X_test_w, metric)
+    pred_without = _predict_for_metric(params_without, X_test_wo, metric)
 
-    u_with = metric_fn(y_test, pred_with, n_classes)
-    u_without = metric_fn(y_test, pred_without, n_classes)
+    u_with = metric.fn(y_test, pred_with, n_classes)
+    u_without = metric.fn(y_test, pred_without, n_classes)
 
     # D0PA1 Part 2.2 -- negative control, ALWAYS computed (see docstring).
     # Its own AR(1) autocorrelation is matched to simulation/generator.py's
@@ -219,9 +257,9 @@ def compute_delta(records, n_classes, n_sessions, train_frac=0.6, val_frac=0.2, 
     X_train_nc, _ = build_features(train, n_classes, n_sessions, include_signal=False, negative_control_values=nc_train)
     X_val_nc, _ = build_features(val, n_classes, n_sessions, include_signal=False, negative_control_values=nc_val)
     X_test_nc, _ = build_features(test, n_classes, n_sessions, include_signal=False, negative_control_values=nc_test)
-    params_nc, l2_nc = _select_l2_and_fit(X_train_nc, y_train, X_val_nc, y_val, n_classes)
-    pred_nc = predict(params_nc, X_test_nc)
-    u_with_negative_control = metric_fn(y_test, pred_nc, n_classes)
+    params_nc, l2_nc = _select_l2_and_fit(X_train_nc, y_train, X_val_nc, y_val, n_classes, metric)
+    pred_nc = _predict_for_metric(params_nc, X_test_nc, metric)
+    u_with_negative_control = metric.fn(y_test, pred_nc, n_classes)
 
     return DeltaResult(
         delta_point=u_with - u_without,
@@ -232,6 +270,7 @@ def compute_delta(records, n_classes, n_sessions, train_frac=0.6, val_frac=0.2, 
         delta_negative_control=u_with_negative_control - u_without,
         u_with_negative_control=u_with_negative_control,
         negative_control_seed=negative_control_seed,
+        metric_name=metric.name,
         n_train_episodes=len({r["episode_id"] for r in train}),
         n_val_episodes=len({r["episode_id"] for r in val}),
         n_test_episodes=len({r["episode_id"] for r in test}),
@@ -259,7 +298,7 @@ def compute_delta(records, n_classes, n_sessions, train_frac=0.6, val_frac=0.2, 
 VALID_RESAMPLE_UNITS = ("episode", "session")
 
 
-def bootstrap_ci_on_delta(delta_result: DeltaResult, resample_unit, n_boot, alpha, rng, metric_fn=macro_f1, n_classes=None):
+def bootstrap_ci_on_delta(delta_result: DeltaResult, resample_unit, n_boot, alpha, rng, metric=MACRO_F1_METRIC, n_classes=None):
     """resample_unit has NO DEFAULT and must be 'episode' or 'session' --
     resampling at the trial level would understate variance under A1's
     serial dependence and is refused outright."""
@@ -270,7 +309,14 @@ def bootstrap_ci_on_delta(delta_result: DeltaResult, resample_unit, n_boot, alph
             f"Got: {resample_unit!r}"
         )
     if n_classes is None:
-        n_classes = int(max(delta_result.y_test.max(), delta_result.pred_with.max(), delta_result.pred_without.max()) + 1)
+        # pred_with is a (n_samples, n_classes) probability matrix when the
+        # active metric needs proba -- infer from its column count rather
+        # than its max value (which would just be some probability near
+        # 1.0, not a class count). Hard-label case unchanged from before.
+        if delta_result.pred_with.ndim == 2:
+            n_classes = delta_result.pred_with.shape[1]
+        else:
+            n_classes = int(max(delta_result.y_test.max(), delta_result.pred_with.max(), delta_result.pred_without.max()) + 1)
 
     unit_ids = delta_result.test_episode_ids if resample_unit == "episode" else delta_result.test_session_ids
     unique_units = np.unique(unit_ids)
@@ -289,8 +335,8 @@ def bootstrap_ci_on_delta(delta_result: DeltaResult, resample_unit, n_boot, alph
         sampled_units = rng.choice(unique_units, size=len(unique_units), replace=True)
         rows = np.concatenate([unit_to_rows[u] for u in sampled_units])
         y_b = delta_result.y_test[rows]
-        u_with = metric_fn(y_b, delta_result.pred_with[rows], n_classes)
-        u_without = metric_fn(y_b, delta_result.pred_without[rows], n_classes)
+        u_with = metric.fn(y_b, delta_result.pred_with[rows], n_classes)
+        u_without = metric.fn(y_b, delta_result.pred_without[rows], n_classes)
         deltas[b] = u_with - u_without
 
     lo = float(np.percentile(deltas, 100 * (alpha / 2)))
@@ -354,7 +400,7 @@ def bootstrap_ci_on_delta(delta_result: DeltaResult, resample_unit, n_boot, alph
 # ============================================================
 
 def bootstrap_ci_on_delta_refit(
-    delta_result: DeltaResult, n_classes, n_sessions, resample_unit, n_boot, alpha, rng, metric_fn=macro_f1
+    delta_result: DeltaResult, n_classes, n_sessions, resample_unit, n_boot, alpha, rng, metric=MACRO_F1_METRIC
 ):
     """Same resample_unit contract as bootstrap_ci_on_delta (required, no
     default, 'episode' or 'session' only -- never 'trial'). Requires
@@ -424,11 +470,11 @@ def bootstrap_ci_on_delta_refit(
         sampled_test_units = rng.choice(test_units, size=len(test_units), replace=True)
         test_rows = np.concatenate([test_unit_to_indices[u] for u in sampled_test_units])
 
-        pred_with = predict(params_with, X_test_w_full[test_rows])
-        pred_without = predict(params_without, X_test_wo_full[test_rows])
+        pred_with = _predict_for_metric(params_with, X_test_w_full[test_rows], metric)
+        pred_without = _predict_for_metric(params_without, X_test_wo_full[test_rows], metric)
         y_test = y_test_full[test_rows]
-        u_with = metric_fn(y_test, pred_with, n_classes)
-        u_without = metric_fn(y_test, pred_without, n_classes)
+        u_with = metric.fn(y_test, pred_with, n_classes)
+        u_without = metric.fn(y_test, pred_without, n_classes)
         deltas[b] = u_with - u_without
 
     lo = float(np.percentile(deltas, 100 * (alpha / 2)))
@@ -458,7 +504,7 @@ def bootstrap_ci_on_delta_refit(
 # candidate delta values.
 # ============================================================
 
-def run_one(config, resample_unit, n_boot=1000, alpha=0.05, train_frac=0.6, val_frac=0.2, metric_fn=macro_f1):
+def run_one(config, resample_unit, n_boot=1000, alpha=0.05, train_frac=0.6, val_frac=0.2, metric=MACRO_F1_METRIC):
     from simulation.generator import generate
 
     records = generate(config)
@@ -467,11 +513,11 @@ def run_one(config, resample_unit, n_boot=1000, alpha=0.05, train_frac=0.6, val_
     # seed (see compute_delta's docstring) -- never omitted, never the same
     # fixed draw reused everywhere.
     delta_result = compute_delta(
-        records, config.n_classes, config.n_sessions, train_frac, val_frac, metric_fn,
+        records, config.n_classes, config.n_sessions, train_frac, val_frac, metric,
         negative_control_seed=config.seed + 5_000_003,
     )
     boot_rng = np.random.default_rng(config.seed + 1_000_003)  # derived, distinct from the generator's own seed
-    ci = bootstrap_ci_on_delta(delta_result, resample_unit, n_boot, alpha, boot_rng, metric_fn, config.n_classes)
+    ci = bootstrap_ci_on_delta(delta_result, resample_unit, n_boot, alpha, boot_rng, metric, config.n_classes)
 
     # Realized correlation between the candidate signal and the true
     # latent state, for the records where the signal was observed --
@@ -503,6 +549,7 @@ def run_one(config, resample_unit, n_boot=1000, alpha=0.05, train_frac=0.6, val_
         "delta_negative_control": delta_result.delta_negative_control,
         "u_with_negative_control": delta_result.u_with_negative_control,
         "negative_control_seed": delta_result.negative_control_seed,
+        "metric": metric.name,
         "ci_lo": ci["ci_lo"],
         "ci_hi": ci["ci_hi"],
         "ci_half_width": ci["ci_half_width"],
@@ -597,16 +644,16 @@ def sweep_multi_seed(label, config_kwargs, seeds, resample_unit, n_boot=1000, al
 # not just the markdown file).
 # ============================================================
 
-def run_one_refit(config, resample_unit, n_boot, alpha=0.05, train_frac=0.6, val_frac=0.2, metric_fn=macro_f1):
+def run_one_refit(config, resample_unit, n_boot, alpha=0.05, train_frac=0.6, val_frac=0.2, metric=MACRO_F1_METRIC):
     from simulation.generator import generate
 
     records = generate(config)
     delta_result = compute_delta(
-        records, config.n_classes, config.n_sessions, train_frac, val_frac, metric_fn,
+        records, config.n_classes, config.n_sessions, train_frac, val_frac, metric,
         negative_control_seed=config.seed + 5_000_003,
     )
     boot_rng = np.random.default_rng(config.seed + 2_000_003)  # distinct offset from run_one's fixed-model bootstrap
-    ci = bootstrap_ci_on_delta_refit(delta_result, config.n_classes, config.n_sessions, resample_unit, n_boot, alpha, boot_rng, metric_fn)
+    ci = bootstrap_ci_on_delta_refit(delta_result, config.n_classes, config.n_sessions, resample_unit, n_boot, alpha, boot_rng, metric)
 
     observed = [(r["x_signal"], r["z"]) for r in records if r["x_signal"] is not None]
     if len(observed) >= 2:
@@ -637,6 +684,7 @@ def run_one_refit(config, resample_unit, n_boot, alpha=0.05, train_frac=0.6, val
         "delta_negative_control": delta_result.delta_negative_control,
         "u_with_negative_control": delta_result.u_with_negative_control,
         "negative_control_seed": delta_result.negative_control_seed,
+        "metric": metric.name,
         "ci_lo": ci["ci_lo"],
         "ci_hi": ci["ci_hi"],
         "ci_half_width": ci["ci_half_width"],

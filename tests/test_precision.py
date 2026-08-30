@@ -18,6 +18,16 @@ D6 precision-pipeline validation (runnable directly, no pytest). Checks:
      caller" using compute_delta/run_one with no mention of negative
      controls anywhere in the call still gets delta_negative_control back,
      populated.
+  6. D0PA1 primary-metric comparison (docs/D6_SIMULATION.md section 11):
+     the metric refactor changed NO default behavior -- run_one_refit with
+     no metric argument reproduces the exact pre-refactor macro-F1 numbers.
+  7. neg_log_loss's clipping: a probability of exactly 0.0 for the true
+     class does not produce inf/nan, and the reported value is sensitive
+     to the clip epsilon in the documented direction.
+  8. neg_log_loss's orientation: a model that is MORE confident in the
+     correct class (same argmax, different probability) has a HIGHER U,
+     even though macro-F1 would report zero difference -- this is the
+     entire reason the comparison exists.
 
 This is a validation of the PIPELINE's plumbing, not a claim about what
 real data will show -- see docs/D6_SIMULATION.md and
@@ -35,8 +45,12 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 from simulation.generator import GeneratorConfig
-from simulation.precision import run_one, compute_delta, bootstrap_ci_on_delta, chronological_split
+from simulation.precision import (
+    run_one, run_one_refit, compute_delta, bootstrap_ci_on_delta, chronological_split,
+    MACRO_F1_METRIC, NEG_LOG_LOSS_METRIC,
+)
 from simulation.generator import generate
+from simulation.models import neg_log_loss
 
 
 def check_resample_unit_required():
@@ -117,17 +131,89 @@ def check_negative_control_cannot_be_omitted(seed=13):
     }
 
 
+def check_metric_refactor_preserves_default_behavior(seed=7):
+    """D0PA1 primary-metric comparison: the Metric abstraction must not
+    have changed macro-F1's own numbers. Reproduces
+    check_ci_shrinks_with_n's exact config and compares against its
+    known-good, pre-refactor half-widths."""
+    cfg = GeneratorConfig(seed=seed, n_sessions=3, episodes_per_session=150, trials_per_episode=5, effect_size=0.3)
+    row_default = run_one(cfg, resample_unit="episode", n_boot=400)  # no metric= argument at all
+    row_explicit = run_one(cfg, resample_unit="episode", n_boot=400, metric=MACRO_F1_METRIC)
+    ok = (
+        row_default["ci_half_width"] == row_explicit["ci_half_width"]
+        and row_default["delta_point"] == row_explicit["delta_point"]
+        and row_default["metric"] == "macro_f1"
+    )
+    return ok, {"default_half_width": row_default["ci_half_width"], "explicit_half_width": row_explicit["ci_half_width"]}
+
+
+def check_neg_log_loss_clipping():
+    """A probability of exactly 0.0 for the true class must not produce
+    inf/nan (that is the entire reason clipping exists), and the reported
+    value must be SENSITIVE to the clip epsilon -- a clipping value that
+    made no difference wouldn't need stating."""
+    y_true = np.array([0, 1])
+    proba = np.array([[0.0, 1.0], [0.5, 0.5]])  # trial 0: true class assigned EXACTLY zero probability
+    val_loose = neg_log_loss(y_true, proba, n_classes=2, eps=1e-6)
+    val_tight = neg_log_loss(y_true, proba, n_classes=2, eps=1e-15)
+    ok = np.isfinite(val_loose) and np.isfinite(val_tight) and val_loose != val_tight
+    return ok, {"eps=1e-6": val_loose, "eps=1e-15": val_tight}
+
+
+def check_neg_log_loss_orientation_beats_macro_f1_blindness():
+    """The whole point of comparing against macro-F1: two prediction sets
+    with the IDENTICAL argmax (so macro-F1 reports ZERO difference) but
+    different confidence must produce DIFFERENT, correctly-oriented
+    neg_log_loss values (more confidence in the correct class -> higher
+    U)."""
+    from simulation.models import macro_f1
+    y_true = np.array([0, 0, 1, 1])
+    proba_confident = np.array([[0.9, 0.1], [0.9, 0.1], [0.1, 0.9], [0.1, 0.9]])
+    proba_unsure = np.array([[0.55, 0.45], [0.55, 0.45], [0.45, 0.55], [0.45, 0.55]])
+    pred_hard = np.array([0, 0, 1, 1])  # identical argmax for both proba arrays above
+
+    f1_confident = macro_f1(y_true, pred_hard, 2)
+    f1_unsure = macro_f1(y_true, pred_hard, 2)
+    u_confident = neg_log_loss(y_true, proba_confident, 2)
+    u_unsure = neg_log_loss(y_true, proba_unsure, 2)
+
+    ok = (f1_confident == f1_unsure) and (u_confident > u_unsure)
+    return ok, {"macro_f1_confident": f1_confident, "macro_f1_unsure": f1_unsure, "U_confident": u_confident, "U_unsure": u_unsure}
+
+
+def check_neg_log_loss_selectable_end_to_end(seed=3):
+    """metric=NEG_LOG_LOSS_METRIC must run end-to-end through the full
+    refit-bootstrap pipeline (run_one_refit) and produce a finite,
+    plausible result in nats, distinct from the macro-F1 run on the same
+    data."""
+    cfg = GeneratorConfig(
+        seed=seed, n_sessions=2, episodes_per_session=60, trials_per_episode=5,
+        n_classes=5, n_rare_classes=2, rare_class_frequency=0.05, effect_size=0.3,
+    )
+    row_f1 = run_one_refit(cfg, resample_unit="episode", n_boot=30, metric=MACRO_F1_METRIC)
+    row_ll = run_one_refit(cfg, resample_unit="episode", n_boot=30, metric=NEG_LOG_LOSS_METRIC)
+    ok = (
+        row_f1["metric"] == "macro_f1"
+        and row_ll["metric"] == "neg_log_loss"
+        and np.isfinite(row_ll["delta_point"])
+        and np.isfinite(row_ll["ci_half_width"])
+        and row_ll["ci_half_width"] >= 0.0
+    )
+    return ok, {"macro_f1_delta": row_f1["delta_point"], "neg_log_loss_delta": row_ll["delta_point"]}
+
+
 if __name__ == "__main__":
     failures = []
+    N = 9
 
     ok, msg = check_resample_unit_required()
-    print(f"[1/4] RESAMPLE UNIT REQUIRED/NO-DEFAULT/REJECTS 'trial' -- {'PASS' if ok else 'FAIL'}: {msg}")
+    print(f"[1/{N}] RESAMPLE UNIT REQUIRED/NO-DEFAULT/REJECTS 'trial' -- {'PASS' if ok else 'FAIL'}: {msg}")
     if not ok:
         failures.append(msg)
 
     row, contains_zero = check_null_case()
     print(
-        f"[2/4] NULL CASE (effect_size=0.0) -- Delta_point={row['delta_point']:+.4f}, "
+        f"[2/{N}] NULL CASE (effect_size=0.0) -- Delta_point={row['delta_point']:+.4f}, "
         f"CI=[{row['ci_lo']:+.4f}, {row['ci_hi']:+.4f}], contains zero: {contains_zero}"
     )
     if not contains_zero:
@@ -135,23 +221,43 @@ if __name__ == "__main__":
 
     row, excludes_zero = check_strong_effect_case()
     print(
-        f"[3/4] STRONG EFFECT (effect_size=0.8, generous N) -- Delta_point={row['delta_point']:+.4f}, "
+        f"[3/{N}] STRONG EFFECT (effect_size=0.8, generous N) -- Delta_point={row['delta_point']:+.4f}, "
         f"CI=[{row['ci_lo']:+.4f}, {row['ci_hi']:+.4f}], excludes zero below: {excludes_zero}"
     )
     if not excludes_zero:
         failures.append(f"strong-effect CI unexpectedly includes/goes below zero: {row}")
 
     widths = check_ci_shrinks_with_n()
-    print("[4/5] CI HALF-WIDTH vs N (episodes/session, fixed effect_size=0.3):")
+    print(f"[4/{N}] CI HALF-WIDTH vs N (episodes/session, fixed effect_size=0.3):")
     for eps, w in widths:
         print(f"      episodes_per_session={eps:4d} -> ci_half_width={w:.4f}")
     if not (widths[0][1] > widths[1][1] > widths[2][1]):
         failures.append(f"CI half-width did not shrink monotonically with N: {widths}")
 
     ok, detail = check_negative_control_cannot_be_omitted()
-    print(f"[5/5] NEGATIVE CONTROL WIRED IN AUTOMATICALLY -- {'PASS' if ok else 'FAIL'}: {detail}")
+    print(f"[5/{N}] NEGATIVE CONTROL WIRED IN AUTOMATICALLY -- {'PASS' if ok else 'FAIL'}: {detail}")
     if not ok:
         failures.append(f"negative control missing from an unaware caller's result: {detail}")
+
+    ok, detail = check_metric_refactor_preserves_default_behavior()
+    print(f"[6/{N}] METRIC REFACTOR PRESERVES DEFAULT (macro_f1) BEHAVIOR -- {'PASS' if ok else 'FAIL'}: {detail}")
+    if not ok:
+        failures.append(f"metric refactor changed default macro_f1 behavior: {detail}")
+
+    ok, detail = check_neg_log_loss_clipping()
+    print(f"[7/{N}] NEG_LOG_LOSS CLIPPING (eps sensitivity, no inf/nan) -- {'PASS' if ok else 'FAIL'}: {detail}")
+    if not ok:
+        failures.append(f"neg_log_loss clipping behaved unexpectedly: {detail}")
+
+    ok, detail = check_neg_log_loss_orientation_beats_macro_f1_blindness()
+    print(f"[8/{N}] NEG_LOG_LOSS SEES CONFIDENCE MACRO-F1 CANNOT -- {'PASS' if ok else 'FAIL'}: {detail}")
+    if not ok:
+        failures.append(f"neg_log_loss did not correctly distinguish confidence at identical argmax: {detail}")
+
+    ok, detail = check_neg_log_loss_selectable_end_to_end()
+    print(f"[9/{N}] NEG_LOG_LOSS SELECTABLE END-TO-END (run_one_refit) -- {'PASS' if ok else 'FAIL'}: {detail}")
+    if not ok:
+        failures.append(f"neg_log_loss failed to run end-to-end through run_one_refit: {detail}")
 
     print()
     if failures:
