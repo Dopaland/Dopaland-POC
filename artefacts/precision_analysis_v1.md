@@ -68,7 +68,7 @@ draw would be misleading.
 
 ### 3.1 CI half-width vs. N (the primary curve, B4/B6)
 
-![CI half-width vs N](d6_sweep_n_curve.png)
+![CI half-width vs N](d6_sweep_n_curve.svg)
 
 At a fixed moderate, clearly-nonzero effect size (`effect_size=0.3`, realized
 correlation ≈0.37 — see docs/D6_SIMULATION.md's calibration note):
@@ -89,7 +89,7 @@ achievable CI half-width on Δ is ≈0.019 macro-F1 points.**
 
 ### 3.2 Δ and CI vs. true effect size, at the realistic N
 
-![Delta vs effect size](d6_sweep_effect_size.png)
+![Delta vs effect size](d6_sweep_effect_size.svg)
 
 | effect_size (nominal) | realized corr(signal, z) | median Δ | median CI half-width | seeds w/ CI excl. 0 |
 |---|---|---|---|---|
@@ -105,7 +105,7 @@ achievable CI half-width on Δ is ≈0.019 macro-F1 points.**
 
 ### 3.3 CI half-width vs. missingness rate, at the realistic N and effect_size=0.3
 
-![CI half-width vs missingness](d6_sweep_missingness.png)
+![CI half-width vs missingness](d6_sweep_missingness.svg)
 
 | Missingness rate | median Δ | median CI half-width |
 |---|---|---|

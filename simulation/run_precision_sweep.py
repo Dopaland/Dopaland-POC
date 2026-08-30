@@ -5,9 +5,9 @@ simulation/precision.py (which are the reusable, generic pipeline) with a
 specific grid of configurations chosen for this report, and writes:
 
   artefacts/d6_sweep_results.json    -- full per-seed and aggregated results
-  artefacts/d6_sweep_n_curve.png     -- CI half-width vs N, several effect sizes
-  artefacts/d6_sweep_effect_size.png -- CI half-width & delta vs effect size, realistic N
-  artefacts/d6_sweep_missingness.png -- CI half-width vs missingness rate, realistic N
+  artefacts/d6_sweep_n_curve.svg     -- CI half-width vs N, several effect sizes
+  artefacts/d6_sweep_effect_size.svg -- CI half-width & delta vs effect size, realistic N
+  artefacts/d6_sweep_missingness.svg -- CI half-width vs missingness rate, realistic N
 
 No verdict, no PASS/FAIL, no comparison against any delta value anywhere in
 this file (G1) -- artefacts/precision_analysis_v1.md does that comparison,
@@ -188,7 +188,7 @@ def make_plots(n_curve_results, effect_size_results, missingness_results):
     ax.legend(fontsize=8)
     ax.grid(alpha=0.3)
     fig.tight_layout()
-    fig.savefig(os.path.join(ARTEFACTS_DIR, "d6_sweep_n_curve.png"), dpi=150)
+    fig.savefig(os.path.join(ARTEFACTS_DIR, "d6_sweep_n_curve.svg"))
     plt.close(fig)
 
     # --- Plot 2: delta and CI half-width vs effect_size, realistic N ---
@@ -213,7 +213,7 @@ def make_plots(n_curve_results, effect_size_results, missingness_results):
     ax.legend(fontsize=8)
     ax.grid(alpha=0.3)
     fig.tight_layout()
-    fig.savefig(os.path.join(ARTEFACTS_DIR, "d6_sweep_effect_size.png"), dpi=150)
+    fig.savefig(os.path.join(ARTEFACTS_DIR, "d6_sweep_effect_size.svg"))
     plt.close(fig)
 
     # --- Plot 3: CI half-width vs missingness, realistic N ---
@@ -230,7 +230,7 @@ def make_plots(n_curve_results, effect_size_results, missingness_results):
     )
     ax.grid(alpha=0.3)
     fig.tight_layout()
-    fig.savefig(os.path.join(ARTEFACTS_DIR, "d6_sweep_missingness.png"), dpi=150)
+    fig.savefig(os.path.join(ARTEFACTS_DIR, "d6_sweep_missingness.svg"))
     plt.close(fig)
 
 
