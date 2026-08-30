@@ -507,3 +507,119 @@ and `rare_class_frequency` together instead of one at a time. This is
 deliberately the simplest possible extension: the joint grid was a
 scheduling change (which configs to run), not a code change to how any
 single config is analyzed.
+
+## 11. Primary metric comparison (2026-08-30) — macro-F1 vs. log loss
+
+Full numeric results and the client-facing writeup live in
+`artefacts/precision_analysis_v2.md`'s "Addendum 2". This section
+documents the CODE changes: `simulation/models.py` (new `neg_log_loss`),
+`simulation/precision.py` (refactored to a metric abstraction), and
+`simulation/run_metric_comparison.py` (new driver).
+
+### 11.1 Why a comparison of RAW half-widths would be meaningless
+
+A macro-F1 half-width and a log-loss half-width are numbers in different
+units with no shared reference point — comparing 0.0209 macro-F1 points
+to 0.0166 nats directly would answer nothing and could actively mislead.
+The only comparison that means anything is **decidability = |Δ| /
+half-width**, a dimensionless signal-to-noise ratio computed per seed (on
+the SAME generated data, at the SAME true effect size, for each metric
+independently) -- this is the entire reason
+`simulation/run_metric_comparison.py`'s `_decidability_stats()` computes
+and stores per-seed pairs rather than only aggregated statistics.
+
+### 11.2 `neg_log_loss` (`simulation/models.py`)
+
+`U = -log_loss` -- the SAME "higher is always better, Δ>0 is improvement"
+orientation convention `macro_f1`'s Δ already uses, so no caller needs to
+flip a sign depending on which metric is active. Takes `proba`, a
+`(n_samples, n_classes)` array (the model's FULL predicted distribution,
+from the already-existing `predict_proba()` -- no new prediction function
+was needed). Clips to `[eps, 1-eps]` then renormalizes each row to sum to
+1 (standard practice: clipping only the true-class column and leaving the
+rest of the row unclipped would introduce a subtle bias). `eps=1e-15`
+(scikit-learn's historical default) is a STATED, not hidden, choice --
+`tests/test_precision.py`'s `check_neg_log_loss_clipping` demonstrates
+directly that a single trial with an exactly-zero true-class probability
+swings the reported value by more than 2x between `eps=1e-6` and
+`eps=1e-15`. `macro_f1` itself was NOT touched -- it still takes hard
+`y_pred`, exactly as before this pass.
+
+### 11.3 The `Metric` abstraction (`simulation/precision.py`)
+
+Rather than duplicate every fit/bootstrap/sweep function once per metric,
+a small frozen dataclass `Metric(name, needs_proba, fn)` was introduced,
+with two instances: `MACRO_F1_METRIC` (`needs_proba=False`, uses
+`predict()`) and `NEG_LOG_LOSS_METRIC` (`needs_proba=True`, uses
+`predict_proba()`). Every function that used to take `metric_fn=macro_f1`
+now takes `metric=MACRO_F1_METRIC` -- `_select_l2_and_fit`,
+`compute_delta`, `bootstrap_ci_on_delta`, `bootstrap_ci_on_delta_refit`,
+`run_one`, `run_one_refit`. `_predict_for_metric(params, X, metric)` is
+the one-line dispatch every call site uses instead of calling `predict()`
+directly.
+
+**L2 model selection is now metric-aware.** `_select_l2_and_fit` picks the
+regularization strength that maximizes WHICHEVER metric is active on the
+validation split, not always macro-F1 -- otherwise a log-loss Δ would be
+reported on a model tuned for a different objective, biasing the
+comparison itself in an uncontrolled way. Each metric gets its own
+fairly-tuned "with" and "without" model, matching how either metric would
+actually be used in practice.
+
+**Verified, not assumed, that this changed no default behavior**:
+`tests/test_precision.py`'s `check_metric_refactor_preserves_default_behavior`
+runs the exact config from the pre-existing `check_ci_shrinks_with_n` with
+no `metric` argument at all, and confirms the half-width and Δ are
+BIT-IDENTICAL to calling with `metric=MACRO_F1_METRIC` explicit -- and,
+separately, that every existing test in the file (which never passes
+`metric=` anywhere) continues to reproduce its original numbers exactly.
+
+**A pre-existing latent bug was found and fixed while generalizing this**:
+`bootstrap_ci_on_delta`'s `n_classes` auto-inference fallback
+(`n_classes=None`) computed `max(y_test, pred_with, pred_without) + 1`,
+implicitly assuming `pred_with`/`pred_without` were hard integer labels.
+Under `NEG_LOG_LOSS_METRIC`, these are `(n_samples, n_classes)` probability
+matrices -- `.max()` on one of those returns some probability near 1.0,
+not a class count, which would have silently produced `n_classes=1` or
+similar nonsense. Fixed by checking `pred_with.ndim` first and using the
+array's column count when it is 2-D. This path is not exercised by the
+metric-comparison driver (which always passes `n_classes` explicitly) but
+would have broken silently for any future caller relying on the fallback
+with `NEG_LOG_LOSS_METRIC` -- caught by code inspection while making the
+change, not by a failing test, and is recorded here so it is not
+mistaken for something that was tested and passed.
+
+### 11.4 `simulation/run_metric_comparison.py` -- two runs, two rigor levels
+
+RUN 1 (`run_grid_comparison`) matches the finalisation pass EXACTLY --
+same 3x2 grid, same `n_boot=200`, same 5 seeds -- for both metrics, so
+every macro-F1 cell is directly comparable to
+`artefacts/d6_finalisation_results.json`'s numbers (and was RE-RUN rather
+than read from that file, because per-seed pairs are needed for
+decidability and that file only kept aggregates). RUN 2
+(`run_effect_size_correspondence`) sweeps `effect_size` at the single
+realistic cell only, at deliberately REDUCED rigor (`n_boot=100`, 3
+seeds) -- stated as a cost/thoroughness tradeoff, not hidden behind a
+same-looking table.
+
+**The structural immunity check (Task 2.4) is a small, separate,
+un-scripted verification**, run directly against `bootstrap_ci_on_delta`
+(Pass 1's ORIGINAL fixed-model, non-refit bootstrap) at 10 seeds and the
+true null: macro-F1 hit an exact `0.000000` half-width on 2 of 10 seeds
+(reproducing Pass 1's documented degeneracy); log loss never did (minimum
+observed value `0.001213`). This confirms the degeneracy is a structural
+property of comparing HARD decisions (two independently-fit models can
+produce byte-identical argmax predictions on every trial) that a
+CONTINUOUS, full-probability metric like log loss cannot exhibit, rather
+than something merely papered over by the refit-bootstrap correction
+already in use since the finalisation pass.
+
+### 11.5 A timing anomaly
+
+One grid cell (45min/rare=0.05, macro-F1) took ~12,451s versus 100-650s
+for every other cell in the same run, with normal timing immediately
+before and after. The result for that cell matches the independently-run
+finalisation pass's value for the identical configuration exactly,
+indicating a transient system-level slowdown (not investigated further)
+rather than a computation error. See
+`artefacts/precision_analysis_v2.md`'s Addendum 2 for the full account.
