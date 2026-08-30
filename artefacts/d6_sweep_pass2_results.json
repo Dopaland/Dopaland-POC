@@ -1,0 +1,432 @@
+{
+  "config": {
+    "n_boot_refit": 50,
+    "n_boot_fixed": 800,
+    "n_seeds": 5,
+    "seeds": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "alpha": 0.05,
+    "resample_unit": "episode",
+    "realistic_minutes": 45,
+    "realistic_episodes": 270,
+    "n_sessions_realistic": 3,
+    "realistic_missingness": 0.05,
+    "realistic_effect_size": 0.3,
+    "primary_n_classes": 5,
+    "primary_n_rare": 2,
+    "primary_rare_freq": 0.05,
+    "secondary_rare_freq": 0.02
+  },
+  "1_1_comparison": {
+    "fixed_model_bootstrap": {
+      "label": "1.1_fixed_model_bootstrap_pass1_method",
+      "n_seeds": 5,
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "n_sessions": 3,
+      "episodes_per_session": 270,
+      "trials_per_episode": 5,
+      "n_classes": 5,
+      "n_rare_classes": 2,
+      "rare_class_frequency": 0.05,
+      "effect_size": 0.3,
+      "missingness_rate": 0.05,
+      "n_trials_total": 4050,
+      "effect_size_realized_corr_mean": 0.37211364175914996,
+      "delta_point_median": 0.011372526644833986,
+      "delta_point_mean": 0.01409203614109647,
+      "ci_half_width_median": 0.011309822327253066,
+      "ci_half_width_mean": 0.012474245483588439,
+      "ci_half_width_min": 0.009720409185023626,
+      "ci_half_width_max": 0.017909811667281117,
+      "frac_seeds_ci_excludes_zero": 0.6,
+      "delta_negative_control_median": 0.0015298530616595918,
+      "delta_negative_control_max_abs": 0.0027513526495682172
+    },
+    "refit_per_replicate": {
+      "label": "1.1_refit_per_replicate_pass2_method",
+      "n_seeds": 5,
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "n_boot": 50,
+      "method": "refit_per_replicate",
+      "n_sessions": 3,
+      "episodes_per_session": 270,
+      "trials_per_episode": 5,
+      "n_classes": 5,
+      "n_rare_classes": 2,
+      "rare_class_frequency": 0.05,
+      "effect_size": 0.3,
+      "missingness_rate": 0.05,
+      "n_trials_total": 4050,
+      "effect_size_realized_corr_mean": 0.37211364175914996,
+      "delta_point_median": 0.011372526644833986,
+      "delta_point_mean": 0.01409203614109647,
+      "ci_half_width_median": 0.014897815405890549,
+      "ci_half_width_mean": 0.017868069737264958,
+      "ci_half_width_min": 0.00981985350435444,
+      "ci_half_width_max": 0.0321083691688964,
+      "frac_seeds_ci_excludes_zero": 0.4,
+      "delta_negative_control_median": 0.0015298530616595918,
+      "delta_negative_control_max_abs": 0.0027513526495682172
+    }
+  },
+  "1_2_n_classes_sweep": [
+    {
+      "label": "1.2_n_classes=3_comparison",
+      "n_seeds": 5,
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "n_boot": 50,
+      "method": "refit_per_replicate",
+      "n_sessions": 3,
+      "episodes_per_session": 270,
+      "trials_per_episode": 5,
+      "n_classes": 3,
+      "n_rare_classes": 0,
+      "effect_size": 0.3,
+      "missingness_rate": 0.05,
+      "n_trials_total": 4050,
+      "effect_size_realized_corr_mean": 0.37075233687118225,
+      "delta_point_median": 0.021440219902409963,
+      "delta_point_mean": 0.018589979993039497,
+      "ci_half_width_median": 0.01765119075553886,
+      "ci_half_width_mean": 0.03836038073878041,
+      "ci_half_width_min": 0.016412950803454705,
+      "ci_half_width_max": 0.07661402196519067,
+      "frac_seeds_ci_excludes_zero": 0.6,
+      "delta_negative_control_median": 0.0,
+      "delta_negative_control_max_abs": 0.0008027554515580015
+    },
+    {
+      "label": "1.2_n_classes=5_rare_freq=0.05_primary_0.05",
+      "n_seeds": 5,
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "n_boot": 50,
+      "method": "refit_per_replicate",
+      "n_sessions": 3,
+      "episodes_per_session": 270,
+      "trials_per_episode": 5,
+      "n_classes": 5,
+      "n_rare_classes": 2,
+      "rare_class_frequency": 0.05,
+      "effect_size": 0.3,
+      "missingness_rate": 0.05,
+      "n_trials_total": 4050,
+      "effect_size_realized_corr_mean": 0.37211364175914996,
+      "delta_point_median": 0.011372526644833986,
+      "delta_point_mean": 0.01409203614109647,
+      "ci_half_width_median": 0.014897815405890549,
+      "ci_half_width_mean": 0.017868069737264958,
+      "ci_half_width_min": 0.00981985350435444,
+      "ci_half_width_max": 0.0321083691688964,
+      "frac_seeds_ci_excludes_zero": 0.4,
+      "delta_negative_control_median": 0.0015298530616595918,
+      "delta_negative_control_max_abs": 0.0027513526495682172
+    },
+    {
+      "label": "1.2_n_classes=5_rare_freq=0.02_secondary_0.02",
+      "n_seeds": 5,
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "n_boot": 50,
+      "method": "refit_per_replicate",
+      "n_sessions": 3,
+      "episodes_per_session": 270,
+      "trials_per_episode": 5,
+      "n_classes": 5,
+      "n_rare_classes": 2,
+      "rare_class_frequency": 0.02,
+      "effect_size": 0.3,
+      "missingness_rate": 0.05,
+      "n_trials_total": 4050,
+      "effect_size_realized_corr_mean": 0.37211364175914996,
+      "delta_point_median": 0.024779141450723685,
+      "delta_point_mean": 0.01788971368168709,
+      "ci_half_width_median": 0.02483573027570197,
+      "ci_half_width_mean": 0.025731016847295275,
+      "ci_half_width_min": 0.012016541994890311,
+      "ci_half_width_max": 0.04466730755355733,
+      "frac_seeds_ci_excludes_zero": 0.4,
+      "delta_negative_control_median": 0.00034605330410497626,
+      "delta_negative_control_max_abs": 0.00507565739183477
+    }
+  ],
+  "1_3_session_length_sweep": [
+    {
+      "label": "1.3_session=25min",
+      "n_seeds": 5,
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "n_boot": 50,
+      "method": "refit_per_replicate",
+      "n_sessions": 3,
+      "episodes_per_session": 150,
+      "trials_per_episode": 5,
+      "n_classes": 5,
+      "n_rare_classes": 2,
+      "rare_class_frequency": 0.05,
+      "effect_size": 0.3,
+      "missingness_rate": 0.05,
+      "n_trials_total": 2250,
+      "effect_size_realized_corr_mean": 0.3757763110318787,
+      "delta_point_median": 0.008237368279704116,
+      "delta_point_mean": 0.012939863429022886,
+      "ci_half_width_median": 0.02374759793824903,
+      "ci_half_width_mean": 0.023943206451510726,
+      "ci_half_width_min": 0.015979136331491887,
+      "ci_half_width_max": 0.03339224849393767,
+      "frac_seeds_ci_excludes_zero": 0.4,
+      "delta_negative_control_median": 0.0022802312281176296,
+      "delta_negative_control_max_abs": 0.004259993277500651,
+      "session_minutes": 25
+    },
+    {
+      "label": "1.3_session=35min",
+      "n_seeds": 5,
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "n_boot": 50,
+      "method": "refit_per_replicate",
+      "n_sessions": 3,
+      "episodes_per_session": 210,
+      "trials_per_episode": 5,
+      "n_classes": 5,
+      "n_rare_classes": 2,
+      "rare_class_frequency": 0.05,
+      "effect_size": 0.3,
+      "missingness_rate": 0.05,
+      "n_trials_total": 3150,
+      "effect_size_realized_corr_mean": 0.3725659654312414,
+      "delta_point_median": 0.012011854951185508,
+      "delta_point_mean": 0.01628822821648791,
+      "ci_half_width_median": 0.016329489939638748,
+      "ci_half_width_mean": 0.01988554939816252,
+      "ci_half_width_min": 0.011343076247551796,
+      "ci_half_width_max": 0.03272789469765034,
+      "frac_seeds_ci_excludes_zero": 0.4,
+      "delta_negative_control_median": -0.0006696735390738229,
+      "delta_negative_control_max_abs": 0.01458591539439405,
+      "session_minutes": 35
+    },
+    {
+      "label": "1.3_session=45min",
+      "n_seeds": 5,
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "n_boot": 50,
+      "method": "refit_per_replicate",
+      "n_sessions": 3,
+      "episodes_per_session": 270,
+      "trials_per_episode": 5,
+      "n_classes": 5,
+      "n_rare_classes": 2,
+      "rare_class_frequency": 0.05,
+      "effect_size": 0.3,
+      "missingness_rate": 0.05,
+      "n_trials_total": 4050,
+      "effect_size_realized_corr_mean": 0.37211364175914996,
+      "delta_point_median": 0.011372526644833986,
+      "delta_point_mean": 0.01409203614109647,
+      "ci_half_width_median": 0.014897815405890549,
+      "ci_half_width_mean": 0.017868069737264958,
+      "ci_half_width_min": 0.00981985350435444,
+      "ci_half_width_max": 0.0321083691688964,
+      "frac_seeds_ci_excludes_zero": 0.4,
+      "delta_negative_control_median": 0.0015298530616595918,
+      "delta_negative_control_max_abs": 0.0027513526495682172,
+      "session_minutes": 45
+    }
+  ],
+  "1_4_verdict_map": {
+    "primary_half_width_used": 0.014897815405890549,
+    "rows": [
+      {
+        "true_delta": 0.0,
+        "delta_threshold": 0.03,
+        "ci_lo": -0.014897815405890549,
+        "ci_hi": 0.014897815405890549,
+        "verdict": "DROP"
+      },
+      {
+        "true_delta": 0.0,
+        "delta_threshold": 0.05,
+        "ci_lo": -0.014897815405890549,
+        "ci_hi": 0.014897815405890549,
+        "verdict": "DROP"
+      },
+      {
+        "true_delta": 0.01,
+        "delta_threshold": 0.03,
+        "ci_lo": -0.004897815405890548,
+        "ci_hi": 0.024897815405890547,
+        "verdict": "DROP"
+      },
+      {
+        "true_delta": 0.01,
+        "delta_threshold": 0.05,
+        "ci_lo": -0.004897815405890548,
+        "ci_hi": 0.024897815405890547,
+        "verdict": "DROP"
+      },
+      {
+        "true_delta": 0.02,
+        "delta_threshold": 0.03,
+        "ci_lo": 0.005102184594109452,
+        "ci_hi": 0.03489781540589055,
+        "verdict": "INCONCLUSIVE"
+      },
+      {
+        "true_delta": 0.02,
+        "delta_threshold": 0.05,
+        "ci_lo": 0.005102184594109452,
+        "ci_hi": 0.03489781540589055,
+        "verdict": "DROP"
+      },
+      {
+        "true_delta": 0.03,
+        "delta_threshold": 0.03,
+        "ci_lo": 0.01510218459410945,
+        "ci_hi": 0.04489781540589055,
+        "verdict": "INCONCLUSIVE"
+      },
+      {
+        "true_delta": 0.03,
+        "delta_threshold": 0.05,
+        "ci_lo": 0.01510218459410945,
+        "ci_hi": 0.04489781540589055,
+        "verdict": "DROP"
+      },
+      {
+        "true_delta": 0.04,
+        "delta_threshold": 0.03,
+        "ci_lo": 0.025102184594109452,
+        "ci_hi": 0.054897815405890546,
+        "verdict": "INCONCLUSIVE"
+      },
+      {
+        "true_delta": 0.04,
+        "delta_threshold": 0.05,
+        "ci_lo": 0.025102184594109452,
+        "ci_hi": 0.054897815405890546,
+        "verdict": "INCONCLUSIVE"
+      },
+      {
+        "true_delta": 0.05,
+        "delta_threshold": 0.03,
+        "ci_lo": 0.03510218459410945,
+        "ci_hi": 0.06489781540589055,
+        "verdict": "RETAIN"
+      },
+      {
+        "true_delta": 0.05,
+        "delta_threshold": 0.05,
+        "ci_lo": 0.03510218459410945,
+        "ci_hi": 0.06489781540589055,
+        "verdict": "INCONCLUSIVE"
+      },
+      {
+        "true_delta": 0.06,
+        "delta_threshold": 0.03,
+        "ci_lo": 0.045102184594109446,
+        "ci_hi": 0.07489781540589055,
+        "verdict": "RETAIN"
+      },
+      {
+        "true_delta": 0.06,
+        "delta_threshold": 0.05,
+        "ci_lo": 0.045102184594109446,
+        "ci_hi": 0.07489781540589055,
+        "verdict": "INCONCLUSIVE"
+      },
+      {
+        "true_delta": 0.07,
+        "delta_threshold": 0.03,
+        "ci_lo": 0.055102184594109455,
+        "ci_hi": 0.08489781540589056,
+        "verdict": "RETAIN"
+      },
+      {
+        "true_delta": 0.07,
+        "delta_threshold": 0.05,
+        "ci_lo": 0.055102184594109455,
+        "ci_hi": 0.08489781540589056,
+        "verdict": "RETAIN"
+      },
+      {
+        "true_delta": 0.08,
+        "delta_threshold": 0.03,
+        "ci_lo": 0.06510218459410945,
+        "ci_hi": 0.09489781540589055,
+        "verdict": "RETAIN"
+      },
+      {
+        "true_delta": 0.08,
+        "delta_threshold": 0.05,
+        "ci_lo": 0.06510218459410945,
+        "ci_hi": 0.09489781540589055,
+        "verdict": "RETAIN"
+      },
+      {
+        "true_delta": 0.09,
+        "delta_threshold": 0.03,
+        "ci_lo": 0.07510218459410944,
+        "ci_hi": 0.10489781540589055,
+        "verdict": "RETAIN"
+      },
+      {
+        "true_delta": 0.09,
+        "delta_threshold": 0.05,
+        "ci_lo": 0.07510218459410944,
+        "ci_hi": 0.10489781540589055,
+        "verdict": "RETAIN"
+      }
+    ]
+  }
+}
