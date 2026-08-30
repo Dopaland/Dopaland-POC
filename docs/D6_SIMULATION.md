@@ -445,3 +445,65 @@ deliberately meaningless AR(1) signal vs. baseline alone. `DeltaResult`,
 unconditionally. See `docs/CONTROLS.md` §2 for the full account and how
 "cannot be omitted" was verified (not assumed) via
 `tests/test_precision.py`'s `check_negative_control_cannot_be_omitted`.
+
+## 10. Finalisation pass addendum (2026-08-30) — code-level account
+
+Full numeric results and the client-facing writeup live in
+`artefacts/precision_analysis_v2.md`'s own addendum section, which this
+document's addendum supersedes v2's headline figure. This section
+documents the CODE added for that pass:
+`simulation/run_precision_sweep_finalisation.py`. No new generative
+mechanism was introduced (unlike Pass 2's §9) — this pass reuses
+`simulation/generator.py` and `simulation/precision.py` completely
+unchanged, run across a wider grid and a larger `n_boot`.
+
+### 10.1 Why a new script rather than editing the Pass 2 driver
+
+`simulation/run_precision_sweep_finalisation.py` imports
+`episodes_for_minutes`, `verdict_map`, and several constants directly
+from `simulation/run_precision_sweep_pass2.py` rather than duplicating
+them, so the two scripts cannot silently drift apart on what "45 minutes"
+or "the verdict rule" means. It does not modify
+`run_precision_sweep_pass2.py`, `run_precision_sweep.py`, or either
+existing artefact's prior content — consistent with the "keep the record"
+principle already established for Pass 1 vs Pass 2.
+
+### 10.2 `n_boot` raised to 200, profiled before committing to the number
+
+Before launching the full grid, single-cell timings were measured
+directly (not assumed) at `n_boot=20`: ~0.11s/replicate at 25 minutes
+(150 episodes), ~0.39–0.41s/replicate at 35/45 minutes (210/270
+episodes) — the nonlinearity across session lengths reflects L-BFGS-B
+convergence behavior differences, not a bug. Based on this, `n_boot=200`
+was judged tractable (~16 minutes for the full 6-cell × 5-seed grid,
+confirmed: it actually ran in 975 seconds). No smaller number was
+substituted after the fact for speed.
+
+### 10.3 Monte Carlo error is measured across SEEDS, not just within one bootstrap run
+
+The finalisation script computes `ci_half_width_std`/`min`/`max` directly
+from each cell's 5 per-seed half-width values (`sweep_multi_seed_refit`'s
+existing `per_seed_rows`), rather than adding a new statistic to
+`simulation/precision.py` itself. This was a deliberate interpretation
+choice, stated explicitly: "Monte Carlo error on the half-width" could
+mean either (a) resampling-only noise within one fixed dataset's
+bootstrap (which `n_boot` controls), or (b) variability in the resulting
+half-width across different synthetic data realizations (seeds), which
+`n_boot` does NOT control. This pass measures (b), because it is the
+practically relevant question ("how much should one trust this specific
+number") and because comparing the SAME cell's spread at `n_boot=50`
+(Pass 2) vs `n_boot=200` (this pass) empirically shows raising `n_boot`
+alone does not shrink it (`artefacts/precision_analysis_v2.md`'s
+addendum, Task 1) — direct evidence that (a) is not the dominant source
+of the observed instability, which is exactly what this interpretation
+choice was trying to establish.
+
+### 10.4 The joint grid reuses `sweep_multi_seed_refit` unmodified
+
+No change was made to `simulation/precision.py` for this pass — the 3×2
+grid is six separate calls to the SAME `sweep_multi_seed_refit` Pass 2
+already built, varying `episodes_per_session` (via `episodes_for_minutes`)
+and `rare_class_frequency` together instead of one at a time. This is
+deliberately the simplest possible extension: the joint grid was a
+scheduling change (which configs to run), not a code change to how any
+single config is analyzed.
