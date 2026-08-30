@@ -1,16 +1,22 @@
 # D6 Simulation — Generative Model and Assumptions
 
-**Status: Pass 1.** This document describes `simulation/generator.py` and
-`simulation/precision.py` in full — every parameter, every mechanism, and
-why each choice was made. Per G1, none of this proposes or decides
-anything about RETAIN/DROP/INCONCLUSIVE; it documents a data-generating
-process and an analysis pipeline whose only output is a number (a CI width
-on Δ) for a human to compare against candidate δ values.
+**Status: Pass 1 (sections 1-8 below), PLUS a Pass 2 addendum (section 9)
+covering what changed and why.** This document describes
+`simulation/generator.py` and `simulation/precision.py` in full — every
+parameter, every mechanism, and why each choice was made. Per G1, none of
+this proposes or decides anything about RETAIN/DROP/INCONCLUSIVE; it
+documents a data-generating process and an analysis pipeline whose only
+output is a number (a CI width on Δ) for a human to compare against
+candidate δ values.
 
-**Read this before reading the numbers in `artefacts/precision_analysis_v1.md`.**
-The numbers are downstream of these assumptions. If an assumption here is
-wrong, the numbers are wrong in a way this document should make it possible
-to predict the direction of.
+**Read this before reading the numbers in `artefacts/precision_analysis_v1.md`
+(Pass 1) or `artefacts/precision_analysis_v2.md` (Pass 2).** The numbers
+are downstream of these assumptions. If an assumption here is wrong, the
+numbers are wrong in a way this document should make it possible to
+predict the direction of. Sections 1-8 are Pass 1, UNCHANGED from their
+original form (Pass 1's own artefact and this document's own Pass-1
+sections are left exactly as they were, per the "keep v1 unchanged"
+principle) -- section 9 is new.
 
 ## 1. Why a simulation, and what it can and cannot tell us
 
@@ -345,3 +351,97 @@ numbers — the simulation code (`simulation/generator.py`,
   sweep does not explore every combination of them jointly (see
   `artefacts/precision_analysis_v1.md`'s own scoping note) — interactions
   between, e.g., fatigue and missingness are not separately characterized.
+
+## 9. Pass 2 addendum — what changed and why
+
+Full numeric results live in `artefacts/precision_analysis_v2.md`; this
+section documents the MECHANISM changes in `simulation/generator.py` and
+`simulation/precision.py` that produced them.
+
+### 9.1 Rare classes (`n_rare_classes`, `rare_class_frequency`)
+
+`GeneratorConfig` gained two fields: `n_rare_classes` (how many of the
+LAST `n_classes` indices are "rare") and `rare_class_frequency` (their
+shared target marginal probability). The client's task harness presents
+THREE REGIONS, FORCED CHOICE, plus ABANDON and NO_ACTION as REAL classes
+— `n_classes=5`, `n_rare_classes=2` models this directly.
+
+**Calibration mechanism**: when `n_rare_classes > 0`, `base_logits` is set
+to `log(target_probs)` (softmax is invariant to an additive constant, so
+this is exact up to that constant) plus a small random jitter
+(`scale=0.05`) for per-seed realism, where `target_probs` gives each rare
+class exactly `rare_class_frequency` and splits the remainder evenly
+across the non-rare "choice" classes. This is an EXACT calibration of the
+STARTING marginal frequency — A2 (learning), A3 (fatigue), and A4 (class
+drift) still perturb the realized frequency away from this baseline over
+the course of a session/study, exactly as they do for the `n_classes=3`,
+`n_rare_classes=0` path (unchanged, preserving Pass 1's exact
+reproducibility for that configuration — verified in
+`tests/test_generator.py`, which still reproduces Pass 1's exact printed
+numbers after this change).
+
+**`rare_class_frequency` values used (0.05 and 0.02) are INVENTED.** No
+real data exists on how often a subject abandons a trial or takes no
+action. These are round, plausible planning numbers, swept specifically
+because the task asked for sensitivity to this exact unknown — see
+`artefacts/precision_analysis_v2.md` §3 for how large that sensitivity
+turned out to be (≈66% swing in CI half-width between the two values).
+
+### 9.2 Session length as a swept parameter, not a second invented number
+
+Pass 1's 45-minute session length was flagged as the single most
+load-bearing invented number in the whole document. Pass 2 does not
+replace it with a different single guess — `simulation/run_precision_sweep_pass2.py`
+computes `episodes_per_session` from a session-length-in-minutes input via
+the SAME anchor Pass 1 already used (`episodes_for_minutes(minutes) =
+round(minutes * 60 / 10)`, since 1 episode = 1 existing 10-second rolling
+window, unchanged from Pass 1 §7) and sweeps 25/35/45 minutes. No new
+timing assumption was introduced; the existing one was exposed as a
+parameter instead of hidden behind one chosen value.
+
+### 9.3 Refit-per-replicate bootstrap, and the double-bootstrap correction
+
+`simulation/precision.py` gained `bootstrap_ci_on_delta_refit()` and
+`run_one_refit()`/`sweep_multi_seed_refit()`, mirroring Pass 1's
+`bootstrap_ci_on_delta()`/`run_one()`/`sweep_multi_seed()` but resampling
+and REFITTING rather than resampling a fixed model's predictions.
+
+**A real error was found and fixed while building this** (fully accounted
+in `artefacts/precision_analysis_v2.md` §7, summarized here): the first
+implementation resampled ONLY the training episodes (refitting on each
+resample) while holding the test set fixed. This measures a narrower,
+DIFFERENT quantity than Pass 1's method (test-resampling variability),
+not a superset of it, and on the primary config it produced a CI
+*narrower* than Pass 1's (0.0088 vs 0.0113) — the wrong direction given
+Pass 1's own disclosed concern. The fix resamples training episodes
+(refit) AND test episodes (re-evaluate) INDEPENDENTLY within each
+replicate — a proper double bootstrap capturing both sources of
+uncertainty together — which produced 0.0149, wider than Pass 1's method,
+confirming the fix addressed the actual gap rather than just changing a
+number. `DeltaResult` was extended with `train`/`test`/`signal_impute_mean`
+fields (populated by `compute_delta` unconditionally, at no extra
+computational cost) specifically so the refit bootstrap has access to the
+raw records it needs to resample and rebuild feature matrices from.
+
+**Disclosed simplifications, unchanged from the original plan:** L2 and
+the signal-imputation mean are fixed at the values chosen once on the
+real (non-resampled) train/val split, not re-selected per replicate
+(saves ~3x cost per replicate; targets a source of variability
+—regularization-strength uncertainty— this correction was not asked to
+capture). `n_boot` for the refit variant is 50 (vs Pass 1's 800) and
+`n_seeds` is 5 (vs Pass 1's 10), both reduced for tractability and stated
+plainly everywhere the resulting numbers are used, per this task's own
+instruction to reduce and report rather than silently keep a cheaper
+estimator.
+
+### 9.4 Negative control wired into `compute_delta()`
+
+`compute_delta()` gained a `negative_control_seed` parameter (default
+`0`, always used — never `None`, never skippable) and now ALWAYS builds a
+third comparison: baseline + `controls/negative_control.py`'s
+deliberately meaningless AR(1) signal vs. baseline alone. `DeltaResult`,
+`run_one()`, `run_one_refit()`, `sweep_multi_seed()`, and
+`sweep_multi_seed_refit()` all carry `delta_negative_control` through
+unconditionally. See `docs/CONTROLS.md` §2 for the full account and how
+"cannot be omitted" was verified (not assumed) via
+`tests/test_precision.py`'s `check_negative_control_cannot_be_omitted`.
