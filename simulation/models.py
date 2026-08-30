@@ -110,7 +110,14 @@ def macro_f1(y_true, y_pred, n_classes):
     return float(np.mean(f1s))
 
 
-LOG_LOSS_CLIP_EPS = 1e-15  # matches scikit-learn's historical log_loss default; see neg_log_loss's own docstring for the sensitivity check
+# D0PA1 Addendum 3: sourced from the pre-registered config, not a bare
+# literal -- this value materially changes U's reported number (see
+# neg_log_loss's own docstring), so it is fixed in advance, versioned,
+# and covered by PRE_REGISTERED_CONFIG.config_hash(). See
+# simulation/config.py and docs/D6_SIMULATION.md section 12.
+from simulation.config import PRE_REGISTERED_CONFIG
+
+LOG_LOSS_CLIP_EPS = PRE_REGISTERED_CONFIG.log_loss_clip_eps
 
 
 def neg_log_loss(y_true, proba, n_classes, eps=LOG_LOSS_CLIP_EPS):
