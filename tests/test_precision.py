@@ -14,10 +14,15 @@ D6 precision-pipeline validation (runnable directly, no pytest). Checks:
   4. CI half-width shrinks as N (episodes per session) grows, holding
      everything else fixed -- the basic monotonicity a precision curve
      must show, checked directly rather than assumed.
+  5. D0PA1 Part 2.2: the negative control cannot be omitted -- an "unaware
+     caller" using compute_delta/run_one with no mention of negative
+     controls anywhere in the call still gets delta_negative_control back,
+     populated.
 
 This is a validation of the PIPELINE's plumbing, not a claim about what
 real data will show -- see docs/D6_SIMULATION.md and
-artefacts/precision_analysis_v1.md for the actual precision findings.
+artefacts/precision_analysis_v1.md / precision_analysis_v2.md for the
+actual precision findings.
 """
 
 import os
@@ -82,6 +87,36 @@ def check_ci_shrinks_with_n(seed=7):
     return widths
 
 
+def check_negative_control_cannot_be_omitted(seed=13):
+    """D0PA1 Part 2.2: the negative control must be wired into the
+    analysis path automatically, not a flag a caller can forget. Verified
+    two ways: (1) calling compute_delta with NO mention of the negative
+    control anywhere in the call (exactly how an unaware caller would use
+    it) still returns delta_negative_control populated; (2) the plain
+    run_one() path (used by every sweep/report in this codebase) also
+    carries it through to the result dict, unconditionally."""
+    cfg = GeneratorConfig(seed=seed, n_sessions=3, episodes_per_session=150, trials_per_episode=5, effect_size=0.2)
+    records = generate(cfg)
+
+    # An "unaware caller" -- positional/required args only, nothing about
+    # negative controls anywhere in this call.
+    delta_result = compute_delta(records, cfg.n_classes, cfg.n_sessions)
+    has_it_in_compute_delta = (
+        delta_result.delta_negative_control is not None
+        and delta_result.u_with_negative_control is not None
+        and delta_result.negative_control_seed is not None
+    )
+
+    row = run_one(cfg, resample_unit="episode", n_boot=200)
+    has_it_in_run_one = "delta_negative_control" in row and row["delta_negative_control"] is not None
+
+    ok = has_it_in_compute_delta and has_it_in_run_one
+    return ok, {
+        "delta_negative_control_from_compute_delta": delta_result.delta_negative_control,
+        "delta_negative_control_from_run_one": row.get("delta_negative_control"),
+    }
+
+
 if __name__ == "__main__":
     failures = []
 
@@ -107,11 +142,16 @@ if __name__ == "__main__":
         failures.append(f"strong-effect CI unexpectedly includes/goes below zero: {row}")
 
     widths = check_ci_shrinks_with_n()
-    print("[4/4] CI HALF-WIDTH vs N (episodes/session, fixed effect_size=0.3):")
+    print("[4/5] CI HALF-WIDTH vs N (episodes/session, fixed effect_size=0.3):")
     for eps, w in widths:
         print(f"      episodes_per_session={eps:4d} -> ci_half_width={w:.4f}")
     if not (widths[0][1] > widths[1][1] > widths[2][1]):
         failures.append(f"CI half-width did not shrink monotonically with N: {widths}")
+
+    ok, detail = check_negative_control_cannot_be_omitted()
+    print(f"[5/5] NEGATIVE CONTROL WIRED IN AUTOMATICALLY -- {'PASS' if ok else 'FAIL'}: {detail}")
+    if not ok:
+        failures.append(f"negative control missing from an unaware caller's result: {detail}")
 
     print()
     if failures:
