@@ -579,3 +579,137 @@ correctness.
   strong effect.
 - No new generative assumptions (`simulation/generator.py` was not modified for this
   addendum).
+
+---
+
+## Addendum 3 (2026-08-30) — clipping epsilon and baseline levels
+
+**Bottom line, stated first: the clip epsilon's effect on real fitted output is
+negligible — bit-for-bit identical results at `eps=1e-6`, `1e-12`, and `1e-15`.**
+Addendum 2's demonstrated 2× sensitivity was on a deliberately contrived,
+pathological single-trial example (a probability of exactly 0.0 for the true class).
+On the actual L2-regularized logistic regression models this generator fits, that
+boundary is never reached — regularization keeps predicted probabilities away from
+the simplex edge — so the parameter is pinned here for **correctness under a
+pre-registration**, not because it was moving any number this study has reported. That
+is a useful result in its own right, not a disappointing one.
+
+### Task 1 — the clipping epsilon is now a pre-registered parameter
+
+**Where it lives**: `simulation/config.py` (new), a `PreRegisteredConfig` frozen
+dataclass with one field, `log_loss_clip_eps: float = 1e-15`, and a `config_hash()`
+method (same pattern as `controls/null_input.py`'s `NullInputConfig`). The single
+canonical instance, `PRE_REGISTERED_CONFIG`, is imported by `simulation/models.py`,
+which now sources `LOG_LOSS_CLIP_EPS` from it rather than defining a disconnected
+literal. `config_hash()` for the current value is `a18714739741bf39` — reproducible
+and verified sensitive to a changed value (`tests/test_config.py`).
+
+**This is explicitly NOT the full Gate 0 provenance system** CLAUDE.md's D0PA1 section
+describes (experiment ID, pinned dependency versions, a variant log, a canonical
+versioned log schema, a data manifest) — none of that exists yet. `simulation/config.py`
+is the minimal, honest home for the ONE parameter identified so far whose value
+materially changes a reported metric. Calling it more than that would overstate what
+exists (G3).
+
+**Sensitivity, measured on real fitted output (Task 1.3), not just the pathological
+case**: the realistic cell (45 min, rare-class frequency 0.05), `n_classes=5`,
+refit-per-replicate double bootstrap, `n_boot=200`, the same 5 seeds used throughout
+this pass:
+
+| eps | half-width mean | half-width std | Δ mean | decidability mean |
+|---|---|---|---|---|
+| 1e-6 | 0.0165658459251360 | 0.002990 | +0.0268917 | 1.7003 |
+| 1e-12 | 0.0165658459251360 | 0.002990 | +0.0268917 | 1.7003 |
+| 1e-15 | 0.0165658459251360 | 0.002990 | +0.0268917 | 1.7003 |
+
+Verified bit-identical in the raw output (`artefacts/d6_eps_and_baseline_results.json`),
+not merely identical to displayed precision. **This confirms Addendum 2's stated
+expectation with numbers rather than leaving it as an assumption**: fitted
+probabilities in this generator's models do not approach the clip boundary at this
+cell, so the reported half-width and decidability do not depend on which of these
+three eps values is in force. This does not mean the parameter is unimportant to
+pre-register — a different classifier family, a more separable dataset, or a smaller
+sample could push predictions closer to 0 or 1 and revive the sensitivity Addendum 2
+demonstrated — it means that FOR THIS STUDY'S ACTUAL FITTED MODELS, the number
+reported does not currently depend on this choice.
+
+### Task 2 — baseline levels, so δ can be expressed as a reduction
+
+At the realistic cell (45 min, rare-class frequency 0.05, `n_classes=5`), the SAME 5
+seeds, `effect_size=0.3` (note: the class-label distribution these baselines are
+computed against does not depend on `effect_size` at all — see
+`simulation/generator.py`'s A6 mechanism, which only perturbs the candidate signal
+`x_signal`, never the class logits — so this choice of `effect_size` does not
+privilege these baseline numbers in any way):
+
+| Reference point | Mean log loss (nats) | Std | Min–Max |
+|---|---|---|---|
+| Uniform predictor (1/5 every class) | **1.609438** | ~2.2×10⁻¹⁶ (float noise) | exact — see note |
+| Marginal / prior-frequency predictor | 1.395971 | 0.065727 | 1.296069–1.470551 |
+| M0b (current baseline model) | **1.336888** | 0.057706 | 1.255124–1.415492 |
+
+**Uniform is EXACT, not measured**: every trial's true-class probability is
+identically 1/5 regardless of the true label, so log loss = ln(5) = 1.6094379124341
+on every single trial, every seed — the reported std (2.2×10⁻¹⁶) is pure
+floating-point noise, not a real source of variation. **The ordering
+(uniform > marginal > M0b) is exactly what the three reference points are meant to
+show**: knowing nothing (1.609) is worse than knowing the base rates (1.396), which is
+worse than the currently-specified baseline model that also sees `t_in_session`,
+`prev_class`, and `session` (1.337). M0b is "the baseline model as currently specified
+in the precision code" — literally `compute_delta`'s own "without" model, fit and
+scored through the exact same pipeline (`_select_l2_and_fit`, `predict_proba`,
+`neg_log_loss`) every other Δ in this study is computed against, not a
+separately-maintained approximation of it.
+
+### Conversion table (arithmetic only — no δ recommended, no value described as
+appropriate or sufficient)
+
+Baseline: M0b mean = 1.336888 nats (perplexity = e^1.336888 = 3.807 effective classes,
+out of 5 possible). Half-widths from Addendum 2: realistic cell (45min/0.05) =
+**0.0166**; worst cell (25min/0.02) = **0.0246**.
+
+| Candidate δ (nats) | Relative reduction vs. M0b | Perplexity: M0b → M0b−δ | Ratio to realistic-cell half-width | Ratio to worst-cell half-width |
+|---|---|---|---|---|
+| 0.02 | 1.5% | 3.807 → 3.732 | 1.20 | 0.81 |
+| 0.05 | 3.7% | 3.807 → 3.621 | 3.01 | 2.03 |
+| 0.10 | 7.5% | 3.807 → 3.445 | 6.02 | 4.07 |
+| 0.15 | 11.2% | 3.807 → 3.277 | 9.04 | 6.10 |
+| 0.20 | 15.0% | 3.807 → 3.117 | 12.05 | 8.13 |
+
+**Reading the last two columns as arithmetic, not a verdict**: a ratio above 1 means a
+TRUE effect of exactly that δ magnitude would typically produce a confidence interval
+excluding zero at that cell's precision; a ratio below 1 means it typically would not.
+By this reading, **δ=0.02 nats sits above 1 at the realistic cell (1.20) but below 1
+at the worst cell (0.81)** — the only candidate value tested where the two cells
+disagree. Every δ ≥ 0.05 nats tested is above 1 at both cells. The exact break-even
+points (ratio = 1 by definition) are δ = 0.0166 nats at the realistic cell and
+δ = 0.0246 nats at the worst cell — any candidate δ can be checked against these two
+numbers directly without consulting the table. None of this states or implies which δ
+should be chosen, nor that any tested value is "enough" — that determination, and any
+allowance for how far the true effect might sit from a threshold, remains entirely a
+human decision.
+
+### What this could not establish
+
+- The sensitivity check (Task 1.3) was run at ONE cell (the realistic one) and ONE
+  effect size (0.3) — it does not rule out the clip boundary mattering at a different
+  cell, a different classifier family, or a much smaller/larger effective sample where
+  predicted probabilities might sit closer to the simplex edge. The claim is scoped to
+  what was tested, not to log loss in general.
+- The baseline levels are specific to `n_classes=5` with the rare-class structure
+  (`n_rare_classes=2`, `rare_class_frequency=0.05`) already established as this
+  study's primary configuration — a different class structure would shift all three
+  reference points and the conversion table built on them.
+- `simulation/config.py` covers exactly one parameter. Any other quantity that later
+  turns out to materially affect a reported metric's value (a different clip choice
+  elsewhere, a numerical-stability constant, etc.) is NOT yet covered by this
+  mechanism and would need to be added explicitly, not assumed to already be pinned.
+
+### New assumptions introduced in this addendum
+
+- `simulation/config.py`'s existence and scope (one field) — a deliberately minimal
+  design choice, stated as such, not a claim that Gate 0 provenance work is complete.
+- The candidate δ grid used for the conversion table, `[0.02, 0.05, 0.10, 0.15, 0.20]`
+  nats — chosen to span the task's stated "at least 0.02 to 0.20" range at round
+  values, not derived from any property of the data.
+- No new generative assumptions (`simulation/generator.py` was not modified).
