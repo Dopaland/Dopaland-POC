@@ -10,7 +10,7 @@ Concretely: features/x_core.py and features/episodes.py must never import
 features/attention.py or features/audio.py, directly or transitively, and
 must never call anything defined in them -- statically OR at runtime.
 
-Three independent checks, each of which must FAIL LOUDLY on a real
+Four independent checks, each of which must FAIL LOUDLY on a real
 violation (see the bottom of this docstring for how that was proven):
 
   1. STATIC IMPORT GRAPH -- parses every features/*.py file with `ast`
@@ -48,14 +48,36 @@ violation (see the bottom of this docstring for how that was proven):
      poisoned attention/audio module, the proxy raises and names exactly
      which attribute was touched.
 
+  4. COMPATIBILITY-SHIM ISOLATION -- checks 1-3 only walk the features.*
+     package graph. stage1_step4_vectors.py, the original Step-4 module,
+     now re-exports symbols from features.geometry/x_core/episodes/
+     attention side by side (so historical diagnostic scripts --
+     stage1_step4_browdiag_session.py, stage1_step9_gate2_capture.py,
+     tests/test_refactor_snapshot.py -- keep working against the old flat
+     namespace; see its own module docstring, "D0PA1 BATCH 1 STEP 3
+     REFACTOR NOTE"). That flattens the block boundary: an import of
+     stage1_step4_vectors BY x_core.py or episodes.py would launder an
+     attention/audio reference straight past checks 1-3, which never look
+     outside features/. This check closes that blind spot generically: it
+     discovers, by AST, every repo-root module that imports
+     features.attention or features.audio anywhere -- a "cross-block
+     shim" by definition, whatever it's named -- then verifies x_core.py
+     and episodes.py never import any such module, directly or
+     transitively through any other local module. Nested (in-function)
+     imports are walked the same way check 1 does.
+
 PROOF THIS TEST CAN ACTUALLY FAIL: a separation test that has never been
 observed to fail is worth nothing (same reasoning that required the
 pre-commit media-guard hook to be proven, not assumed -- see PROVENANCE.md).
 This was verified by temporarily adding
 `from features.attention import ATTENTION_ORIENTED_SCORE_THRESHOLD` to
 features/x_core.py, confirming check 1 caught it with a clear message
-naming the violating edge, then reverting. See the task's final report for
-the pasted failure output.
+naming the violating edge, then reverting. Check 4 was verified the same
+way, separately: temporarily adding `import stage1_step4_vectors` to
+features/x_core.py -- a violation invisible to checks 1-3, since
+stage1_step4_vectors.py is not a features/* module -- confirmed check 4
+caught it with a clear message naming the shim and the import path, then
+reverted. See the task's final report for the pasted failure output.
 """
 
 import ast
@@ -331,6 +353,105 @@ def check_runtime_isolation():
 
 
 # ============================================================
+# CHECK 4 -- compatibility-shim isolation (repo-wide, not just features/*)
+# ============================================================
+#
+# stage1_step4_vectors.py re-exports features.geometry/x_core/episodes/
+# attention symbols side by side for historical diagnostic scripts (see its
+# own "D0PA1 BATCH 1 STEP 3 REFACTOR NOTE" docstring). Checks 1-3 above only
+# see the features.* package graph, so an import of that shim BY x_core.py
+# or episodes.py -- which would launder an attention/audio reference past
+# the block boundary -- is invisible to them. This check is deliberately
+# NOT hardcoded to that one filename: it discovers cross-block shims by
+# definition (any repo-root module whose AST imports features.attention or
+# features.audio anywhere) so a future second shim is caught the same way
+# without anyone remembering to add it to a list.
+
+def _repo_root_py_modules():
+    """module_name -> absolute file path for every top-level .py file in
+    the repo root. Excludes features/ and tests/ (walked separately) and
+    non-source directories."""
+    modules = {}
+    for entry in os.listdir(REPO_ROOT):
+        full = os.path.join(REPO_ROOT, entry)
+        if entry.endswith(".py") and os.path.isfile(full):
+            modules[entry[:-3]] = full
+    return modules
+
+
+def _local_module_table():
+    """Every locally-resolvable module this repo defines: repo-root
+    '<name>' and 'features.<name>', mapped to file path. Building one
+    table across both lets the import graph below span block boundaries
+    AND the orchestrator layer, instead of stopping at features/'s edge
+    the way checks 1-2 deliberately do."""
+    table = dict(_repo_root_py_modules())
+    for name in BLOCK_MODULES:
+        table["features." + name] = os.path.join(FEATURES_DIR, name + ".py")
+    return table
+
+
+def _direct_local_imports(file_path, local_table):
+    """Local module names (keys of local_table) imported anywhere in
+    file_path's AST -- module level or nested inside a function/class
+    body, same walk-not-scan approach as check 1."""
+    with open(file_path, "r", encoding="utf-8") as f:
+        tree = ast.parse(f.read(), filename=file_path)
+    deps = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            mod = node.module or ""
+            if mod in local_table:
+                deps.add(mod)
+            elif mod.startswith("features."):
+                sub = "features." + mod.split(".", 2)[1]
+                if sub in local_table:
+                    deps.add(sub)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name in local_table:
+                    deps.add(alias.name)
+                else:
+                    top = alias.name.split(".")[0]
+                    if top in local_table:
+                        deps.add(top)
+    return deps
+
+
+def discover_cross_block_shims(local_table):
+    """Any repo-root module (not inside features/) whose AST imports
+    features.attention or features.audio anywhere is, by definition, a
+    module that carries forbidden-block content into whatever namespace
+    imports it next -- a cross-block shim, regardless of whether it also
+    re-exports x_core/episodes symbols alongside them."""
+    shims = set()
+    for name, path in local_table.items():
+        if name.startswith("features."):
+            continue
+        deps = _direct_local_imports(path, local_table)
+        if "features.attention" in deps or "features.audio" in deps:
+            shims.add(name)
+    return shims
+
+
+def check_shim_isolation():
+    local_table = _local_module_table()
+    shims = discover_cross_block_shims(local_table)
+    graph = {name: _direct_local_imports(path, local_table) for name, path in local_table.items()}
+    violations = []
+    for src in ("features.x_core", "features.episodes"):
+        reachable = transitive_closure(graph, src)
+        for shim in sorted(reachable & shims):
+            path = _find_path(graph, src, shim)
+            violations.append(
+                f"{src} imports (transitively) '{shim}', a cross-block compatibility "
+                f"shim that re-exports features.attention/features.audio symbols -- "
+                f"path: {' -> '.join(path)}"
+            )
+    return violations, sorted(shims)
+
+
+# ============================================================
 # MAIN
 # ============================================================
 
@@ -338,7 +459,7 @@ def run_all():
     failures = []
 
     static_import_violations, graph = check_static_import_graph()
-    print("[1/3] STATIC IMPORT GRAPH")
+    print("[1/4] STATIC IMPORT GRAPH")
     for name in BLOCK_MODULES:
         print(f"      {name}.py direct features.* imports: {sorted(graph[name]) or '(none)'}")
     if static_import_violations:
@@ -350,7 +471,7 @@ def run_all():
         print("      PASS -- x_core.py and episodes.py never import attention.py or audio.py, transitively.")
 
     static_call_violations = check_static_call_graph()
-    print("[2/3] STATIC CALL GRAPH")
+    print("[2/4] STATIC CALL GRAPH")
     if static_call_violations:
         print("      FAIL:")
         for v in static_call_violations:
@@ -360,12 +481,23 @@ def run_all():
         print("      PASS -- no symbol defined in attention.py/audio.py is referenced by x_core.py/episodes.py.")
 
     runtime_ok, runtime_message = check_runtime_isolation()
-    print("[3/3] RUNTIME MONKEYPATCH (attention/audio raise on any attribute access)")
+    print("[3/4] RUNTIME MONKEYPATCH (attention/audio raise on any attribute access)")
     if runtime_ok:
         print(f"      PASS -- {runtime_message}")
     else:
         print(f"      FAIL: {runtime_message}")
         failures.append(runtime_message)
+
+    shim_violations, shims_found = check_shim_isolation()
+    print("[4/4] COMPATIBILITY-SHIM ISOLATION (repo-root modules re-exporting across blocks)")
+    print(f"      cross-block shim module(s) discovered: {shims_found or '(none)'}")
+    if shim_violations:
+        print("      FAIL:")
+        for v in shim_violations:
+            print(f"        - {v}")
+        failures.extend(shim_violations)
+    else:
+        print("      PASS -- x_core.py and episodes.py never import a cross-block shim module.")
 
     return failures
 

@@ -304,3 +304,62 @@ one-off diagnostic scripts (`orientation_capture.py`,
 `stage1_step9_gate2_capture.py`, and `tests/test_refactor_snapshot.py`
 itself) import directly by name from `stage1_step4_vectors` — all confirmed
 to still import and run cleanly after the move.
+
+## 9. Known structural risk: the compatibility shim, and the guard added for it
+
+`stage1_step4_vectors.py`, as described in §8, re-exports
+`features.geometry`/`features.x_core`/`features.episodes`/`features.attention`
+symbols side by side, in one flat module namespace, so the historical
+diagnostic scripts listed there keep importing by the old names. That
+namespace is, by construction, **not block-separated** — it sits on the
+same footing (attention symbols reachable next to core symbols) that the
+D1 rule forbids *inside* `features/`.
+
+**The risk this creates:** `tests/test_feature_separation.py`'s checks 1-3
+(as they stood through Step 3.4) only walk the `features.*` package graph.
+None of them would see `features/x_core.py` (or `features/episodes.py`)
+add `import stage1_step4_vectors` — that import resolves outside
+`features/` entirely, so it is invisible to a checker that only looks
+inside the package. Such an import would silently launder an
+attention-derived value into `X_core`/`E_t` through the shim, defeating
+the entire point of D1 while every existing check kept reporting PASS.
+This is exactly the "flattened namespace" the task that added this section
+flagged: a guard shaped like the compatibility layer's blind spot.
+
+**The guard now covering it:** `tests/test_feature_separation.py` CHECK 4
+(`check_shim_isolation`, added same task) closes this. It does not
+hardcode `stage1_step4_vectors` as a special case — it discovers
+cross-block shims *by definition*: any repo-root module whose AST imports
+`features.attention` or `features.audio` anywhere is, by that fact alone,
+a cross-block shim, whatever it is named. It then builds a whole-repo
+(not just `features/`-internal) import graph and verifies `x_core.py` and
+`episodes.py` never reach any discovered shim, directly or transitively
+through any other local module. Run today, it discovers exactly one shim
+(`stage1_step4_vectors`) and confirms neither `x_core.py` nor
+`episodes.py` imports it.
+
+**Proven to fail, not just written:** a temporary `import
+stage1_step4_vectors` was added to `features/x_core.py`; checks 1-3 still
+reported PASS (confirming the blind spot is real, not hypothetical) while
+check 4 failed with:
+
+```
+features.x_core imports (transitively) 'stage1_step4_vectors', a cross-block
+compatibility shim that re-exports features.attention/features.audio
+symbols -- path: features.x_core -> stage1_step4_vectors
+```
+
+The import was then reverted; `git status` after the revert showed only
+`tests/test_feature_separation.py` as modified. See the task's final report
+for the full pasted output of both runs.
+
+**Residual scope, stated plainly:** this guard is import-graph-shaped, the
+same as checks 1-2 — it does not run a check-3-style runtime monkeypatch
+against the shim itself (poisoning `stage1_step4_vectors` at runtime and
+re-importing `x_core`/`episodes` fresh). Given the static check already
+covers direct and transitive imports of the shim by AST, and `x_core.py`/
+`episodes.py` have no other mechanism for reaching a name at runtime
+without an import statement somewhere in their source, a runtime variant
+was judged to add no additional coverage over check 4 as written — not
+added, so as not to overstate what was built beyond what closes the
+identified gap.
