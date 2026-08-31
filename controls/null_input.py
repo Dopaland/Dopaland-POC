@@ -80,13 +80,19 @@ from features.x_core import (
     _z_score,
 )
 from stage1_step4_vectors import FACE_MODEL_PATH, POSE_MODEL_PATH, CONFIDENCE_THRESHOLD, CAMERA_INDEX
+from simulation.config import PRE_REGISTERED_CONFIG
 
 LOG_DIR = os.path.join(REPO_ROOT, "logs")
 SCHEMA_VERSION = "1.0"
 
 ALL_SIGNALS = ("v_bf", "v_es", "v_jc", "v_pd")  # every signal reported SEPARATELY, never blended (task requirement)
 
-ZERO_DISPERSION_EPSILON = 1e-9  # numerical-safety floor ONLY (CLAUDE.md hard constraint #5) -- NOT a scientific threshold; see module docstring
+# Gate 0 A2: sourced from the single hashed PreRegisteredConfig instead of a
+# local literal (same value, 1e-9 -- single-source-of-truth move, not a
+# behavior change; see docs/GATE0_PROVENANCE.md section A2). Numerical-
+# safety floor ONLY (CLAUDE.md hard constraint #5) -- NOT a scientific
+# threshold; see module docstring.
+ZERO_DISPERSION_EPSILON = PRE_REGISTERED_CONFIG.zero_dispersion_epsilon
 
 
 @dataclass

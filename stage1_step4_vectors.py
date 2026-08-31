@@ -182,9 +182,16 @@ from features.x_core import (
 )
 from features.episodes import WindowAccumulator, classify_window_confidence
 from features.attention import compute_v_so, AttentionWindowAccumulator
+from simulation.config import PRE_REGISTERED_CONFIG
 
-CAMERA_INDEX = 0
-FPS_REPORT_INTERVAL_SECONDS = 3.0
+# Gate 0 A2: sourced from the single hashed PreRegisteredConfig instead of a
+# bare local literal (same numeric values as before -- 0 and 3.0 -- this is
+# a single-source-of-truth move, not a behavior change; see
+# docs/GATE0_PROVENANCE.md section A2). Both are pure orchestration/I-O
+# knobs (which camera device, how often to print), never read by any
+# formula/calibration/windowing code on the validated path (G5).
+CAMERA_INDEX = PRE_REGISTERED_CONFIG.camera_index
+FPS_REPORT_INTERVAL_SECONDS = PRE_REGISTERED_CONFIG.fps_report_interval_seconds
 CONFIDENCE_THRESHOLD = 0.7  # "detected" means "cleared 0.7", per instruction
 
 MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")

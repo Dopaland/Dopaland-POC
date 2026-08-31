@@ -1,21 +1,25 @@
 """
-D0PA1 minimal pre-registered configuration (D6, Addendum 3).
+D0PA1 pre-registered configuration (D6 Addendum 3; generalised, Gate 0 A2).
 
-THIS IS NOT THE FULL GATE 0 CONFIGURATION INFRASTRUCTURE. CLAUDE.md's
-"WHAT D0PA1 ADDS" section describes a much larger provenance system --
-experiment ID, pinned dependency versions, a variant log, a canonical
-versioned log schema, a data manifest. NONE of that exists here. This
-file exists for exactly one reason: the log-loss clip epsilon is a
-quantity that materially changes the primary metric's VALUE (Addendum 2:
-a single trial with an exact-zero true-class probability swung U by more
-than 2x between eps=1e-6 and eps=1e-15), which makes it exactly the kind
-of decision a pre-registered study must fix in advance, visibly, and
-verifiably -- not a bare literal sitting in model code where it could be
-edited after seeing a result with no audit trail.
+Originally the minimal versioned home for exactly one pre-registered
+parameter (log_loss_clip_eps). Gate 0's A2 step generalises this into the
+real provenance layer CLAUDE.md's "WHAT D0PA1 ADDS" section describes --
+but generalising the CONTAINER does not mean every hardcoded constant in
+the repository belongs inside it. Every field added here still has to meet
+the same bar the original docstring set: a quantity whose VALUE materially
+changes what a downstream metric or record reports, fixed in advance rather
+than tunable after seeing a result (G2). See docs/GATE0_PROVENANCE.md
+section A2 for the full audit of which hardcoded constants were moved here
+and which were deliberately left in place (most of them -- anything
+load-bearing inside the validated path, G5, stays exactly where it is;
+moving a constant's *definition* is itself a change to a G5-protected file,
+independent of whether its numeric value stays the same).
 
-Calling this "the config system" would overstate what exists (G3). It is
-the minimal versioned home for ONE pre-registered parameter. The fuller
-Gate 0 work remains OUTSTANDING.
+Companion to simulation/provenance.py's RunProvenance: THIS file answers
+"which pre-registered parameter values are in force" (fixed once, reused
+across many runs); RunProvenance answers "which code, exactly, produced
+this run's data" (captured fresh every run). Different lifetimes, kept in
+separate objects on purpose -- see provenance.py's own module docstring.
 """
 
 import hashlib
@@ -40,6 +44,33 @@ class PreRegisteredConfig:
     # docs/D6_SIMULATION.md section 12 for the full justification and the
     # measurement on REAL fitted output (not just this pathological case).
     log_loss_clip_eps: float = 1e-15
+
+    # Numerical-safety floor below which a dispersion estimate (std or
+    # 1.4826*MAD) is treated as zero_dispersion rather than divided into --
+    # CLAUDE.md D0PA1 hard constraint #5: "MAD == 0 must be handled
+    # explicitly -- emit missing with reason zero_dispersion. Do not divide
+    # by zero, do not add a silent epsilon." This IS that floor, made a
+    # single hashed, pre-registered value instead of a bare literal, so the
+    # zero_dispersion classification any signal's missingness_reason relies
+    # on is auditable rather than buried in whichever module happens to
+    # compute it. Was previously a local module constant in
+    # controls/null_input.py (same value, 1e-9) -- moved here, not
+    # duplicated (see docs/GATE0_PROVENANCE.md A2).
+    zero_dispersion_epsilon: float = 1e-9
+
+    # Camera device index. Pure I/O device selection -- affects WHICH
+    # physical sensor produced a run's data (provenance-relevant), never
+    # what a formula computes from whatever that sensor returns. Was
+    # previously a local module constant in stage1_step4_vectors.py (same
+    # value, 0) -- moved here, not duplicated.
+    camera_index: int = 0
+
+    # How often the capture/processing threads print a console FPS report.
+    # Purely a reporting cadence -- never read by any formula, calibration,
+    # or windowing code -- moved here for the same single-source-of-truth
+    # reason as camera_index, not because it meets the "changes a reported
+    # metric's value" bar on its own.
+    fps_report_interval_seconds: float = 3.0
 
     def config_hash(self):
         """Same pattern as controls/null_input.py's NullInputConfig --
