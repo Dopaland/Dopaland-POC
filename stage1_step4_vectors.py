@@ -182,7 +182,11 @@ from features.x_core import (
 )
 from features.episodes import WindowAccumulator, classify_window_confidence
 from features.attention import compute_v_so, AttentionWindowAccumulator
+from features.robust_baseline import robust_calibration_reference, robust_deviation
+from features.signal_quality import signal_quality_record, compute_coverage
 from simulation.config import PRE_REGISTERED_CONFIG
+from simulation.fps_logger import FPSLogger
+from simulation.provenance import capture_run_provenance
 
 # Gate 0 A2: sourced from the single hashed PreRegisteredConfig instead of a
 # bare local literal (same numeric values as before -- 0 and 3.0 -- this is
@@ -217,6 +221,18 @@ SCHEMA_VERSION = "1.6"  # 1.3 added va_point (step 6, untested hypothesis) to sa
                          # No vector math changed -- pure reshape of values compute_v_so already
                          # produced. Historical 1.5 records keep their old flat shape; only new
                          # records use the 1.6 three-field shape.
+# Gate 0 / Part C: NOT captured at module import time -- capture_run_provenance()
+# shells out to git (two invocations) and measured ~0.5s on this machine.
+# Every test/script that merely IMPORTS this module (there are many --
+# tests/test_refactor_snapshot.py, controls/null_input.py, analyze_video.py,
+# stage3_demo_ui.py) would pay that cost on every run if this were computed
+# here. main() sets this exactly once, only when the live pipeline actually
+# starts -- capture_thread/processing_thread are only ever invoked via
+# main() (confirmed: no other module in this repository calls them
+# directly), so reading this global from either thread is always safe by
+# the time they run.
+RUN_EXPERIMENT_ID = None
+
 SESSION_ID = str(uuid.uuid4())
 # D1 feature-block separation: episodes.WindowAccumulator.flush() and
 # attention.AttentionWindowAccumulator.flush() each stamp a bare SESSION_ID
@@ -259,15 +275,38 @@ def capture_thread():
         stop_event.set()
         return
 
+    # Part C3: continuous FPS-to-file logging, every run (not opt-in soak
+    # mode only -- AUDIT_A_COLUMN.md Q1's finding). Own instance, own file
+    # -- see FPSLogger's own docstring on why one instance is never shared
+    # across threads.
+    fps_logger = FPSLogger(
+        os.path.join(LOG_DIR, f"fps_capture_{SESSION_ID}.jsonl"),
+        experiment_id=RUN_EXPERIMENT_ID,
+        interval_seconds=FPS_REPORT_INTERVAL_SECONDS,
+    )
+
     frame_count = 0
     fps_window_start = time.perf_counter()
     print("[Capture] thread started.")
     while not stop_event.is_set():
         ok, frame = cap.read()
         if not ok:
+            # A real, detectable drop condition -- the camera returned no
+            # frame this cycle -- distinct from "no frame yet because
+            # processing hasn't caught up" (see FPSLogger's own docstring
+            # on why processing-side staleness/overwrite drops are NOT
+            # tracked here: that would need additional synchronization
+            # state this task's scope didn't warrant adding to the
+            # single-slot buffer -- stated as a known limitation, not
+            # silently omitted; see docs/SIGNAL_COMPLETIONS.md).
+            fps_logger.record_dropped("capture_read_failed")
+            fps_logger.maybe_flush()
             continue
         with frame_lock:
             latest_frame = frame
+        fps_logger.record_captured()
+        fps_logger.maybe_flush()
+
         frame_count += 1
         elapsed = time.perf_counter() - fps_window_start
         if elapsed >= FPS_REPORT_INTERVAL_SECONDS:
@@ -322,6 +361,29 @@ def processing_thread():
     # a flagged window means "don't trust readings right now", persisting
     # until the next window completes.
     last_window_low_confidence = False
+
+    # Part C1: MAD-based robust baseline -- frozen ONCE at the same moment
+    # calibrator.complete() runs (see below), computed from the SAME
+    # calibrator.samples the mean/std reference used. None until then.
+    robust_reference = None
+
+    # Part C3: continuous FPS-to-file logging, every run.
+    fps_logger = FPSLogger(
+        os.path.join(LOG_DIR, f"fps_processing_{SESSION_ID}.jsonl"),
+        experiment_id=RUN_EXPERIMENT_ID,
+        interval_seconds=FPS_REPORT_INTERVAL_SECONDS,
+    )
+
+    # Part C4: coverage metric, per signal, per window AND per session --
+    # never one blended number. WINDOW-grain lists reset every flush,
+    # mirroring window_acc's own post-calibration-only lifecycle exactly
+    # (coverage describes the SAME window window_summary describes).
+    # SESSION-grain lists accumulate for the whole run and are summarized
+    # once at thread shutdown.
+    coverage_signals = ("v_bf", "v_es", "v_jc", "v_pd")
+    window_missingness = {sig: [] for sig in coverage_signals}
+    session_missingness = {sig: [] for sig in coverage_signals}
+
     print(f"[Calibration] starting -- relax your face completely (jaw loose, as if resting alone) for {CALIBRATION_SECONDS:.0f}s...")
 
     with open(log_path, "a", encoding="utf-8") as log_file:
@@ -352,6 +414,11 @@ def processing_thread():
                 "ts_monotonic": cycle_start,
                 "vectors": {"v_bf": None, "v_es": None, "v_jc": None, "v_pd": None},
                 "vectors_deviation": {"v_bf": None, "v_es": None, "v_pd": None},
+                # Part C1: MAD-based robust z, alongside vectors_deviation
+                # above (mean/std-based) -- both computed, both logged, per
+                # signal. None until calibration completes, same lifecycle
+                # as vectors_deviation.
+                "vectors_robust_z": {"v_bf": None, "v_es": None, "v_pd": None},
                 "vector_components": {},
                 # ATTENTION SIGNAL -- THREE separate, own-namespace fields (never
                 # touch "vectors"/"vectors_deviation" above, so they structurally
@@ -496,17 +563,50 @@ def processing_thread():
             cycle_ms = (time.perf_counter() - cycle_start) * 1000.0
             record["cycle_time_ms"] = cycle_ms
 
+            # Part C2: missingness + confidence, every signal, this cycle's
+            # already-computed values -- no new detection/formula call.
+            # "No signal is exempt" (this task's instruction): all four
+            # X_core vectors, always, whether or not this cycle's value is
+            # present.
+            record["signal_quality"] = {
+                sig: signal_quality_record(
+                    sig,
+                    record["vectors"][sig],
+                    face_detected=record["quality"]["face_detected"],
+                    pose_detected=record["quality"]["pose_detected"],
+                    pd_buffer_len=len(pd_buffer) if sig == "v_pd" else None,
+                )
+                for sig in coverage_signals
+            }
+            for sig in coverage_signals:
+                is_missing = record["signal_quality"][sig]["missingness_flag"]
+                session_missingness[sig].append(is_missing)
+                # window_missingness is only accumulated once calibrated --
+                # see its own comment above for why (matches window_acc's
+                # own lifecycle so coverage describes the SAME window).
+
             # feed calibration BEFORE checking status, so this cycle's own
             # sample counts toward its own completion
             calibrator.add_sample(cycle_start, window_composite, window_covariate, window_yaw)
             if calibrator.should_complete(cycle_start):
                 reference = calibrator.complete(cycle_start)
+                # Part C1: MAD-based robust baseline, computed ALONGSIDE
+                # the mean/std reference above, from the SAME
+                # calibrator.samples -- both computed, both logged, as a
+                # sibling field, never merged into `reference` itself
+                # (NeutralCalibrator.complete()'s own return shape is
+                # validated-path, golden-tested -- see
+                # features/robust_baseline.py's module docstring).
+                robust_reference = robust_calibration_reference(
+                    calibrator.samples, calibrator.COMPOSITE_KEYS, calibrator.COVARIATE_KEYS
+                )
                 log_file.write(json.dumps({
                     "schema_version": SCHEMA_VERSION,
                     "record_type": "calibration_complete",
                     "session_id": SESSION_ID,
                     "person_label": PERSON_LABEL,
                     "reference": reference,
+                    "robust_reference": robust_reference,
                 }) + "\n")
                 tag = "POSSIBLY NOT NEUTRAL" if reference["quality"]["possibly_not_neutral"] else "OK"
                 print(f"\n=== CALIBRATION COMPLETE ({reference['calibration_seconds']:.1f}s) [{tag}] ===")
@@ -536,6 +636,21 @@ def processing_thread():
                 va_point = map_to_valence_arousal(
                     deviation_composite["v_bf"], deviation_composite["v_es"], deviation_composite["v_pd"], calibrator.reference
                 )
+                # Part C1: MAD-based robust z, computed ALONGSIDE the
+                # mean/std-based deviation_composite/va_point above, from
+                # the SAME raw window_composite values -- both computed,
+                # both logged, as a sibling field (never replaces
+                # vectors_deviation/va_point).
+                record["vectors_robust_z"] = {
+                    key: robust_deviation(window_composite.get(key), key, robust_reference)
+                    for key in ("v_bf", "v_es", "v_pd")
+                }
+                # Part C4: window-grain coverage accumulation, gated on
+                # calibration the same way window_acc itself is (see the
+                # accumulator's own setup comment) -- so coverage describes
+                # exactly the window window_summary describes below.
+                for sig in coverage_signals:
+                    window_missingness[sig].append(record["signal_quality"][sig]["missingness_flag"])
             record["va_point"] = va_point
 
             if not calibrator.is_calibrated():
@@ -609,6 +724,23 @@ def processing_thread():
                     f"V_pd(avg={summary['composite']['v_pd']['avg']}, peak={summary['composite']['v_pd']['peak']}, var={summary['composite']['v_pd']['variance']})"
                 )
 
+                # Part C4: coverage metric for THIS window, per signal,
+                # never one blended number -- written as its own record,
+                # right after the window_summary it describes (same
+                # window_start/window_end it shares by construction, since
+                # both reset on the same window_acc.flush() call).
+                window_coverage_record = {
+                    "schema_version": SCHEMA_VERSION,
+                    "record_type": "window_coverage",
+                    "session_id": SESSION_ID,
+                    "person_label": PERSON_LABEL,
+                    "window_start_monotonic": summary["window_start_monotonic"],
+                    "window_end_monotonic": summary["window_end_monotonic"],
+                    "coverage": {sig: compute_coverage(window_missingness[sig]) for sig in coverage_signals},
+                }
+                log_file.write(json.dumps(window_coverage_record) + "\n")
+                window_missingness = {sig: [] for sig in coverage_signals}
+
             # ATTENTION SIGNAL Step 1 -- own independent flush, own clock
             # (see AttentionWindowAccumulator docstring); never gated on
             # calibrator.is_calibrated() the way window_acc's flush above is.
@@ -641,6 +773,23 @@ def processing_thread():
                 print(f"[Processing] {cycle_count / elapsed:.1f} samples/sec, last cycle {cycle_ms:.0f}ms")
                 cycle_count = 0
                 fps_window_start = time.perf_counter()
+
+            # Part C3: continuous FPS-to-file logging, every run.
+            fps_logger.record_processed()
+            fps_logger.maybe_flush()
+
+        # Part C4: SESSION-grain coverage, per signal, never one blended
+        # number -- summarized once at shutdown from every cycle's
+        # signal_quality classification across the WHOLE run (not just the
+        # last window), distinct from the per-window records above.
+        session_coverage_record = {
+            "schema_version": SCHEMA_VERSION,
+            "record_type": "session_coverage",
+            "session_id": SESSION_ID,
+            "person_label": PERSON_LABEL,
+            "coverage": {sig: compute_coverage(session_missingness[sig]) for sig in coverage_signals},
+        }
+        log_file.write(json.dumps(session_coverage_record) + "\n")
 
     face_landmarker.close()
     pose_landmarker.close()
@@ -732,7 +881,7 @@ def draw_va_plot(frame):
 
 
 def main():
-    global PERSON_LABEL
+    global PERSON_LABEL, RUN_EXPERIMENT_ID
 
     # Stage 1.5 step 7 (Decision #6): consent gate runs BEFORE anything
     # else in this function -- no thread, no camera, no model load
@@ -744,6 +893,14 @@ def main():
     if not consented:
         return
     PERSON_LABEL = person_label
+
+    # Gate 0 A1 / Part C3: captured HERE, once, only for a real run that
+    # passed consent -- not at import time (see RUN_EXPERIMENT_ID's own
+    # comment for why). Stamped onto every FPS-metric record either
+    # thread writes below.
+    run_provenance = capture_run_provenance(label="stage1_live")
+    RUN_EXPERIMENT_ID = run_provenance.experiment_id
+    print(f"[Main] experiment_id={RUN_EXPERIMENT_ID} git_commit={run_provenance.git_commit_hash} git_dirty={run_provenance.git_dirty}")
     # D1 feature-block separation: NeutralCalibrator.complete() (x_core),
     # WindowAccumulator.flush() (episodes), and AttentionWindowAccumulator.
     # flush() (attention) each stamp a bare PERSON_LABEL name resolved
