@@ -1,4 +1,4 @@
-# Gate 0 Provenance — A1–A5
+# Gate 0 Provenance — A1–A5, B2
 
 **Purpose:** CLAUDE.md's "WHAT D0PA1 ADDS" lists Gate 0 provenance as
 authorised, in-scope infrastructure work: experiment ID + run provenance,
@@ -136,6 +136,93 @@ stated reason above rather than a blanket "didn't touch anything."
 
 ---
 
+## B2 — Closing the config-hash coverage gap
+
+**The gap, stated plainly:** `PreRegisteredConfig.config_hash()` covers
+exactly **3** declared parameters. It does not cover the other **39**
+constants A2's audit above found and deliberately left in place, load-bearing
+inside the validated path (G5). A reader seeing "config hash" could
+reasonably — and wrongly — assume every behavior-affecting value was
+pinned by it. It was not: two runs sharing an identical `config_hash()`
+could still behave differently if any of those 39 changed between them.
+
+**Fix, without moving anything out of the validated path:**
+[`simulation/provenance.py`](../simulation/provenance.py)'s `RunProvenance`
+gained a second, **separate** field, `validated_path_source_sha256`
+(plus `validated_path_source_files`, a per-file breakdown), computed by
+`_hash_validated_path_sources()`. It is a whole-file SHA256 over every file
+this task's constant audit named "left in place, validated path":
+`features/x_core.py`, `features/geometry.py`, `features/episodes.py`,
+`features/attention.py`, `stage1_step4_vectors.py`. The aggregate is a
+hash of the sorted `path:hash` pairs, so file order never matters and a
+missing/unreadable file still participates (as an error string) rather
+than being silently skipped.
+
+**Deliberately not merged with `config_hash()`.** They answer different
+questions — `config_hash()`: *which pre-registered values are in force*;
+`validated_path_source_sha256`: *did the validated-path source change at
+all* — and collapsing them into one number would make it impossible to
+tell which kind of change moved it. `tests/test_provenance.py` check 5
+asserts the two are computed independently and are, on this real repo,
+different values, as expected.
+
+**Whole-file, not surgical — an honest tradeoff, not an oversight.** This
+hashes entire files, not just the constant assignments inside them. An
+unrelated edit to one of these 5 files (a comment, a docstring, a print
+statement) also moves this hash, even when no constant's value changed.
+That is over-inclusive **by design**: for an integrity signal, a false
+"something changed" a reader can dismiss after a two-second `git diff` is
+a far cheaper failure than a false "nothing changed" that hides a real
+constant edit inside noise from an unrelated change to the same file.
+
+### B2.2 — Verified to actually move, and to actually revert
+
+Ran against the **real** `features/x_core.py`, not a synthetic stand-in
+(the automated regression test, `tests/test_provenance.py` check 6, uses a
+synthetic file tree instead — see its own docstring for why an automated
+test should never mutate real source files — but this manual run is the
+primary evidence, on the real file the client will actually inspect):
+
+| Step | `PD_BUFFER_SECONDS` | `validated_path_source_sha256` (aggregate) | `features/x_core.py` hash |
+|---|---|---|---|
+| Before | `1.5` | `4d31e0df357aef90624bf71444716610ca31b7fc6d6d34ed482a02dd47572fa7` | `118ea07b137d5f3b58fad9ba5eadeb38f959ff0d5c71e68b5b91b181b85640d9` |
+| Changed to `1.6` | `1.6` | `b7a84e9e57fc4e294a5843072d9be25259441510d61890c397a284e96fca7c78` | `b55772d8e7302235bccd9f591104522109df230720b59b190dbe523e5d70e9ee` |
+| Reverted to `1.5` | `1.5` | `4d31e0df357aef90624bf71444716610ca31b7fc6d6d34ed482a02dd47572fa7` | `118ea07b137d5f3b58fad9ba5eadeb38f959ff0d5c71e68b5b91b181b85640d9` |
+
+Both the aggregate and the specific per-file hash moved on the edit and
+returned to their **exact original values** on revert — confirmed
+`git diff --stat features/x_core.py` showed no residual diff after
+reverting, and `tests/test_refactor_snapshot.py` matched the golden file
+throughout (the edit was made, measured, and reverted before any golden
+comparison was run against the changed state — this was a hash-mechanism
+proof, not a real constant change, and never touched the committed file).
+
+### B2.3 — What is and isn't covered now, stated honestly
+
+**Together, `config_hash()` (3 parameters) and `validated_path_source_sha256`
+(5 files covering the other 39 constants) mean a behavioral change to any
+of the 42 audited constants cannot occur without at least one of the two
+values moving.** A reader comparing two runs' provenance records can tell,
+without reading a line of code, whether either surface changed.
+
+**Residual gap, stated rather than smoothed over:** neither hash catches a
+change in an **installed dependency's own behavior** — e.g. a MediaPipe or
+NumPy point release that alters a computation's output without any file in
+this repository changing at all. That risk is caught by neither hash;
+`requirements.txt`'s pinned versions (A3 above) are the only defense
+against it, and pinning prevents silent drift but does not itself detect a
+behavior change *within* a pinned version (a package publishing a patch
+release under the same pin, or a transitively-pinned sub-dependency
+resolving differently on a clean install, would not be caught by either
+hash or by the pin itself). Also unaddressed: a change to a file that
+computes a validated-path VALUE but lives outside the 5 hashed files (none
+are currently known to exist — the 39 constants were confirmed by direct
+search to live only in those 5 files — but this hash would not catch a
+future constant added somewhere else without also being added to
+`VALIDATED_PATH_SOURCE_FILES`).
+
+---
+
 ## A3 — Pinned dependencies
 
 **File:** [`requirements.txt`](../requirements.txt)
@@ -199,6 +286,22 @@ explicitly labeled `"WEAK, non-evidentiary"` in the
 and `docs/AUDIT_A_COLUMN.md` already use for exactly this situation —
 mtime is trivially alterable by any copy/checkout and proves nothing about
 original acquisition time).
+
+### Known limitation of the historical data (stated once, here, as a property of the data — not a defect a reader should have to discover)
+
+**36 of 50 files (72%) carry no recoverable `subject_id`, and 14 of 50
+(28%) have no real acquisition timestamp** (falling back to the weak file-
+mtime proxy instead). This is expected, not a gap in the manifest
+generator: every file in `logs/` was written before Gate 0 existed, by
+scripts that in several cases predate the very concept of a `subject_id`
+field in this codebase. **It is a property of the pre-Gate-0 data, not
+something this manifest failed to extract.** Any log written from this
+point forward, through `schema/canonical_log_writer.py` (Part B) or any
+future caller of `simulation/provenance.py`, carries `subject_id` on every
+record by construction (enforced in code — see `docs/CANONICAL_LOG_SCHEMA.md`)
+and a real `experiment_id`/timestamp via `RunProvenance`. The historical
+gap does not recur going forward; it is a closed, dated fact about data
+collected before this infrastructure existed, not an open risk.
 
 ---
 
