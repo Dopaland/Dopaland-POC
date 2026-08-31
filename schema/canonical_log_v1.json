@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dopaland-poc.local/schema/canonical_log_v1.json",
+  "title": "D0PA1 Canonical Log Schema v1",
+  "$comment": "CLAUDE.md 'WHAT D0PA1 ADDS': 'canonical versioned log schema'. This is a NEW, forward-looking schema -- logs written BEFORE this schema existed (every file in logs/ as of Gate 0 A4) are NOT migrated into it and are NOT expected to conform. Those are described instead by manifest/data_manifest.csv (Gate 0 A4) and remain in their own original, historical formats. Nothing in this repository's existing pipeline (stage1_step4_vectors.py's sample/window_summary records, controls/null_input.py, etc.) writes through this schema yet -- it exists and is validated (schema/canonical_log_writer.py), but is not wired into any real capture loop by this task. The stimulus/ROI/action-class fields below exist because the client's task harness (delivered separately, under its own acceptance review) will eventually populate them -- this schema defines the SHAPE those fields must have; it does not define the action-class vocabulary itself, which is BLOCKED pending the client's D2 decision (CLAUDE.md 'BLOCKED' section) and therefore left as an open string here, not a fixed enum.",
+  "schema_version": "1",
+  "$defs": {
+    "missingness_reason": {
+      "type": "string",
+      "description": "Fixed enumerated vocabulary a missing value's reason MUST be drawn from -- never free text, so a downstream reader can group/count reasons reliably. Extend this list (bump the schema version if a real new reason is found) rather than allowing an open string -- an open string here would let 'missingness is logged, never dropped' quietly degrade into 'missingness is logged with whatever string the caller felt like writing'.",
+      "enum": [
+        "no_face",
+        "low_landmark_confidence",
+        "out_of_frame",
+        "occlusion",
+        "tracking_lost",
+        "zero_dispersion",
+        "quality_gate_rejected",
+        "insufficient_samples",
+        "not_yet_calibrated",
+        "not_applicable",
+        "harness_not_available"
+      ]
+    },
+    "canonical_session_header": {
+      "type": "object",
+      "description": "Written EXACTLY ONCE per session_id, before any canonical_observation record for that session -- this is where 'the wall-clock offset recorded once per session' (this task's timing invariant) actually lives. Every observation's monotonic timestamps (stimulus_onset/prediction_timestamp/action_timestamp) are only interpretable as real-world time relative to THIS record's wall_clock_utc/monotonic_reference pair.",
+      "required": ["schema_version", "record_type", "session_id", "subject_id", "context_id", "device_id", "wall_clock_utc", "monotonic_reference"],
+      "properties": {
+        "schema_version": {"const": "1"},
+        "record_type": {"const": "canonical_session_header"},
+        "session_id": {"type": "string", "minLength": 1},
+        "subject_id": {"type": "string", "minLength": 1, "description": "Required on every record this schema governs, including a session header, from the first observation onward -- even a single-subject study stamps this (D0PA1 hard constraint #7)."},
+        "context_id": {"type": "string", "minLength": 1, "description": "Required, never dropped (D0PA1 hard constraint #7)."},
+        "device_id": {"type": "string", "minLength": 1, "description": "Required, never dropped (D0PA1 hard constraint #7)."},
+        "experiment_id": {"type": ["string", "null"]},
+        "commit": {"type": ["string", "null"], "description": "Git commit hash of the code running this session -- see simulation/provenance.py's RunProvenance.git_commit_hash."},
+        "config_version": {"type": ["string", "null"], "description": "See simulation/config.py's PreRegisteredConfig.config_hash()."},
+        "wall_clock_utc": {"type": "string", "description": "ISO-8601 UTC timestamp captured at session-open time."},
+        "monotonic_reference": {"type": "number", "description": "The monotonic clock's own value (e.g. time.perf_counter()) at the SAME instant as wall_clock_utc -- the offset between the two is what makes every later monotonic timestamp in this session interpretable as wall-clock time."}
+      }
+    },
+    "canonical_observation": {
+      "type": "object",
+      "description": "One row = one signal's reading at one point in time, optionally joined with whatever trial/prediction/action context is available. A record is written for EVERY observation attempt, whether or not the signal itself was successfully read -- missingness is a row with a reason, never an absent row.",
+      "required": [
+        "schema_version", "record_type",
+        "subject_id", "session_id", "context_id", "device_id",
+        "signal", "value", "confidence",
+        "modality_availability", "modality_quality",
+        "missingness_flag", "missingness_reason"
+      ],
+      "properties": {
+        "schema_version": {"const": "1"},
+        "record_type": {"const": "canonical_observation"},
+
+        "subject_id": {"type": "string", "minLength": 1, "description": "Required on EVERY observation from the first record, even with one subject (D0PA1 hard constraint #7) -- enforced by the writer, not left to caller discipline."},
+        "session_id": {"type": "string", "minLength": 1},
+        "trial_id": {"type": ["string", "null"], "description": "Null until the client's task harness defines trial structure (BLOCKED, D2)."},
+        "experiment_id": {"type": ["string", "null"]},
+        "context_id": {"type": "string", "minLength": 1, "description": "Required, never dropped (D0PA1 hard constraint #7)."},
+        "device_id": {"type": "string", "minLength": 1, "description": "Required, never dropped (D0PA1 hard constraint #7)."},
+
+        "commit": {"type": ["string", "null"]},
+        "config_version": {"type": ["string", "null"]},
+        "model_version": {"type": ["string", "null"], "description": "Null for every geometric signal (V_bf/V_es/V_jc/V_pd/etc. -- no trained model in this pipeline, CLAUDE.md). Exists for a future trained-model consumer of this schema, not populated by anything in this repository today."},
+
+        "stimulus_id": {"type": ["string", "null"], "description": "Null until the client's task harness exists (BLOCKED, D2) -- see schema $comment. Not computed or inferred by this writer."},
+        "stimulus_onset": {"type": ["number", "null"], "description": "Monotonic timestamp (same clock as monotonic_reference in this session's header). Null until the harness exists."},
+        "roi_or_condition": {"type": ["string", "null"], "description": "Null until the harness exists."},
+
+        "prediction_timestamp": {"type": ["number", "null"], "description": "Monotonic timestamp."},
+        "action_timestamp": {"type": ["number", "null"], "description": "Monotonic timestamp. Null until the harness exists."},
+        "action_class": {
+          "type": ["string", "null"],
+          "description": "OPEN STRING, deliberately not a fixed enum -- the action-class vocabulary is BLOCKED pending the client's D2 decision (CLAUDE.md 'BLOCKED' section: action classes, horizon, tie/rapid-succession handling). When the harness exists and an action occurs, ABANDON and NO_ACTION MUST be logged here as real string values -- never represented by leaving this field null or by omitting the row (CLAUDE.md D0PA1 hard constraint: 'these must be REAL CLASSES in the log, not absent rows or a null'). A null here means 'no action-class information available at all' (harness not wired yet), which is a different fact from 'the action class IS the no-action outcome' (which is the literal string \"NO_ACTION\")."
+        },
+
+        "signal": {"type": "string", "minLength": 1, "description": "Which signal this row reports (e.g. 'v_es', 'v_pd', 'screen_orientation') -- required; a row always names what it's about even when the value itself is missing."},
+        "value": {"type": ["number", "string", "boolean", "null"], "description": "This signal's reading. Null exactly when missingness_flag is true."},
+        "confidence": {"type": ["number", "null"], "description": "Per-signal confidence, independent of missingness -- a present value can still carry low confidence (see modality_quality for the sensor-level counterpart)."},
+
+        "modality_availability": {"type": ["boolean", "null"], "description": "Was the underlying sensing modality (camera, audio, etc.) available at all this cycle -- independent of whether THIS signal specifically produced a usable reading."},
+        "modality_quality": {"type": ["number", "string", "null"], "description": "Sensor/tracking-level quality indicator for the modality this signal derives from (e.g. detection confidence, landmark presence) -- distinct from confidence, which is about the signal's own reading."},
+
+        "missingness_flag": {"type": "boolean", "description": "true iff value is null. Enforced by the writer to always agree with value's presence -- never set independently by a caller."},
+        "missingness_reason": {
+          "oneOf": [
+            {"$ref": "#/$defs/missingness_reason"},
+            {"type": "null"}
+          ],
+          "description": "Required (one of the fixed enum) whenever missingness_flag is true; MUST be null when missingness_flag is false -- the writer enforces both directions, not just 'a reason must exist when missing'."
+        },
+
+        "prediction_output": {"type": ["number", "string", "null"], "description": "Null until a real prediction model exists downstream of this schema (BLOCKED on D2, see CLAUDE.md) -- defined now so a future consumer has a stable field name, not populated by anything in this repository today."},
+        "prediction_confidence": {"type": ["number", "null"]},
+        "ground_truth_outcome": {"type": ["string", "null"], "description": "Null until the harness/action-logging exists. Same 'real class, not absent row' rule as action_class applies here once it is populated."}
+      }
+    }
+  },
+  "oneOf": [
+    {"$ref": "#/$defs/canonical_session_header"},
+    {"$ref": "#/$defs/canonical_observation"}
+  ]
+}
