@@ -1,16 +1,18 @@
-# D0PA1 Controls — Null-Input and Negative Control
+# D0PA1 Controls — Null-Input, Negative Control, and Leakage Harness
 
-**Status:** both controls built. `controls/negative_control.py` is fully
-exercised (it runs automatically inside `simulation/precision.py` — see
-§2). `controls/null_input.py`'s camera-loop orchestration has NOT been run
-— it requires a live webcam and a human operator sitting still for the
-configured duration, which this coding session cannot provide. Its
-pure-computation pieces (dispersion, excursion detection, config hashing)
-ARE tested (`tests/test_controls.py`). This gap is stated here explicitly,
-not implied to be closed (G3).
+**Status:** all three controls built. `controls/negative_control.py` is
+fully exercised (it runs automatically inside `simulation/precision.py` —
+see §2 — and, through that, inside `controls/leakage.py` too — see §3).
+`controls/leakage.py` (§3) is fully exercised on synthetic data. `controls/
+null_input.py`'s camera-loop orchestration has NOT been run — it requires
+a live webcam and a human operator sitting still for the configured
+duration, which this coding session cannot provide. Its pure-computation
+pieces (dispersion, excursion detection, config hashing) ARE tested
+(`tests/test_controls.py`). This gap is stated here explicitly, not
+implied to be closed (G3).
 
-Neither control decides anything (G1). Both compute and store numbers for
-a human to read.
+None of these controls decides anything (G1). All three compute and store
+numbers for a human to read.
 
 ---
 
@@ -254,3 +256,113 @@ values = generate_negative_control(NegativeControlConfig(seed=1, n_samples=1000)
 In normal use it does not need to be run standalone — it runs
 automatically inside every `simulation/precision.py` analysis (see
 above).
+
+---
+
+## 3. Leakage harness (`controls/leakage.py`)
+
+### What it is
+
+Four window variants, run over the SAME trial stream and reported side by
+side in one table (`format_leakage_table`):
+
+| Variant | Construction |
+|---|---|
+| `valid` | trial `t`'s feature comes from trial `t − valid_lag_trials` (default 3) — strictly before the action |
+| `post_action` | trial `t`'s feature comes from trial `t + valid_lag_trials` — the SAME magnitude offset as `valid`, but forward: deliberately includes post-action information |
+| `pre_action` | trial `t`'s feature comes from trial `t − pre_action_starved_lag_trials` (default 15, must exceed `valid_lag_trials` by construction — `LeakageConfig.__post_init__` enforces this) — deliberately starved, further back than `valid` |
+| `timestamp_shift` | `valid`'s own alignment, offset by an additional `~timestamp_shift_seconds` (default 2.0s) worth of trials, converted via `sampling_rate_hz` (default 25.0, matching `controls/negative_control.py`'s own default) |
+
+Only the **feature** moves between variants — `class_label`,
+`prev_class_label`, `episode_id`, `session_idx`, `t_in_session` are
+identical across all four (verified directly,
+`tests/test_leakage.py`'s `check_only_x_signal_and_missing_change_between_variants`).
+A lag never crosses a session boundary (the generator's own `z` resets
+per session — pulling a "prior" value from a different session would not
+be a leakage test, it would be nonsense); a trial whose source index falls
+outside its own session's range gets `x_signal=None`, handled by
+`simulation/precision.py`'s existing missing-value convention
+(mean-imputed + indicator dummy on the train split) — not a new one
+invented here.
+
+### Why it reuses `compute_delta`/`bootstrap_ci_on_delta` directly, not a new fit/eval loop
+
+Structurally, each variant IS `compute_delta`'s existing "with signal vs.
+without signal" comparison — only which trial's `x_signal` gets used as
+"with" changes. Calling `compute_delta()` on four differently-windowed
+copies of the same record list gets the episode-level resampling (1.2)
+and the negative control (1.4) for free, with zero new fit/eval code.
+
+### Pluggable data source (1.1)
+
+`run_leakage_diagnostics(trial_source, ...)` takes any zero-argument
+callable returning a trial-record list shaped like
+`simulation.generator.generate()`'s output. `synthetic_trial_source()` is
+the only implementation today, wrapping that generator — real action data
+does not exist yet (the client's task harness that would produce it is
+under separate acceptance review; D2 is BLOCKED per CLAUDE.md). A future
+source reading from `schema/canonical_log_writer.py`'s output would
+implement the identical interface and could be substituted for
+`trial_source` with **zero changes** to the window-construction logic or
+`run_leakage_diagnostics` itself — proven, not just asserted:
+`tests/test_leakage.py`'s `check_data_source_is_genuinely_pluggable` runs
+the full harness against a hand-built fake source that never touches
+`simulation.generator` at all.
+
+### G1 — diagnostics, never a verdict (1.3)
+
+Every variant returns a `delta_point`, a bootstrap CI, and
+`delta_negative_control` — numbers, with their own sign and magnitude
+already carrying the "direction and magnitude" this task's instruction
+asks to be reported. Nothing in `controls/leakage.py` compares one
+variant's Delta against another's, labels a variant "clean" or "leaky",
+or branches on a computed value. `format_leakage_table()` prints every
+row identically — no highlighting, no pass/fail column.
+
+### The negative control, verified the same way as `simulation/precision.py`'s
+
+`tests/test_leakage.py`'s `check_negative_control_carried_automatically`
+calls `run_leakage_diagnostics()` exactly the way `tests/test_precision.py`'s
+own check calls `compute_delta()` — no mention of the negative control
+anywhere in the call — and confirms `delta_negative_control` comes back
+populated for **all four** variants, not just one. On a small synthetic
+draw it can compute to exactly `0.0` (the same hard-decision/macro-F1
+discreteness `simulation/precision.py`'s own module docstring already
+documents — both models collapsing to the majority class on every test
+trial); on a larger draw it is non-zero and, because the same
+`negative_control_seed` and the same "without" baseline are shared across
+all four variants by construction, identical across all four — confirmed
+directly, not assumed.
+
+### 1.5 — the task-conditional caveat, stated plainly
+
+These four variants establish **expected DIRECTION**, not magnitude.
+Because this generator's latent state `z` is a stationary AR(1) process,
+`Corr(z_t, z_{t+k})` depends only on `|k|` — a `valid` feature at lag `k`
+and a `post_action` feature at lag `k` (forward) carry, in this synthetic
+model, the **same theoretical correlation strength** with the trial being
+predicted. **Where post-action information is not known to carry
+target-relevant signal for a given real task, the post-action window may
+not dramatically outperform `valid` — and that alone does not mean the
+windowing (or this harness) is broken.** A severe, unambiguous leak (a
+feature that directly encodes the true class label — something that could
+only be known *after* the action) is confirmed to produce a large,
+clearly-nonzero Delta through the exact same `compute_delta` machinery
+(`tests/test_leakage.py`'s `check_injected_severe_leak_produces_large_delta`:
+`+0.66` vs. a clean `-0.02` baseline) — proving the underlying detection
+mechanism genuinely responds to a real leak when one exists. Whether the
+milder, naturally-symmetric `post_action` variant's Delta on any given
+real dataset should be read as "no leak" or "a leak too weak to show up
+in this particular window construction" is a human judgment this harness
+deliberately does not make.
+
+### How to run it
+
+```python
+from controls.leakage import synthetic_trial_source, run_leakage_diagnostics, format_leakage_table, LeakageConfig
+from simulation.generator import GeneratorConfig
+
+source = synthetic_trial_source(GeneratorConfig(seed=1, n_sessions=3, episodes_per_session=200, trials_per_episode=5, effect_size=0.3))
+result = run_leakage_diagnostics(source, n_classes=3, n_sessions=3, config=LeakageConfig())
+print(format_leakage_table(result))
+```
