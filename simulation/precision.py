@@ -298,6 +298,44 @@ def compute_delta(records, n_classes, n_sessions, train_frac=0.6, val_frac=0.2, 
 VALID_RESAMPLE_UNITS = ("episode", "session")
 
 
+def precompute_unit_row_groups(unit_ids):
+    """EXTRACTED, shared resampling primitive (D0PA1 D3/D7 task: 'extract
+    or reuse that resampling machinery -- do not write a second
+    implementation'). Given one row per observation and its unit id
+    (episode or session), returns (unique_units, unit_to_rows) --
+    unit_to_rows maps each unit to the row indices belonging to it.
+    Precomputed ONCE per bootstrap call (not per replicate) for the same
+    performance profile as the original inline code. Raises ValueError if
+    fewer than 2 unique units are present -- a CI cannot be bootstrapped
+    from a single resampling unit."""
+    unit_ids = np.asarray(unit_ids)
+    unique_units = np.unique(unit_ids)
+    if len(unique_units) < 2:
+        raise ValueError(
+            f"only {len(unique_units)} unique unit(s) -- "
+            "cannot bootstrap a CI from fewer than 2 resampling units."
+        )
+    unit_to_rows = {u: np.where(unit_ids == u)[0] for u in unique_units}
+    return unique_units, unit_to_rows
+
+
+def resample_rows_once(unique_units, unit_to_rows, rng):
+    """EXTRACTED, shared resampling primitive -- the exact per-replicate
+    step bootstrap_ci_on_delta performed inline before this extraction:
+    draws len(unique_units) units WITH REPLACEMENT and returns the
+    concatenated row indices belonging to the sampled units (a unit drawn
+    twice contributes its rows twice). analysis/reliability.py's
+    episode-level bootstrap CIs call this directly rather than
+    reimplementing it.
+
+    Byte-for-byte behavior preserved from the pre-extraction inline code:
+    same rng.choice() call (same arguments, same call count, same
+    ordering) -- verified by tests/test_precision.py's existing bootstrap
+    checks, which were not touched and still exercise this path."""
+    sampled_units = rng.choice(unique_units, size=len(unique_units), replace=True)
+    return np.concatenate([unit_to_rows[u] for u in sampled_units])
+
+
 def bootstrap_ci_on_delta(delta_result: DeltaResult, resample_unit, n_boot, alpha, rng, metric=MACRO_F1_METRIC, n_classes=None):
     """resample_unit has NO DEFAULT and must be 'episode' or 'session' --
     resampling at the trial level would understate variance under A1's
@@ -319,21 +357,14 @@ def bootstrap_ci_on_delta(delta_result: DeltaResult, resample_unit, n_boot, alph
             n_classes = int(max(delta_result.y_test.max(), delta_result.pred_with.max(), delta_result.pred_without.max()) + 1)
 
     unit_ids = delta_result.test_episode_ids if resample_unit == "episode" else delta_result.test_session_ids
-    unique_units = np.unique(unit_ids)
-    if len(unique_units) < 2:
-        raise ValueError(
-            f"only {len(unique_units)} unique {resample_unit}(s) in the test split -- "
-            "cannot bootstrap a CI from fewer than 2 resampling units."
-        )
-
-    # Precompute, for each unit, the row indices belonging to it -- avoids
-    # rescanning the full array on every bootstrap replicate.
-    unit_to_rows = {u: np.where(unit_ids == u)[0] for u in unique_units}
+    try:
+        unique_units, unit_to_rows = precompute_unit_row_groups(unit_ids)
+    except ValueError as e:
+        raise ValueError(f"{e} (resample_unit={resample_unit!r}, test split)") from e
 
     deltas = np.empty(n_boot)
     for b in range(n_boot):
-        sampled_units = rng.choice(unique_units, size=len(unique_units), replace=True)
-        rows = np.concatenate([unit_to_rows[u] for u in sampled_units])
+        rows = resample_rows_once(unique_units, unit_to_rows, rng)
         y_b = delta_result.y_test[rows]
         u_with = metric.fn(y_b, delta_result.pred_with[rows], n_classes)
         u_without = metric.fn(y_b, delta_result.pred_without[rows], n_classes)

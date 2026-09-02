@@ -3,11 +3,11 @@
   "$id": "https://dopaland-poc.local/schema/canonical_log_v1.json",
   "title": "D0PA1 Canonical Log Schema v1",
   "$comment": "CLAUDE.md 'WHAT D0PA1 ADDS': 'canonical versioned log schema'. This is a NEW, forward-looking schema -- logs written BEFORE this schema existed (every file in logs/ as of Gate 0 A4) are NOT migrated into it and are NOT expected to conform. Those are described instead by manifest/data_manifest.csv (Gate 0 A4) and remain in their own original, historical formats. Nothing in this repository's existing pipeline (stage1_step4_vectors.py's sample/window_summary records, controls/null_input.py, etc.) writes through this schema yet -- it exists and is validated (schema/canonical_log_writer.py), but is not wired into any real capture loop by this task. The stimulus/ROI/action-class fields below exist because the client's task harness (delivered separately, under its own acceptance review) will eventually populate them -- this schema defines the SHAPE those fields must have; it does not define the action-class vocabulary itself, which is BLOCKED pending the client's D2 decision (CLAUDE.md 'BLOCKED' section) and therefore left as an open string here, not a fixed enum.",
-  "schema_version": "1",
+  "schema_version": "2",
   "$defs": {
     "missingness_reason": {
       "type": "string",
-      "description": "Fixed enumerated vocabulary a missing value's reason MUST be drawn from -- never free text, so a downstream reader can group/count reasons reliably. Extend this list (bump the schema version if a real new reason is found) rather than allowing an open string -- an open string here would let 'missingness is logged, never dropped' quietly degrade into 'missingness is logged with whatever string the caller felt like writing'.",
+      "description": "Fixed enumerated vocabulary a missing value's reason MUST be drawn from -- never free text, so a downstream reader can group/count reasons reliably. Extend this list (bump the schema version if a real new reason is found) rather than allowing an open string -- an open string here would let 'missingness is logged, never dropped' quietly degrade into 'missingness is logged with whatever string the caller felt like writing'. v2 (D0PA1 D7 task) added no_prior_history: session_z/raw representations never need it (they never look outside their own session), but persistent_z's cross-session baseline is undefined for a session with no strictly-prior session to draw on -- a structurally different cause from zero_dispersion (prior sessions exist but their spread is ~0) or insufficient_samples (too few observations within an otherwise-valid window).",
       "enum": [
         "no_face",
         "low_landmark_confidence",
@@ -19,7 +19,8 @@
         "insufficient_samples",
         "not_yet_calibrated",
         "not_applicable",
-        "harness_not_available"
+        "harness_not_available",
+        "no_prior_history"
       ]
     },
     "canonical_session_header": {
@@ -27,7 +28,7 @@
       "description": "Written EXACTLY ONCE per session_id, before any canonical_observation record for that session -- this is where 'the wall-clock offset recorded once per session' (this task's timing invariant) actually lives. Every observation's monotonic timestamps (stimulus_onset/prediction_timestamp/action_timestamp) are only interpretable as real-world time relative to THIS record's wall_clock_utc/monotonic_reference pair.",
       "required": ["schema_version", "record_type", "session_id", "subject_id", "context_id", "device_id", "wall_clock_utc", "monotonic_reference"],
       "properties": {
-        "schema_version": {"const": "1"},
+        "schema_version": {"const": "2"},
         "record_type": {"const": "canonical_session_header"},
         "session_id": {"type": "string", "minLength": 1},
         "subject_id": {"type": "string", "minLength": 1, "description": "Required on every record this schema governs, including a session header, from the first observation onward -- even a single-subject study stamps this (D0PA1 hard constraint #7)."},
@@ -51,7 +52,7 @@
         "missingness_flag", "missingness_reason"
       ],
       "properties": {
-        "schema_version": {"const": "1"},
+        "schema_version": {"const": "2"},
         "record_type": {"const": "canonical_observation"},
 
         "subject_id": {"type": "string", "minLength": 1, "description": "Required on EVERY observation from the first record, even with one subject (D0PA1 hard constraint #7) -- enforced by the writer, not left to caller discipline."},

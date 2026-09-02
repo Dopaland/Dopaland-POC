@@ -72,6 +72,34 @@ class PreRegisteredConfig:
     # metric's value" bar on its own.
     fps_report_interval_seconds: float = 3.0
 
+    # D7 (analysis/baselines.py): which ESTIMATOR persistent_z's cross-
+    # session baseline/scale use -- "historical_sd" (mean/std) or
+    # "robust_mad" (median/1.4826*MAD, reusing features/robust_baseline.py's
+    # mad_stats()). Directly changes persistent_z's VALUE for every sample
+    # in the study -- exactly the kind of decision this config exists to
+    # pin in advance (G2). See analysis/baselines.py's BASELINE_ESTIMATORS
+    # for the full validated set; this field is NOT validated here (see
+    # that module's own docstring on why validation lives with the
+    # consumer, not the config object). Default is robust_mad -- stated as
+    # a default, not the only option (this task's explicit instruction).
+    baseline_estimator: str = "robust_mad"
+
+    # D7: which WINDOW of strictly-prior sessions persistent_z pools before
+    # applying baseline_estimator -- "expanding" (all strictly-prior
+    # sessions, aka "pooled within-person"), "rolling" (the last
+    # baseline_rolling_window_sessions strictly-prior sessions), or
+    # "preceding_session_only" (exactly the single most recent strictly-
+    # prior session). Default is expanding -- again, a default, not the
+    # only option. See analysis/baselines.py's BASELINE_WINDOW_RULES.
+    baseline_window_rule: str = "expanding"
+
+    # Only consulted when baseline_window_rule == "rolling" -- how many
+    # strictly-prior sessions to pool. Kept as its own field (rather than
+    # overloading a generic "window size" that would be meaningless for
+    # "expanding"/"preceding_session_only") so its value is still hashed
+    # and inspectable even when the active window_rule ignores it.
+    baseline_rolling_window_sessions: int = 3
+
     def config_hash(self):
         """Same pattern as controls/null_input.py's NullInputConfig --
         a short, stable hash of the config's own JSON representation,

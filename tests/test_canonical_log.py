@@ -20,7 +20,7 @@ if REPO_ROOT not in sys.path:
 
 from schema.canonical_log_writer import (
     CanonicalLogWriter, CanonicalLogValidationError, MISSINGNESS_REASONS,
-    validate_record, SCHEMA_DOC,
+    validate_record, SCHEMA_DOC, SCHEMA_VERSION,
 )
 
 
@@ -185,7 +185,7 @@ def check_validator_actually_rejects_bad_shapes():
     obs_def = SCHEMA_DOC["$defs"]["canonical_observation"]
 
     base = {
-        "schema_version": "1", "record_type": "canonical_observation",
+        "schema_version": SCHEMA_VERSION, "record_type": "canonical_observation",
         "subject_id": "S01", "session_id": "sess1", "trial_id": None,
         "experiment_id": None, "context_id": "ctx", "device_id": "dev1",
         "commit": None, "config_version": None, "model_version": None,
