@@ -706,3 +706,112 @@ underlies this table; it is a pure function of numbers already
 established. The "resolvable" fields are booleans computed as
 `ratio > 1.0` -- reported as data, never printed as, or worded like, a
 RETAIN/DROP/INCONCLUSIVE verdict (G1).
+
+---
+
+## 13. Synthetic latent recovery (`simulation/latent_recovery.py`)
+
+```
+Z_true -> observation generator -> pipeline -> Z_hat
+recovery_error = d(Z_true, Z_hat)
+```
+
+Reuses `simulation/generator.py` unchanged: `Z_true` is the generator's
+own `z` field (the AR(1) latent state, generator-internal, kept exactly
+for this purpose — see that module's own docstring), the "observation
+generator" is `generate()`'s existing `effect_size`-controlled mixture
+plus an added `add_observation_noise()` step (extra i.i.d. Gaussian
+corruption applied on top, a genuinely separate axis from `effect_size` —
+see that function's own docstring for why the two are not the same knob),
+and "pipeline" is `recover_latent_ema()` — a single exponential moving
+average, reset per session, carrying forward through missing observations
+(no new information, no update). This is the simplest procedure
+consistent with the client's own "simple model families" scope
+constraint (`simulation/models.py`'s docstring) — not a filter chosen
+because it produced a nicer curve (G2).
+
+### Why this is a PREREQUISITE, not an extra (2.5)
+
+Without it, a near-zero measured latent contribution on real data is
+ambiguous between two entirely different explanations: **"the latent
+state genuinely adds nothing"** — a real, valuable *negative* result, one
+of the outcomes this study is explicitly designed to be able to report —
+and **"the recovery implementation is silently broken."** Those two
+explanations demand completely different responses, and a bare near-zero
+number does not, on its own, tell a reader which one they are looking at.
+This module removes that ambiguity in the one place it CAN be removed —
+on synthetic data where `Z_true` is known by construction — so that a
+later near-zero result on real data can be read as a finding about the
+subject, not a question about the code. Skipping this step does not save
+work; it just moves the same question to a point where it can no longer
+be answered.
+
+### Both metrics, and why neither alone suffices (2.1)
+
+`compute_recovery_metrics()` reports **Pearson correlation** and
+**standardised RMSE** (`Z_true`/`Z_hat` each z-scored against their own
+mean/std before RMSE) — never blended into one number. Verified directly
+(`tests/test_latent_recovery.py`): a pure scale/offset error
+(`Z_hat = 50·Z_true`) produces correlation ≈ 1 AND standardised RMSE ≈ 0
+— confirming standardising correctly neutralises exactly the failure mode
+correlation alone would hide (a systematic scale error still "looks"
+perfect under correlation alone; RMSE on the RAW, non-standardised values
+would have called that badly wrong, which is why standardising both series
+before RMSE is the right choice for a machinery check that separates
+scale error from genuine noise).
+
+### The sweep (2.2) — the curve, not a point
+
+`run_recovery_sweep(effect_sizes, extra_noise_stds, config)` runs the full
+grid. On one real run (seed 11, 300 episodes/session, 5 trials/episode,
+3 sessions, `ema_alpha=0.3`):
+
+```
+effect_size extra_noise_std  pearson_r  rmse_std  n_used n_total
+----------------------------------------------------------------
+       0.00            0.00    -0.0133    1.4236    4500    4500
+       0.00            0.50    -0.0129    1.4233    4500    4500
+       0.00            1.50    -0.0083    1.4201    4500    4500
+       0.20            0.00    +0.2595    1.2170    4500    4500
+       0.20            0.50    +0.2320    1.2393    4500    4500
+       0.20            1.50    +0.1482    1.3052    4500    4500
+       0.40            0.00    +0.4737    1.0260    4500    4500
+       0.40            0.50    +0.4336    1.0644    4500    4500
+       0.40            1.50    +0.2932    1.1889    4500    4500
+       0.60            0.00    +0.6145    0.8781    4500    4500
+       0.60            0.50    +0.5754    0.9215    4500    4500
+       0.60            1.50    +0.4172    1.0796    4500    4500
+       0.80            0.00    +0.7009    0.7734    4500    4500
+       0.80            0.50    +0.6680    0.8148    4500    4500
+       0.80            1.50    +0.5170    0.9829    4500    4500
+```
+
+**Reported, not judged (2.3):** correlation rises with `effect_size` and
+falls with `extra_noise_std` at every grid point (confirmed monotonic
+both ways on the mean, `tests/test_latent_recovery.py`'s
+`run_real_sweep_and_report`) — the curve moves in the direction a working
+recovery pipeline should move it. At `effect_size=0.0` (the true null),
+correlation sits at ≈0 as it should — the EMA does not fabricate
+structure from noise. **The best cell on this grid (`effect_size=0.8`,
+`extra_noise_std=0.0`) reaches `pearson_r≈0.70`, `rmse_std≈0.77`** — well
+short of a naive "near-perfect recovery" intuition, because this
+generator's `z` is itself a noisy AR(1) path (its own innovation noise,
+plus fatigue inflating that noise across a session) and a single EMA
+constant cannot perfectly track a moving target from single noisy
+per-step observations. **No success threshold is set anywhere in this
+module or this document.** The proposed values (correlation ≥ 0.7,
+standardised RMSE ≤ 0.5) are for a human to sign against numbers like
+these — this machinery's job is only to report where it actually lands
+across the grid, honestly, including that the best cell here sits right
+at the proposed correlation bar and clearly above the proposed RMSE bar.
+
+### What this validates, and what it categorically does not (2.4)
+
+This validates the MACHINERY — correlation/RMSE computation, missing-data
+handling, a simple recovery procedure — under KNOWN, STATED assumptions
+(the generator's own AR(1)/A1–A6 model). **It establishes nothing about
+whether a human latent state is psychologically real.** That distinction
+is CONTRACTUAL, not stylistic: a result from this module is never
+evidence about the subject, only evidence about whether this code, run
+against data with a known answer, gets that known answer approximately
+right.
