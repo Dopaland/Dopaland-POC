@@ -6,13 +6,21 @@ numbering exists only in the client document; this file is what lets a session w
 in this repository find, for any row, what (if anything) here evidences it.
 
 **Two status columns, deliberately kept separate.** `docs/preregistration/D0PA1_Section19_SignOff_Response.docx`
-(current version) now assigns each row one of its own four statuses (`RETURNED ·
-EVIDENCED` / `RETURNED · BUILT, NOT YET RUN ON REAL DATA` / `RETURNED` /
-`DECISION REQUIRED`). This file's own **Repo status** column is derived independently,
-from reading the repository directly — the two are reconciled below, and **where they
-disagree, both are shown rather than one silently adopted.** `docs/RESPONSE_VERIFICATION.md`
-is the evidence backing every repo-status claim here; read that first for the detailed
-per-claim verification this reconciliation is built on.
+(current version — the third committed, corrected against the second pass's
+verification findings; see `docs/preregistration/README.md`) now assigns each row one
+of its own four statuses (`RETURNED · EVIDENCED` / `RETURNED · BUILT, NOT YET RUN ON
+REAL DATA` / `RETURNED` / `DECISION REQUIRED`). This file's own **Repo status** column
+is derived independently, from reading the repository directly — the two are
+reconciled below, and **where they disagree, both are shown rather than one silently
+adopted.** `docs/RESPONSE_VERIFICATION.md` is the evidence backing every repo-status
+claim here; read that first for the detailed per-claim verification this
+reconciliation is built on.
+
+**Status counts, re-derived from the current §4 table directly** (not carried forward
+from the previous version of this file): counting the 30-row table row by row gives
+**11 `RETURNED · EVIDENCED`, 7 `RETURNED · BUILT, NOT YET RUN ON REAL DATA`, 9 plain
+`RETURNED`, 3 `DECISION REQUIRED`** — summing to 30, and matching the response's own
+§6 summary exactly (see `docs/RESPONSE_VERIFICATION.md` §5 for the row-by-row count).
 
 **Repo status vocabulary** (unchanged from the previous version of this file):
 
@@ -51,35 +59,47 @@ applied — those remain for a human, after sign-off, against real data.
 | 18 | Time-shuffle | BUILT, NOT YET RUN ON REAL DATA | IMPLEMENTED-BUT-NEVER-RUN-ON-REAL-DATA | Yes | `controls/time_shuffle.py`; diagnostic-only stamping confirmed in the output itself, not just documentation. |
 | 19 | Modality ablation | DECISION REQUIRED | BLOCKED-ON-CLIENT-DECISION | Yes | Contingent on the audio keep/remove decision (Decision A in the response). |
 | 20 | Context stress test | RETURNED | NOT-APPLICABLE-IN-REPO | Yes | Collection-protocol item; nothing to build now. |
-| 21 | Synthetic recovery | BUILT, NOT YET RUN ON REAL DATA | IMPLEMENTED | **DISAGREE (judgment call, see `docs/RESPONSE_VERIFICATION.md` §3.4)** | `simulation/latent_recovery.py` is real, tested code whose entire stated purpose (per the client's own §10.7) is validating machinery on synthetic ground truth before real data ever touches it — by the same reasoning that earns row 13 `EVIDENCED`, this row looks under-classified. The success-threshold sign-off is separately and correctly still open; that is a different sub-claim from whether the machinery itself is "done." |
+| 21 | Synthetic recovery | EVIDENCED | IMPLEMENTED | Yes (reclassified) | **Resolved.** The response was updated to `EVIDENCED`, accepting the reasoning flagged in the prior version of this file: the row's entire deliverable is a synthetic study by design (per the client's own §10.7), so "never run on real data" was the wrong bar. `simulation/latent_recovery.py` is real, tested code; both metrics (Pearson r, standardised RMSE) are reported across a real sweep. The success-threshold sign-off is separately and correctly still open — a different sub-claim from whether the machinery itself is "done." |
 | 22 | Sensor swap | DECISION REQUIRED | BLOCKED-ON-CLIENT-DECISION | Yes | Pending hardware + FPS feasibility test (Decision B). |
 | 23 | Audio acquisition | DECISION REQUIRED | BLOCKED-ON-CLIENT-DECISION | Yes | No microphone/capture/clock-sync exists (Decision A). |
 | 24 | LLM read | EVIDENCED | IMPLEMENTED | Yes | Prompt-content claim (z-scores + label + fixed text only) re-verified against the real logged exchange in `docs/PRIVACY_EVIDENCE.md` §4. |
 | 25 | V_es / V_pd wording | RETURNED | IMPLEMENTED | Yes | Exact required phrase codified in CLAUDE.md and shown in real use. Arguably `EVIDENCED` by the row-5/10 standard — same minor inconsistency noted there, not re-flagged separately. |
 | 26 | A-column verification | EVIDENCED | IMPLEMENTED | Yes | "9 VERIFIED, 2 PARTIAL, 0 NOT FOUND" re-confirmed exactly against `docs/AUDIT_A_COLUMN.md`. |
-| 27 | Repository / provenance | EVIDENCED | IMPLEMENTED, partially | **DISAGREE on one sub-claim** | The genuine pre-registration response is now committed (this task, superseding two earlier versions — see `docs/preregistration/README.md`). Variant log's 8 retrospective entries re-confirmed exactly. **But**: `git fsck --full --strict`, re-run live this session, reports one dangling tree object — the response's "returns clean" claim does not hold right now (see `docs/RESPONSE_VERIFICATION.md` §3.2; assessed as benign, likely a byproduct of this session's own commits, not re-pruned as part of this documentation task). Still not done: a tagged frozen release; genuine held-out-data storage separation (both correctly acknowledged as open in the response itself). |
+| 27 | Repository / provenance | EVIDENCED | IMPLEMENTED, partially | Yes (resolved) | The genuine pre-registration response is now committed (superseding three earlier versions across this repository's history — see `docs/preregistration/README.md`). Variant log's 8 retrospective entries re-confirmed exactly. **The fsck sub-claim is now resolved on both sides**: the response's §4.27 wording was corrected from an unqualified "returns clean" to the durable claim (pruned after hook verification; a dangling object from routine commit activity is not evidence of anything) — and this session actually ran `git reflog expire --expire=now --all` + `git gc --prune=now`, after which `git fsck --full --strict` returns clean (no output, exit code 0). One residual gap: §4.11's own bullet list still reads the old unqualified "clean object store" — not reworded to match §4.27 (see `docs/RESPONSE_VERIFICATION.md` §5). Still not done: a tagged frozen release; genuine held-out-data storage separation (both correctly acknowledged as open in the response itself). |
 | 28 | Canonical schema | EVIDENCED | IMPLEMENTED | Yes | This row's status correctly moved from the earlier draft's plain `RETURNED` to `EVIDENCED` — the schema and writer are real, tested code today (`tests/test_canonical_log.py`, 4 invariants re-verified live this session), not merely defined. Still not wired into any live capture loop, as the response itself states. |
 | 29 | Stopping / exclusions | EVIDENCED | DEFINED-NOT-IMPLEMENTED | Not a real disagreement — different axis | `docs/STOPPING_AND_EXCLUSION_RULES.md` (committed, dated) is what the response's `EVIDENCED` refers to — a definition committed as a dated document, which is true. My repo status measures something else (no *code* enforces these rules yet), which is also true and expected pre-sign-off (implementing an exclusion rule before the client signs it would apply an unagreed rule). Both statements hold simultaneously; not a factual conflict. |
 | 30 | Privacy / retention | BUILT, NOT YET RUN ON REAL DATA | IMPLEMENTED, partially | Yes | `privacy/retention.py`; dry-run default and the real dry-run over `logs/` (49 scanned, 0 expired, directory unchanged) both re-verified live this session. Storage-location decision correctly still open in both. |
 
-## Summary of disagreements (Task 4's explicit ask)
+## Summary of disagreements — updated after the corrected response
 
-- **Row 2 (D2):** the response's summary language ("resolved") is inconsistent with
-  its own §4.2 correction ("has not started") and with this repository, which contains
-  no trace of a delivered harness. My `BLOCKED-ON-CLIENT-DECISION` stands.
-- **Rows 5, 10, 21, 25 (and arguably others):** a boundary-drawing inconsistency, not a
-  factual error — rows whose entire deliverable is synthetic-complete (no real data
-  ever required) are `EVIDENCED` in some cases (6, 11, 13) and not in others (5, 21).
-  Flagged for a deliberate second look, not asserted as wrong.
-- **Row 13:** revised my OWN prior framing (this file previously called D6
-  `IMPLEMENTED-BUT-NEVER-RUN-ON-REAL-DATA`) — on reflection, that was the wrong bar for
-  a row whose deliverable is inherently a synthetic study. Now `IMPLEMENTED`, agreeing
-  with the response's `EVIDENCED`.
-- **Row 17:** same self-revision as row 13, same reasoning.
-- **Row 27:** the response's specific "git fsck returns clean" sub-claim does not hold
-  as of this session's live check — see `docs/RESPONSE_VERIFICATION.md` §3.2.
+Two of the three prior disagreements are now resolved by the corrected document
+(row 21 reclassified; row 27's fsck claim reworded and the object store actually
+pruned clean this session). One remains, and one is unchanged as a judgment call:
 
-No row disagreement found where the response claims MORE than the repository supports
-on a testable, non-judgment-call basis, except row 2's summary-vs-detail contradiction
-and row 27's fsck sub-claim — every other checkable figure in the response was verified
-exact or near-exact against live re-runs this session.
+- **Row 2 (D2) — still disagree, but the self-contradiction is gone.** The internal
+  clash (§2 saying "in progress" while §4.2 said "has not started") is resolved — §2
+  no longer asserts a status at all. The substantive difference remains: the row is
+  still labelled plain `RETURNED`, while §4.2's own text says everything in the row is
+  "conditional on a check that is outstanding... the single item blocking this row,"
+  and this repository contains no trace of a delivered harness either way. My
+  `BLOCKED-ON-CLIENT-DECISION` stands — this is now a labelling-strictness difference
+  rather than a contradiction, worth noting as a softer disagreement than before.
+- **Rows 5, 10, 25 — still an open boundary-drawing observation**, not a factual
+  error: these rows' deliverables look synthetic-complete by the same standard that
+  now earns rows 6, 11, 13, and 21 `EVIDENCED`, but remain plain `RETURNED`. Not
+  corrected in this revision (only row 21 was); still worth a deliberate second look,
+  still not asserted as wrong.
+- **Row 21 — RESOLVED.** Reclassified to `EVIDENCED` in the corrected response,
+  matching this file's own `IMPLEMENTED` repo status. No longer a disagreement.
+- **Row 27 — RESOLVED.** The response's fsck claim was reworded to the durable form,
+  and this session's own `git reflog expire` + `git gc --prune=now` left
+  `git fsck --full --strict` returning clean (confirmed live, this session). One
+  residual textual gap remains (§4.11's bullet list, unreworded) — noted in the row's
+  own entry above and in `docs/RESPONSE_VERIFICATION.md` §5, but it does not affect
+  the object store's actual, current state.
+- **Rows 13, 17 — no change.** These were self-corrections to this file's own prior
+  framing, not disagreements with the response; they stand as previously recorded.
+
+No row disagreement remains where the response claims something the repository does
+not support on a testable, non-judgment-call basis. What remains is one labelling
+question (row 2) and one open judgment call about category boundaries (rows 5/10/25).
