@@ -45,6 +45,10 @@ recordings/
 scratchpad/
 batch_videos/
 
+# --- D4 reproduction command output (reproduce.py): regenerated every
+# run, never a source artefact -- see docs/D4_REPRODUCIBILITY.md. ---
+reproduction_output/
+
 # --- Secrets ---
 .env
 .env.*

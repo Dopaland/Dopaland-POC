@@ -131,9 +131,26 @@ def compute_bland_altman_all_pairs(matrix, session_ids):
 def plot_bland_altman_svg(ba_result, out_path, title="Bland-Altman"):
     """Writes an SVG (G4: never PNG). Same matplotlib.use('Agg') +
     fig.savefig(<path ending .svg>) pattern already used by
-    simulation/run_precision_sweep.py's plots."""
+    simulation/run_precision_sweep.py's plots.
+
+    DETERMINISM (D0PA1 D4, found while verifying reproduce.py's byte-diff
+    -- see docs/D4_REPRODUCIBILITY.md): matplotlib's SVG backend embeds
+    two non-deterministic things by default, neither of which reflects
+    the plotted DATA -- (1) a creation-timestamp in the SVG's Dublin Core
+    metadata block, and (2) per-element `id`/`clip-path` attributes
+    derived from a random hash salt regenerated every process run (the
+    coordinate DATA those elements carry is identical across runs; only
+    the arbitrary label matplotlib gives each element differs). Both are
+    suppressed below -- `svg.hashsalt` fixed to a constant so element ids
+    are a deterministic function of the figure's own content, and
+    `metadata={"Date": None}` so no timestamp is embedded. Confirmed by
+    the actual fix: two runs of the same plot are now byte-identical
+    (tests/test_reliability.py's `check_bland_altman_svg_written` still
+    only checks structural validity, not byte-identity across runs --
+    that end-to-end proof lives in the D4 reproduction check instead)."""
     import matplotlib
     matplotlib.use("Agg")
+    matplotlib.rcParams["svg.hashsalt"] = "d0pa1-reproducible-svg"
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(6, 5))
@@ -149,7 +166,7 @@ def plot_bland_altman_svg(ba_result, out_path, title="Bland-Altman"):
     ax.legend(fontsize=8)
     ax.grid(alpha=0.3)
     fig.tight_layout()
-    fig.savefig(out_path)
+    fig.savefig(out_path, metadata={"Date": None})
     plt.close(fig)
     return out_path
 
