@@ -339,9 +339,13 @@ design (G4), not a bug in it.
 **The intended archived inputs for the confirmatory study — stored
 video files and a logged feature stream from the client's actual
 sessions — do not exist yet.** The client's task harness that would
-produce matched-unit, protocol-controlled recordings is under separate
-acceptance review (see `docs/ROI_HARNESS_ACCEPTANCE.md`), and D2
-(action classes, horizon) remains BLOCKED per CLAUDE.md. **Stated
+produce matched-unit, protocol-controlled recordings has not yet been
+made available to a session for review — **its acceptance review is
+outstanding, not merely undocumented.** No `docs/ROI_HARNESS_ACCEPTANCE.md`
+exists today; that document will be created when the review is actually
+performed, not before — a citation to a document that doesn't exist yet
+is worse than stating the gap plainly here. D2 (action classes, horizon)
+remains BLOCKED per CLAUDE.md, for the same underlying reason. **Stated
 plainly, not smoothed over:** `reproduce.py` today regenerates the
 MACHINERY's results on synthetic/self-contained inputs, not a
 confirmatory finding from real archived recordings.

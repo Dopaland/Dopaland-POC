@@ -82,11 +82,11 @@ predating the Gate 0 work above.
 - **Second-camera sensor swap** — pending hardware and an FPS feasibility test; the
   opportunity is permanently lost once real collection starts without it (must happen
   *during* collection, not after).
-- **A referenced-but-missing document**: `docs/D4_REPRODUCIBILITY.md` cites
-  `docs/ROI_HARNESS_ACCEPTANCE.md` for "the client's task harness... under separate
-  acceptance review" — that file does not exist in this repository. Either it lives
-  outside this repo (like `GATE2_SCORING_RULE.md`) or the reference is stale; worth
-  asking rather than assuming.
+- **The client's task harness acceptance review** — `docs/D4_REPRODUCIBILITY.md`
+  formerly cited a `docs/ROI_HARNESS_ACCEPTANCE.md` that did not exist; corrected
+  (see that file) to state plainly that the review is outstanding — the harness
+  package has not yet been made available to a session — and that the document will
+  be created when the review is actually performed, not before.
 
 ### Physical runs outstanding
 - **Null-input control** — needs a live webcam + a human operator sitting still for
