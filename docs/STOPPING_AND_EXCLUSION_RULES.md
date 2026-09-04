@@ -21,12 +21,23 @@ result look worse. Every exclusion is logged with its rule, its trigger and its
 timestamp, and the exclusion count is reported alongside the results."** This is not
 negotiable and governs every rule below.
 
-## Status: RETURNED (§4.29), all eight
+## Status: RETURNED · EVIDENCED (§4.29), all eight
 
 Transcribed directly from §4.29 of `D0PA1_Section19_SignOff_Response.docx` — this is
 the vendor's proposed rule content, **returned for the client's sign-off**, not yet a
 confirmed, signed pre-registration record (per the response document's own §1: "Nothing
 in this document is confirmed by appearing in it").
+
+**Re-checked against the rebuilt response document.** The response was rebuilt (primary
+metric moved to log loss, thresholds re-derived in nats — see
+`docs/preregistration/README.md`) and §4.29 was re-read in full against the table below.
+**The eight rules transcribed here are word-for-word unchanged** — §29 was never
+metric-dependent, so the rebuild did not touch it. The only change in §4.29 itself: the
+row's status moved from `RETURNED` to `RETURNED · EVIDENCED`, and an "Implementation
+status" line was added — "These rules are now committed to the repository as their own
+document, so they exist in dated form before collection rather than only inside this
+response" — which is a correct description of this file's own existence, not new rule
+content.
 
 | # | Category | Rule, as transcribed from §4.29 |
 |---|---|---|
