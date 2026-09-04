@@ -234,6 +234,168 @@ definition to keep moving.
 
 ---
 
+## D0PA1 BUILD STATE — what exists in this repo
+
+This section is a factual map of the packages D0PA1 has added, read this before touching
+any of them. It is dense on purpose — see `docs/PROJECT_STATE.md` for the fast-changing
+detail (current commit, open items, run-vs-not-run status) this file doesn't carry.
+
+### D0PA1.1 — THE PACKAGE MAP
+
+- **`features/`** — the five D1 blocks + shared upstream.
+  `geometry.py` (upstream: `pose_normalize`, `apply_clahe`, `yaw_pitch_roll_from_matrix`,
+  landmark-index constants, the two cross-block constants `WINDOW_SECONDS`/
+  `YAW_VARIANCE_CEILING_DEG2`) · `x_core.py` (**validated path, G5** — the 4 affect
+  formulas, `NeutralCalibrator`, `map_to_valence_arousal`) · `episodes.py` (**validated
+  path, G5** — `WindowAccumulator`, `classify_window_confidence`) · `attention.py`
+  (pilot/unvalidated — `compute_v_so`, `compute_gaze_direction`, `BlinkDetector`,
+  `AttentionWindowAccumulator`) · `audio.py` / `context.py` (empty stubs, U_t/C_t — no
+  content by design) · `robust_baseline.py` (D0PA1 C1, MAD z-scoring, additive) ·
+  `signal_quality.py` (D0PA1 C2/C4, missingness+confidence+coverage for the 4 core
+  vectors, additive) · `manifests/*.json` (versioned per-block feature manifests).
+- **`analysis/`** — `baselines.py` (D7: raw / session_z / persistent_z, the temporal-
+  leakage-safe cross-session baseline) · `reliability.py` (D3: SEM, RC, Bland-Altman,
+  within-unit CV, all with bootstrap CIs; `compute_icc()` exists but refuses to run on
+  a single-unit design).
+- **`simulation/`** — `config.py` (`PreRegisteredConfig`, the single hashed pre-
+  registered-parameter object) · `provenance.py` (`RunProvenance`/`capture_run_provenance`,
+  git commit + dirty state + validated-path source hash) · `generator.py` (synthetic
+  subject/session/episode/trial generator, A1-A6 mechanisms) · `models.py` (from-scratch
+  multinomial logistic regression + `macro_f1`/`neg_log_loss`) · `precision.py` (fit/
+  evaluate/bootstrap/sweep — `compute_delta`, the negative control wired in
+  unconditionally, `bootstrap_ci_on_delta` and the refit-per-replicate variant) ·
+  `latent_recovery.py` (Z_true→Z_hat machinery validation, EMA placeholder pipeline) ·
+  `fps_logger.py` (D0PA1 C3, continuous FPS-as-metric) · `variant_log.py` (Gate 0 A5,
+  append-only) · `run_*.py` (five standalone D6 sweep drivers, each already produced its
+  artefact under `artefacts/`, not wired into `reproduce.py`).
+- **`controls/`** — `null_input.py` (blank-screen dispersion/false-event-rate control,
+  needs a live camera + operator) · `negative_control.py` (AR(1) meaningless signal,
+  wired into every `compute_delta` call automatically) · `leakage.py` (4 window variants:
+  valid/post_action/pre_action/timestamp_shift) · `time_shuffle.py` (episode-order
+  shuffle, diagnostic only, never a p-value) · `blink_positive.py` (event precision/
+  recall/F1 + count Bland-Altman against `features.attention.BlinkDetector`).
+- **`schema/`** — `canonical_log_v1.json` (the one versioned log schema, two record
+  types: `canonical_session_header`, `canonical_observation`) · `canonical_log_writer.py`
+  (the one writer, hand-rolled validator read from the schema doc, enforces missingness/
+  session-identity/timestamp-monotonicity invariants in code).
+- **`manifest/`** — `generate_data_manifest.py` + committed `data_manifest.csv` (Gate 0
+  A4: one row per file in `logs/`, hash + whatever identifiers are honestly recoverable).
+- **`tests/`** — one file per module above, plus `test_refactor_snapshot.py` (the golden
+  byte-exact regression net over the validated path) and `test_feature_separation.py`
+  (the D1 import/call-graph + runtime-monkeypatch + shim-isolation guard).
+- **Root scripts**: `reproduce.py`/`Makefile`/`reproduce.ps1` (D4, the one reproduction
+  command) · `compare_results.py` (D4 cross-environment tolerance report) ·
+  `gate2_score.py`/`gate2_report.py` (POC-era, frozen Gate 2 rule, unrelated to D0PA1's
+  own attention-validity Gate 2/D8) · `relabel_gate2_trials.py` (one-off data-hygiene
+  script, not part of the pipeline) · `stage0_skeleton.py`/`stage1_step*.py`/
+  `stage2_personality_agent.py`/`stage3_demo_ui.py`/`analyze_video.py`/
+  `orientation_capture.py` (the POC capture/UI/analysis consumers — **not modified by
+  D0PA1**, G5).
+
+### D0PA1.2 — BUILT vs NOT BUILT
+
+**Built (implemented and tested, `python tests/test_<name>.py` passes):** the D1
+feature-block separation (5 blocks + the 4-check separation guard) · MAD robust
+baseline (C1) · per-signal missingness/confidence/coverage for v_bf/v_es/v_jc/v_pd (C2/
+C4, NOT extended to attention-block signals) · continuous FPS logging (C3) · D7's three
+baseline representations · D3's absolute reliability measures + the ICC refusal-guard ·
+the canonical log schema + writer (not wired into any real capture loop) · Gate 0
+provenance capture + config hashing + validated-path source hashing + the data manifest
++ the variant log · all five controls' pure-computation code · the D6 synthetic
+precision simulation (generator, models, precision pipeline, 5 sweep passes) ·
+synthetic latent recovery · the D4 reproduction command + cross-environment compare
+script.
+
+**Not built:** D2 (prediction target: action classes, horizon, tie handling) — BLOCKED
+on the client · any `A_t`/ROI feature beyond the existing pilot V_so/gaze/blink (dwell,
+persistence, switching are nowhere in this repo) — BLOCKED on the same D2 answer · `U_t`
+audio (module is an intentionally empty stub) · `C_t` context (same, empty stub) ·
+leakage/time-shuffle controls on real action data (no real trial source exists) · a
+second-camera sensor-swap capture · wiring `CanonicalLogWriter` into any live capture
+loop · wiring `RunProvenance` into any live entry point (it exists and is tested, no
+real script calls it yet) · a trained vision model, face recognition, LSTM, self-
+retraining, intervention, or any of the other items OUT OF POC / still-out-under-D0PA1
+lists above forbid.
+
+### D0PA1.3 — BUILT BUT NEVER RUN AGAINST REAL DATA
+
+Do not mistake any of these for validated — each has only ever seen synthetic input or
+has not been run at all:
+
+- **`controls/null_input.py`** — the camera-loop orchestration has never been run. It
+  needs a live webcam and a human operator sitting still for the configured duration
+  (10 min default); this coding environment cannot provide either. Its pure-computation
+  pieces (`compute_dispersion`, `ExcursionDetector`, config hashing) are unit-tested.
+- **`controls/blink_positive.py`** — exercised only against synthetic aperture streams
+  (known ground-truth blink onsets) through the real, unmodified `BlinkDetector`. **No
+  real one-minute clip has been recorded, no real clip has been processed, and no
+  placeholder result for a real clip exists anywhere in this repository.**
+- **`controls/leakage.py` / `controls/time_shuffle.py`** — fully exercised on synthetic
+  data from `simulation/generator.py` only. Real trials do not exist (D2 blocked); a
+  pluggable `trial_source` interface is ready for a real source the day one exists.
+  `leakage.py`'s `post_action` variant specifically: this generator cannot even
+  establish the expected *direction* for that variant (see `docs/CONTROLS.md` §3) —
+  only real trials can test that.
+- **`reproduce.py` (D4)** — works end-to-end on the synthetic/self-contained inputs it
+  actually uses today (verified bit-identical across two runs, same machine). The
+  confirmatory archived inputs (real stored video + a real logged feature stream from
+  the client's actual sessions) **do not exist yet** — the client's task harness that
+  would produce them is under separate acceptance review.
+- **`analysis/reliability.py` / `analysis/baselines.py` (D3/D7)** — every number either
+  module has ever produced in this repository is synthetic or a hand-built array with
+  known ground truth (see `docs/RELIABILITY.md`). The required real data (three
+  sessions, fixed protocol, matched repeatable units) has not been collected.
+- **`features/signal_quality.py` blink/gaze extension** — the C2/C4 missingness/
+  confidence pattern was deliberately not extended to the attention-block pilot
+  signals; straightforward future work, not attempted.
+
+### D0PA1.4 — STANDING VERIFICATION HABITS
+
+- **Re-run the golden snapshot test after any change** — `python
+  tests/test_refactor_snapshot.py` — and state explicitly whether it matched or not,
+  quoting the SHA256 either way. Current golden SHA256:
+  `4f9c0f1786c18e8dbe5e3048b8b6b6e280cf6c434b9c53b119344746fc31bcff`.
+- **Guards are proven by making them fire, not asserted.** The pre-commit media/secret
+  hook, `tests/test_feature_separation.py`'s import-graph + shim-isolation checks, D7's
+  leakage test, and the blink-positive harness were each demonstrated FAILING on a
+  deliberately broken/leaky input before being trusted — see `docs/D1_DEPENDENCY_MAP.md`
+  §6/§9, `docs/D7_BASELINES.md`'s leakage-test section, and `PROVENANCE.md`'s hook
+  verification for the actual pasted failure output in each case.
+- **The negative control is verified by calling code the way an unaware caller would**
+  — no mention of "negative control" anywhere in the call, confirming it cannot be
+  silently omitted (`tests/test_precision.py`, `tests/test_leakage.py`,
+  `tests/test_time_shuffle.py`).
+- **Anything invented rather than measured gets listed separately**, every time — see
+  `docs/D6_SIMULATION.md`'s per-parameter "INVENTED" tags and this file's own D0PA1.3
+  above.
+- **Tests run directly, not via pytest** — `pytest` is not installed in this
+  environment. Run any test as `python tests/test_<name>.py`; each prints PASS/FAIL and
+  exits non-zero on failure. Do not suggest installing pytest as a fix.
+
+### D0PA1.5 — WHERE THE POC RECORD IS NOW STALE
+
+The POC STATUS/BUILD ORDER sections above this one are **history, unedited, and still
+binding as engineering discipline** — but two things they say no longer describe the
+live repo, corrected here rather than silently:
+
+- **"The system has no name — do not invent or reference one."** Still true; D0PA1
+  hasn't changed this.
+- **Gate 2, as POC STATUS describes it, is closed and scored** (`GATE2_FINDINGS.md`).
+  D0PA1 has its OWN, unrelated Gate 2 (attention-validity, D8) that has **not** been
+  run — do not read POC STATUS's Gate 2 language as describing D0PA1 progress. See the
+  naming-collision table at the top of this file.
+- **The "42 hardcoded constants" finding in `docs/AUDIT_A_COLUMN.md`** (Q6, written
+  before D1) is superseded by `docs/GATE0_PROVENANCE.md`'s A2 section: 3 moved into
+  `PreRegisteredConfig`, 39 left in place with a stated reason each, and a
+  `validated_path_source_sha256` now covers the 39 that stayed. Read GATE0_PROVENANCE.md
+  for the current disposition, not AUDIT_A_COLUMN.md's original table.
+- **`PROJECT_STATUS_REPORT.md` / `docs/AUDIT_A_COLUMN.md`** are both pre-D0PA1 snapshots
+  (2026-07-27 and 2026-08-22/24) of the POC-era pipeline's own state — real, still
+  accurate as of when they were written, but do not describe anything D0PA1 added.
+  Treat them as history, the same as the POC STATUS section itself.
+
+---
+
 ## ENVIRONMENT (decided against reality — never re-suggest)
 
 - Windows laptop, **native Python** — NO WSL2, NO Docker, NO local GPU.
