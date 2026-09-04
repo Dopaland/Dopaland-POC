@@ -280,6 +280,11 @@ detail (current commit, open items, run-vs-not-run status) this file doesn't car
   session-identity/timestamp-monotonicity invariants in code).
 - **`manifest/`** — `generate_data_manifest.py` + committed `data_manifest.csv` (Gate 0
   A4: one row per file in `logs/`, hash + whatever identifiers are honestly recoverable).
+- **`privacy/`** — `retention.py` (matrix row 30: config-hashed retention period +
+  storage location, a deletion routine with a dry-run default, a deletion log so the
+  claim is verifiable). See `docs/PRIVACY_AND_RETENTION.md` for what is implemented
+  vs. still an open policy decision (the retention period and the storage location
+  are both engineering placeholders, not proposed policy).
 - **`tests/`** — one file per module above, plus `test_refactor_snapshot.py` (the golden
   byte-exact regression net over the validated path) and `test_feature_separation.py`
   (the D1 import/call-graph + runtime-monkeypatch + shim-isolation guard).
@@ -304,7 +309,10 @@ provenance capture + config hashing + validated-path source hashing + the data m
 + the variant log · all five controls' pure-computation code · the D6 synthetic
 precision simulation (generator, models, precision pipeline, 5 sweep passes) ·
 synthetic latent recovery · the D4 reproduction command + cross-environment compare
-script.
+script · the privacy/retention deletion mechanism (config-hashed period + location,
+dry-run default, a verifiable deletion log) · the §19 matrix row map, the stopping/
+exclusion-rules tracker, and a draft (unsent, unreviewed) pre-registration sign-off
+response.
 
 **Not built:** D2 (prediction target: action classes, horizon, tie handling) — BLOCKED
 on the client · any `A_t`/ROI feature beyond the existing pilot V_so/gaze/blink (dwell,
