@@ -1,17 +1,21 @@
-# D0PA1 Controls — Null-Input, Negative Control, and Leakage Harness
+# D0PA1 Controls — Null-Input, Negative Control, Leakage Harness, Positive Blink Control
 
-**Status:** all three controls built. `controls/negative_control.py` is
+**Status:** all four controls built. `controls/negative_control.py` is
 fully exercised (it runs automatically inside `simulation/precision.py` —
 see §2 — and, through that, inside `controls/leakage.py` too — see §3).
-`controls/leakage.py` (§3) is fully exercised on synthetic data. `controls/
-null_input.py`'s camera-loop orchestration has NOT been run — it requires
-a live webcam and a human operator sitting still for the configured
-duration, which this coding session cannot provide. Its pure-computation
-pieces (dispersion, excursion detection, config hashing) ARE tested
+`controls/leakage.py` (§3) is fully exercised on synthetic data.
+`controls/blink_positive.py` (§4) is fully exercised on synthetic
+aperture streams against the REAL `features.attention.BlinkDetector` —
+**no real clip has been recorded or processed; that gap is stated
+explicitly in §4, not implied to be closed.** `controls/null_input.py`'s
+camera-loop orchestration has NOT been run — it requires a live webcam
+and a human operator sitting still for the configured duration, which
+this coding session cannot provide. Its pure-computation pieces
+(dispersion, excursion detection, config hashing) ARE tested
 (`tests/test_controls.py`). This gap is stated here explicitly, not
 implied to be closed (G3).
 
-None of these controls decides anything (G1). All three compute and store
+None of these controls decides anything (G1). All four compute and store
 numbers for a human to read.
 
 ---
@@ -394,4 +398,133 @@ from simulation.generator import GeneratorConfig
 source = synthetic_trial_source(GeneratorConfig(seed=1, n_sessions=3, episodes_per_session=200, trials_per_episode=5, effect_size=0.3))
 result = run_leakage_diagnostics(source, n_classes=3, n_sessions=3, config=LeakageConfig())
 print(format_leakage_table(result))
+```
+
+---
+
+## 4. Positive blink control (`controls/blink_positive.py`)
+
+### What it is
+
+Compares `features.attention.BlinkDetector`'s output (reused unmodified,
+G5) against a manual, frame-by-frame blink count, over N one-minute
+clips. Reports, never decides (G1):
+
+- **Event precision / recall / F1** — `match_events()` pairs each
+  manually-counted blink against the nearest detected blink within a
+  CONFIGURABLE tolerance (`BlinkPositiveConfig.matching_tolerance_ms`,
+  default 150ms), greedily by smallest time difference (not index order,
+  and not "first found") so two nearby manual events competing for one
+  detected event resolve to whichever is genuinely closer. An unmatched
+  manual event is a false negative (a real blink the detector missed); an
+  unmatched detected event is a false positive (the detector saw a blink
+  that wasn't there).
+- **Per-clip count agreement, Bland-Altman** — `compute_count_agreement()`
+  reuses `analysis.reliability.compute_bland_altman_pair` DIRECTLY (a
+  `(n_clips, 2)` matrix, columns `[detected_count, manual_count]`) — not
+  a second implementation of bias/limits-of-agreement math. Confirmed
+  identical output to calling that function directly
+  (`tests/test_blink_positive.py`'s
+  `check_count_agreement_reuses_reliability_bland_altman`).
+
+### G1, precisely — where the proposed criterion values live and why nothing reads them
+
+`BlinkPositiveConfig` holds `matching_tolerance_ms` (a genuine algorithm
+parameter — `match_events()` actually uses it) AND three PROPOSED
+criterion values from this task's own instruction — `criterion_event_f1`
+(0.80), `criterion_count_tolerance_fraction` (0.20),
+`criterion_count_min_clips_fraction` (0.80, "at least 8 of 10 clips") —
+stored and hashed so they travel with every report, but **never read back
+by any function in this file to make a comparison.** Verified
+structurally, not just by not having written the comparison:
+`tests/test_blink_positive.py`'s `check_criterion_values_never_compared_in_code`
+parses `controls/blink_positive.py`'s own AST and confirms none of the
+three criterion field names ever appears as either side of a `Compare`
+node anywhere in the file. `format_blink_report()` prints the computed
+`precision`/`recall`/`f1`/Bland-Altman numbers and the `config_hash` —
+never the criterion values next to a checkmark or a verdict. A human
+reads the config's stored criterion alongside the report and makes the
+comparison themselves.
+
+### The manual-count entry format — fillable without touching code
+
+`write_manual_count_template(clip_id, path)` writes a plain CSV with a
+commented instruction header (what to do, one blink timestamp per line,
+where to put your initials) and `load_manual_count(path)` reads it back,
+skipping comment lines. No code editing, no JSON schema, no special
+tooling — a reviewer opens the file in any text editor or spreadsheet
+program.
+
+### Synthetic validation, against the REAL detector (3.3)
+
+`tests/test_blink_positive.py` builds a synthetic per-frame aperture
+stream (baseline ~0.47 with noise, dipping to ~0.40 for ~200ms at KNOWN
+blink onset times — shaped to match `features/attention.py`'s own
+documented real-aperture evidence, not invented from scratch) and runs it
+through the **real, unmodified** `BlinkDetector`:
+
+- **Clean synthetic case**: 5 known onsets, detector recovers all 5,
+  `precision=1.0 recall=1.0 f1=1.0`.
+- **Deliberately degraded case** (half the real detections dropped, two
+  spurious detections added far from any real blink): F1 drops from
+  `1.0` to `0.615` — confirming the metrics actually MOVE in the expected
+  direction under a worse detector, not merely that they compute without
+  crashing.
+- **Full multi-clip run**: three synthetic clips through
+  `evaluate_run()`, producing a pooled precision/recall/F1 (TP/FP/FN
+  summed across clips before taking one set of ratios — never a
+  mean-of-per-clip-ratios, which would weight a 1-blink clip the same as
+  a 30-blink one) and a count-agreement Bland-Altman result.
+
+**Confirmed by construction that `run_detector_on_aperture_stream()`
+records the REOPEN-confirmation timestamp, not the closure onset** (see
+that function's own docstring) — a real methodological choice, stated
+explicitly rather than left for a reader to discover, since it affects
+how a ~150ms tolerance should be interpreted against a real ~150-300ms
+blink duration.
+
+### THE CLIPS DO NOT EXIST YET — stated as plainly as the task requires
+
+**No real clip has been recorded. No real clip has been processed by this
+harness. No placeholder result for a real clip exists anywhere in this
+repository.** Every number `controls/blink_positive.py` or
+`tests/test_blink_positive.py` has ever produced is either a hand-
+constructed example (event-matching/metric correctness) or the synthetic
+aperture stream described above. `tests/test_blink_positive.py`'s
+`check_no_placeholder_real_clip_artefacts_committed` checks this
+repository's own tracked file list for anything shaped like a real clip
+manifest or manual-count file and finds none.
+
+### 3.4 — scope limit, stated explicitly
+
+**This validates blink-count DETECTION only.** It establishes no
+psychological interpretation of blinking — not fatigue, not attention,
+not affect, not anything else CLAUDE.md's honest-framing rules already
+forbid claiming from a geometric signal. A detector that reliably counts
+blinks the way a human would is a DETECTION-validation result. **Detector
+validation is not construct validation.** Nothing in this control, or in
+any report it produces, should be read as evidence about what blinking
+*means* for this subject.
+
+### How to run it
+
+```python
+from controls.blink_positive import (
+    BlinkPositiveConfig, build_clip_manifest, write_manual_count_template,
+    load_manual_count, run_detector_on_aperture_stream, evaluate_run, format_blink_report,
+)
+
+# 1. Build the manifest and manual-count templates for N real clips (once recorded):
+manifest = build_clip_manifest([f"clip_{i:02d}" for i in range(10)])
+for entry in manifest:
+    write_manual_count_template(entry.clip_id, f"manual_counts/{entry.clip_id}.csv")
+    # -> a human fills this in by hand, one blink timestamp per line.
+
+# 2. Once a clip is recorded and its aperture stream extracted:
+detected = run_detector_on_aperture_stream(aperture_stream)  # [(t, aperture_or_None), ...]
+manual = load_manual_count(f"manual_counts/{entry.clip_id}.csv")["blink_timestamps_seconds"]
+
+# 3. Evaluate across all clips and print the report (no verdict):
+result = evaluate_run([(cid, detected, manual) for cid, detected, manual in per_clip_data], BlinkPositiveConfig())
+print(format_blink_report(result))
 ```
