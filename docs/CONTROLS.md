@@ -336,25 +336,54 @@ directly, not assumed.
 
 ### 1.5 — the task-conditional caveat, stated plainly
 
-These four variants establish **expected DIRECTION**, not magnitude.
-Because this generator's latent state `z` is a stationary AR(1) process,
-`Corr(z_t, z_{t+k})` depends only on `|k|` — a `valid` feature at lag `k`
-and a `post_action` feature at lag `k` (forward) carry, in this synthetic
-model, the **same theoretical correlation strength** with the trial being
-predicted. **Where post-action information is not known to carry
-target-relevant signal for a given real task, the post-action window may
-not dramatically outperform `valid` — and that alone does not mean the
-windowing (or this harness) is broken.** A severe, unambiguous leak (a
-feature that directly encodes the true class label — something that could
-only be known *after* the action) is confirmed to produce a large,
-clearly-nonzero Delta through the exact same `compute_delta` machinery
-(`tests/test_leakage.py`'s `check_injected_severe_leak_produces_large_delta`:
-`+0.66` vs. a clean `-0.02` baseline) — proving the underlying detection
-mechanism genuinely responds to a real leak when one exists. Whether the
-milder, naturally-symmetric `post_action` variant's Delta on any given
-real dataset should be read as "no leak" or "a leak too weak to show up
-in this particular window construction" is a human judgment this harness
-deliberately does not make.
+These four variants establish **expected DIRECTION**, not magnitude — and
+on THIS generator, synthetic data cannot even establish the expected
+direction for the `post_action` variant specifically. Stated explicitly,
+not left implicit:
+
+**Why synthetic data cannot establish the expected direction here.** In
+this generator, `x_signal` at any trial is an observation of the SAME
+latent state `z` that drives the action at that trial — the signal
+precedes (or at best coincides with) the action, by construction (A6's
+mixing: `x_signal_s = effect_size·z_unit_s + noise_s`, and `z_s` is what
+produces `class_label_s`). A `post_action`-variant feature, drawn from a
+LATER trial, observes `z` only after the causal chain that produced the
+action has already run — it carries no channel by which "information
+from after the action" could be qualitatively richer than information
+from before it, the way a REAL post-action leak (a feature contaminated
+by the outcome itself — a motor-response artifact, a next-stimulus cue,
+a feature literally computed FROM the recorded action) would be. Shifting
+the window forward therefore does not add predictive leverage over the
+action being predicted; it only moves further from the causally relevant
+moment along the same autocorrelation decay — a forward shift **loses**
+information here, it does not gain any. The one real run recorded above
+is consistent with exactly that: `valid` (`+0.0000`) outperformed
+`post_action` (`-0.0172`), the opposite of what a genuine post-action
+leak would look like. **This generator was never built to model a real
+post-action contamination channel, so it cannot be used to demonstrate
+that a real one would show up as an inflated `post_action` Delta — only
+real trials, once collected, can test that direction.**
+
+**What synthetic data DOES conclusively establish**, and is the actual
+evidence for this harness working at all: that the underlying detection
+mechanism (`compute_delta`'s with/without comparison) responds to leakage
+when leakage genuinely exists. A severe, unambiguous leak (a feature that
+directly encodes the true class label — something that could only be
+known *after* the action) produces a large, clearly-nonzero Delta through
+the exact same machinery (`tests/test_leakage.py`'s
+`check_injected_severe_leak_produces_large_delta`: `+0.66` vs. a clean
+`-0.02` baseline). That is what "the harness detects leakage when leakage
+exists" rests on — not the natural `post_action` variant's mild,
+direction-ambiguous result on this generator, which this document does
+not present as evidence either way.
+
+**This control will be re-run on real trials once they exist, and the
+outcome reported either way** — a `post_action` Delta that looks ordinary
+on real data is not automatically "no leak" (per the specification's own
+investigate-and-report rule: a positive finding gets investigated, not
+silently waved through, but neither does an ordinary-looking one get
+silently treated as proof of a clean pipeline). Nothing in this harness
+decides that question now or later (G1).
 
 ### How to run it
 

@@ -35,6 +35,15 @@ recover_latent_ema()) is the simplest defensible choice consistent with
 simulation/models.py's docstring) -- not a sophisticated filter selected
 because it produced a nicer curve.
 
+recover_latent_ema() IS A PLACEHOLDER, NOT THE STUDY'S LATENT MODEL --
+that model does not exist yet. It exists solely so the machinery
+(correlation/RMSE computation, missing-data handling, the sweep) has
+something concrete to recover a KNOWN Z_true from. Every number this
+module or docs/D6_SIMULATION.md's section 13 reports characterises THIS
+PLACEHOLDER on synthetic data -- never the eventual method, and never
+compared against the proposed success values (correlation >= 0.7,
+standardised RMSE <= 0.5) anywhere in this codebase.
+
 2.4 -- STATED PLAINLY, HERE AND IN docs/D6_SIMULATION.md's latent-recovery
 section: this validates the MACHINERY (does correlation/RMSE computation,
 missing-data handling, and a plausible simple recovery procedure behave

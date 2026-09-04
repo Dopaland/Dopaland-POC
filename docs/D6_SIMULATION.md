@@ -730,6 +730,17 @@ consistent with the client's own "simple model families" scope
 constraint (`simulation/models.py`'s docstring) — not a filter chosen
 because it produced a nicer curve (G2).
 
+**`recover_latent_ema()` is a PLACEHOLDER, stated explicitly, not the
+study's actual latent model.** The study's real latent model does not
+exist yet — this EMA exists solely to give the machinery something
+concrete to recover a KNOWN `Z_true` from, so the correlation/RMSE
+computation and the sweep code can be validated before any real method is
+built. Every number this document reports below is a property of THIS
+PLACEHOLDER, run against synthetic data with a known answer — not a
+characterization, preview, or lower bound of what the eventual method
+will achieve. Do not read the numbers below as evidence about the
+eventual method.
+
 ### Why this is a PREREQUISITE, not an extra (2.5)
 
 Without it, a near-zero measured latent contribution on real data is
@@ -791,19 +802,19 @@ falls with `extra_noise_std` at every grid point (confirmed monotonic
 both ways on the mean, `tests/test_latent_recovery.py`'s
 `run_real_sweep_and_report`) — the curve moves in the direction a working
 recovery pipeline should move it. At `effect_size=0.0` (the true null),
-correlation sits at ≈0 as it should — the EMA does not fabricate
-structure from noise. **The best cell on this grid (`effect_size=0.8`,
-`extra_noise_std=0.0`) reaches `pearson_r≈0.70`, `rmse_std≈0.77`** — well
-short of a naive "near-perfect recovery" intuition, because this
-generator's `z` is itself a noisy AR(1) path (its own innovation noise,
-plus fatigue inflating that noise across a session) and a single EMA
-constant cannot perfectly track a moving target from single noisy
-per-step observations. **No success threshold is set anywhere in this
-module or this document.** The proposed values (correlation ≥ 0.7,
-standardised RMSE ≤ 0.5) are for a human to sign against numbers like
-these — this machinery's job is only to report where it actually lands
-across the grid, honestly, including that the best cell here sits right
-at the proposed correlation bar and clearly above the proposed RMSE bar.
+correlation sits at ≈0 as it should — the placeholder EMA does not
+fabricate structure from noise.
+
+**The best cell on this grid (`effect_size=0.8`, `extra_noise_std=0.0`)
+reaches `pearson_r≈0.70`, `rmse_std≈0.77`.** This number characterises
+**the placeholder EMA pipeline described above, on synthetic data — and
+nothing else.** It is not compared against the proposed success values
+(correlation ≥ 0.7, standardised RMSE ≤ 0.5) anywhere in this module or
+this document, and it must not be read as a preview of, or a bound on,
+what the study's eventual (not-yet-built) latent model would achieve on
+the same data. Recording the number and this caveat is the full extent
+of what this section does with it — no comparison, no judgment, no
+threshold, here or anywhere else in this codebase (G1/2.3).
 
 ### What this validates, and what it categorically does not (2.4)
 
