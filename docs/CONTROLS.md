@@ -1,19 +1,22 @@
-# D0PA1 Controls — Null-Input, Negative Control, Leakage Harness, Positive Blink Control
+# D0PA1 Controls — Null-Input, Negative Control, Leakage Harness, Positive Blink Control, Time-Shuffle
 
-**Status:** all four controls built. `controls/negative_control.py` is
+**Status:** all five controls built. `controls/negative_control.py` is
 fully exercised (it runs automatically inside `simulation/precision.py` —
-see §2 — and, through that, inside `controls/leakage.py` too — see §3).
-`controls/leakage.py` (§3) is fully exercised on synthetic data.
-`controls/blink_positive.py` (§4) is fully exercised on synthetic
-aperture streams against the REAL `features.attention.BlinkDetector` —
-**no real clip has been recorded or processed; that gap is stated
-explicitly in §4, not implied to be closed.** `controls/null_input.py`'s
-camera-loop orchestration has NOT been run — it requires a live webcam
-and a human operator sitting still for the configured duration, which
-this coding session cannot provide. Its pure-computation pieces
-(dispersion, excursion detection, config hashing) ARE tested
-(`tests/test_controls.py`). This gap is stated here explicitly, not
-implied to be closed (G3).
+see §2 — and, through that, inside `controls/leakage.py` and
+`controls/time_shuffle.py` too — see §3 and §5).
+`controls/leakage.py` (§3) and `controls/time_shuffle.py` (§5) are fully
+exercised on synthetic data — **neither has been run on real trials,
+because real trials do not exist yet** (stated in each section, not
+implied to be closed). `controls/blink_positive.py` (§4) is fully
+exercised on synthetic aperture streams against the REAL
+`features.attention.BlinkDetector` — **no real clip has been recorded or
+processed; that gap is stated explicitly in §4, not implied to be
+closed.** `controls/null_input.py`'s camera-loop orchestration has NOT
+been run — it requires a live webcam and a human operator sitting still
+for the configured duration, which this coding session cannot provide.
+Its pure-computation pieces (dispersion, excursion detection, config
+hashing) ARE tested (`tests/test_controls.py`). This gap is stated here
+explicitly, not implied to be closed (G3).
 
 None of these controls decides anything (G1). All four compute and store
 numbers for a human to read.
@@ -527,4 +530,100 @@ manual = load_manual_count(f"manual_counts/{entry.clip_id}.csv")["blink_timestam
 # 3. Evaluate across all clips and print the report (no verdict):
 result = evaluate_run([(cid, detected, manual) for cid, detected, manual in per_clip_data], BlinkPositiveConfig())
 print(format_blink_report(result))
+```
+
+---
+
+## 5. Time-shuffle control (`controls/time_shuffle.py`)
+
+**Matrix row 18** — missed when the other three controls were built,
+added here.
+
+### What it is
+
+Shuffles **episode order** — never individual frames or trials — and
+re-runs the exact same with/without comparison `controls/leakage.py`'s
+four window variants run (`compute_delta`/`bootstrap_ci_on_delta`,
+reused, not reimplemented). If ordered and shuffled performance are
+comparable, temporal organisation (WHEN something happened, not just
+THAT it happened) is contributing little to the with-signal model's
+apparent performance — a direct check on the behavioural-dynamics claim.
+
+`shuffle_episode_order()` permutes which episode's content fills which
+chronological slot, preserving each ORIGINAL session's episode count (a
+slot can move across session boundaries — deliberate, since session
+dummy features are exactly the kind of temporal-organisation feature this
+control tests) while leaving every trial's own observed content
+(`x_signal`, `class_label`, `z`, `missing`) completely untouched.
+Position-dependent fields (`global_trial_idx`, `episode_id`,
+`session_idx`, `t_in_session`, `prev_class_label`) are recomputed for
+internal self-consistency after the shuffle — verified directly
+(`tests/test_time_shuffle.py`): the multiset of trial content is
+byte-identical before and after, session slot sizes are preserved,
+`prev_class_label` always equals whatever trial's `class_label` now
+immediately precedes it in the shuffled order, and the same seed produces
+the identical shuffle twice while a different seed produces a genuinely
+different one.
+
+### A representative run (synthetic, seed 21, strong drift/fatigue)
+
+```
+condition      u_with  u_without  delta_point      ci_lo      ci_hi  delta_negctrl n_test_trials
+------------------------------------------------------------------------------------------------
+ordered        0.3989     0.3101      +0.0888    +0.0472    +0.1294        -0.0004           600
+shuffled       0.4168     0.3112      +0.1056    +0.0501    +0.1675        -0.0001           600
+
+DIFFERENCE (ordered - shuffled): delta_point_diff=-0.0168  CI=[-0.0936, +0.0479]
+```
+
+Reported, not judged (G1): on this synthetic draw the difference's CI
+spans zero. That is a number for a human to read, not a claim this
+document is making about whether temporal organisation matters — see
+1.3 immediately below for why no p-value-shaped interpretation may ever
+be attached to it.
+
+### 1.3 — DIAGNOSTIC ONLY, not a permutation-test p-value
+
+CLAUDE.md's own D0PA1 hard constraint #4 draws this line explicitly:
+*"time-shift (diagnostic only, never a p-value)"* is listed separately
+from the INFERENTIAL permutation procedure, which *"must preserve
+temporal dependence and has its own exchangeability unit, which need not
+match the bootstrap unit."* `controls/time_shuffle.py` implements the
+FORMER only. This is not a stylistic caveat left to a docstring a reader
+could miss: every result dict carries `"diagnostic_only": True,
+"not_a_permutation_test_pvalue": True` as literal fields (checked
+directly, `tests/test_time_shuffle.py`), and `format_time_shuffle_table()`
+prints the same warning as the first four lines of the report, before any
+number appears.
+
+### 1.4 — negative control, verified the same unaware-caller way
+
+Both conditions (`ordered` and `shuffled`) run through `compute_delta()`,
+which always builds the negative control unconditionally — carried
+through automatically here for the same reason it is in
+`controls/leakage.py`. Verified directly: `run_time_shuffle_diagnostic(source,
+3, 3, n_boot=100)` — no mention of negative controls anywhere in the call —
+still returns `delta_negative_control` populated for both conditions.
+
+### 1.5 — synthetic only, stated plainly
+
+Built and tested exclusively against `simulation/generator.py`. **This
+control has not been run on real trials, because real trials do not
+exist yet** — the client's task harness that would produce them is under
+separate acceptance review, and D2 (action classes, horizon) is BLOCKED
+per CLAUDE.md. Same pluggable `trial_source` contract as
+`controls/leakage.py` (a zero-argument callable) — a future real-trial
+source can be substituted without any change to this module.
+
+### How to run it
+
+```python
+from controls.time_shuffle import run_time_shuffle_diagnostic, format_time_shuffle_table, TimeShuffleConfig
+from simulation.generator import GeneratorConfig, generate
+
+def source():
+    return generate(GeneratorConfig(seed=1, n_sessions=3, episodes_per_session=200, trials_per_episode=5, effect_size=0.4))
+
+result = run_time_shuffle_diagnostic(source, n_classes=3, n_sessions=3, config=TimeShuffleConfig())
+print(format_time_shuffle_table(result))
 ```
