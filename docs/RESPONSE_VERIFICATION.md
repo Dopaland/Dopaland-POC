@@ -176,3 +176,30 @@ unexamined inconsistency.
 - Future-tense claims ("the report will state...", "I would rather...") — these are
   intentions for the eventual final report, not present-tense claims about this
   repository's current state, and are correctly outside this document's scope.
+
+---
+
+## 5. 2026-09-04 addendum — the five findings, corrected version checked
+
+A corrected `D0PA1_Section19_SignOff_Response.docx` was supplied and committed,
+superseding the version §1–§4 above were checked against (verified byte-different by
+SHA256 before committing — `646ae5d2...` vs the prior `ac3b8ea8...`). Each of the five
+findings above was checked against the actual text of the new document, not assumed
+correct because a correction was requested. Results:
+
+| Finding | Claimed fix | Checked | Result |
+|---|---|---|---|
+| §1, separation test undercount | "now described as four checks... each was demonstrated failing before being relied on" | Full sentence read in context | **CONFIRMED, exact.** *"tests/test_feature_separation.py performs four checks: [import-graph]; [call-graph]; [runtime monkeypatch]; and a fourth added later, covering the compatibility shim... Each was demonstrated failing on a deliberate violation before being relied on."* |
+| §3.3, internal contradiction | "§4.2 no longer says the acceptance check is 'in progress' anywhere; it states in both places that the check has not been carried out" | Both §2 and §4.2 read in full | **CONFIRMED, with a precision.** §4.2 states plainly: *"the acceptance check has NOT been performed... It has not started."* §2 does not independently assert a status at all any more — it now reads *"it is resolved, subject to my acceptance check against §6.4, §6.5 and §6.8"* with no "in progress" language. This resolves the contradiction (§2 no longer conflicts with §4.2) without §2 itself repeating the "not carried out" statement — a different mechanism than "both places," but the actual defect (two contradictory present-tense claims) is gone. The only remaining occurrence of the string "in progress" anywhere in the document is inside §4.2's own sentence describing what *a previous version* said, which is correct usage, not a live claim. |
+| §3.2, fsck claim | "no longer asserts a clean object store at an unspecified moment... states the durable, checkable claim: the store was pruned after hook verification, a dangling object from routine commit activity is not evidence of anything, and no media file or credential has ever entered this history" | Both occurrences of "object store" in the document located and read | **CONFIRMED in §4.27, NOT fully carried through to §4.11.** §4.27 now reads exactly as described: *"The object store was pruned after that verification. A dangling object created by ordinary commit activity may exist at any moment and is not evidence of anything; the substantive and checkable claim is that no media file and no credential has ever entered this history."* **But** §4.11's own "Evidence today" bullet list still contains the unreworded phrase *"clean object store. See §4.27."* — a residual, unqualified claim in a second location the correction did not reach. Worth a second pass before sending; the durable claim is correct where it matters most (§4.27, the section actually about provenance) but is contradicted by its own cross-reference target reading differently than the bullet implies. |
+| §6 count | "corrected from five to eleven evidenced rows" | §6 text read; independently recounted from §4's own 30-row table, not taken from §6's own arithmetic | **CONFIRMED, and independently re-derived to match.** §6 now reads *"Eleven carry implementing code that has been exercised and evidenced... Eleven, seven, nine and three: thirty rows."* Counting §4's table directly: `EVIDENCED` rows are 1, 6, 11, 13, 21, 24, 26, 27, 28, 29 — **11 rows**; `BUILT, NOT YET RUN ON REAL DATA` rows are 3, 4, 9, 15, 16, 18, 30 — **7 rows**; plain `RETURNED` rows are 2, 5, 7, 8, 10, 12, 14, 20, 25 — **9 rows**; `DECISION REQUIRED` rows are 19, 22, 23 — **3 rows**. 11+7+9+3 = 30. All four counts match §6's own arithmetic exactly. |
+| Row 21 reclassification | "reclassified from BUILT-NOT-RUN to EVIDENCED" | §4's table, row 21 | **CONFIRMED.** Row 21 now reads `RETURNED · EVIDENCED §4.21`, changed from the prior version's `RETURNED · BUILT, NOT YET RUN ON REAL DATA`. |
+
+**Net: four of five findings fully corrected exactly as described; one (the fsck
+claim) corrected in its primary location but with one residual unreworded mention
+elsewhere in the same document, reported rather than silently accepted as complete.**
+No new issues were introduced by this revision that this pass could find — the four
+fully-corrected items were checked against the same evidence used to raise them
+originally (re-reading the same passages, not a fresh sweep of the whole document),
+and nothing in the surrounding text changed in a way that broke anything §1–§4 above
+verified.
