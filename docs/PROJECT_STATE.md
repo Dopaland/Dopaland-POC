@@ -75,7 +75,20 @@ repository cannot supply on its own.
 
 - **D2** (prediction target: real action classes, horizon, tie/rapid-succession
   handling) — everything downstream waits on this.
-- **Real `A_t`/ROI attention features** beyond the existing pilot V_so/gaze/blink code.
+- **Real `A_t`/ROI attention features** beyond the existing pilot V_so/gaze/blink
+  code — with one distinction now load-bearing, established by
+  `docs/ROI_FEASIBILITY.md` §5 and repeated here so it cannot be lost: the
+  **aggregation math** (dwell/switching/persistence/coverage over a *supplied*
+  `(timestamp, roi_id)` stream, `features.attention.ROIWindowAccumulator`) is
+  **built and tested** against a synthetic supplier — this specific piece is
+  blocked ONLY on the harness delivering the stream, i.e. integration work, not
+  construction. **Gaze-to-ROI attribution from this system's own sensor** is a
+  separate, independent limit — constrained by real angular-resolution
+  measurement (`docs/ROI_FEASIBILITY.md` §2), not by the harness at all: coarse
+  horizontal (left/right) attribution is defensible; vertical attribution is not,
+  at any tested granularity, including the coarsest possible split. A future
+  session must not present these two as one blocked item — the harness arriving
+  resolves the first and does nothing for the second.
 - **The leakage and time-shuffle controls run on real trial data** — both harnesses
   are built and exercised on synthetic data only; `leakage.py`'s `post_action` variant
   specifically cannot even establish its expected *direction* on synthetic data (see

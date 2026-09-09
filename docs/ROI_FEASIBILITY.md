@@ -10,16 +10,37 @@ number is reported for a human to read and act on.
 
 ---
 
-## VERDICT (Task 2.4) — read this first
+## VERDICT (Task 2.4, sharpened by the "ACT ON THE ROI FEASIBILITY VERDICT" task's Task 1) — read this first
 
 **Horizontal (yaw) region attribution is defensible. Vertical (pitch) region
 attribution is not, at any granularity tested — including the coarsest possible
-version (a plain top/bottom split).** The required angular separation for every layout
-that has a vertical component exceeds what this pipeline's pitch channel can produce
-even under maximal, deliberate, directed effort — this is not a noise problem that
-more data would average out; the signal does not reach the required magnitude in the
-first place. Yaw, by contrast, clears its required separations by roughly 16–24× its
-own resting noise floor, confirmed against two independent sets of real archived data.
+version (a plain top/bottom split). This survives a symmetric re-check of both
+denominators (below), but the REASON has been corrected and sharpened.** The
+original phrasing of this verdict said pitch fails because "the required
+separation exceeds what this pipeline's pitch channel can produce... even under
+maximal, deliberate, directed effort" — implying a hard physical magnitude
+ceiling. A symmetric re-measurement (§2.3–§2.5 below) found that framing was not
+quite right: the pitch channel demonstrably CAN register values well above every
+required separation (up to 31.2° incidentally, in the same archived clip used to
+measure yaw) — so the failure is not that pitch is incapable of large values in an
+absolute sense. What actually fails is RELIABILITY UNDER DIRECTION: across three
+real, directed "look down" sessions, the system reads the subject as still
+"oriented toward the screen" 100% of the time, every session, with zero
+exceptions — the large pitch values this channel is physically capable of
+registering do not show up when a person is actually told to produce them on
+command. Yaw shows the opposite pattern: directed "look left"/"look right"
+sessions reliably and reproducibly change the reading (`oriented_rate` collapses
+from 1.00 to 0.11–0.69). The PRACTICAL conclusion is unchanged — pitch-based ROI
+attribution is not viable — but the mechanism is now stated more precisely: this
+is a directed-reproducibility failure, not a magnitude ceiling, and the
+distinction matters because a magnitude ceiling could in principle be worked
+around by choosing a coarser layout, while a reproducibility failure at the
+coarsest possible layout (a plain top/bottom split) cannot be.
+
+Yaw, by contrast, clears its required separations by roughly 16–24× its own
+resting noise floor, confirmed against two independent sets of real archived data
+— and clears comfortably under every "achievable deflection" comparator measured
+in §2.3–§2.5 as well.
 
 **The largest honest claim available: a coarse (2- or plausibly 3-way) left/right
 region attribution, plus the existing binary "oriented toward the screen" scalar and
@@ -255,35 +276,95 @@ real yaw excursions as a behavioural change, not just as a quiet noise increase.
 deliberate, sustained "look down" command produces a system readout that is not
 reliably distinguishable from sitting still and looking at the screen.
 
-### 2.3 Required separation vs. measured signal, as a ratio
+### 2.3 Closing the asymmetry — defining "achievable deflection" once, for both axes
 
-`ratio = required separation ÷ measured value`. For yaw, the denominator is the real
-resting noise floor (§2.2) — a large ratio is favourable (the required gap dwarfs the
-noise). **For pitch, no archived resting-noise-floor figure exists** (the schema that
-would log it, `raw_head_pose_deg`, was added to `orientation_capture.py` after the 18
-existing real records were captured — every one of them predates it). The denominator
-used for pitch instead is the **best-case achieved deflection under active, deliberate
-effort** (~4.4°, §2.2) — an upper bound on what the channel can contribute at all. A
-ratio **above** 1 here is *unfavourable*: it means the required separation exceeds
-even the most generous real signal available, which likely understates the true
-noise-floor ratio (resting variation is presumably smaller than actively-attempted
-deflection, so the real noise-floor ratio would be worse, not better).
+The table originally reported here compared yaw against its resting NOISE FLOOR
+(a favourable denominator: a large ratio is good) and pitch against an
+ACHIEVABLE-DEFLECTION figure (an unfavourable denominator: a ratio above 1 is
+bad) — an inconsistent comparison for a client-facing document, and the exact
+gap the "ACT ON THE ROI FEASIBILITY VERDICT" task's Task 1 asked to be closed.
+This section replaces it with both denominators computed for both axes, using
+one explicitly-stated definition applied identically.
 
-| Layout | Axis | Required | Measured | Ratio | Reads as |
-|---|---|---|---|---|---|
-| Halves | Yaw | 15.53° | 0.65° (noise floor) | **≈24×** | Comfortably resolvable |
-| Quadrants | Yaw | 15.53° | 0.65° (noise floor) | **≈24×** | Comfortably resolvable |
-| Quadrants | Pitch | 8.84° | ≤4.4° (best-case deflection) | **≈2.0×** *(required exceeds achievable)* | Not resolvable — required separation is double what pitch can produce at best |
-| 3×3 grid | Yaw | 10.30° | 0.65° (noise floor) | **≈16×** | Comfortably resolvable |
-| 3×3 grid | Pitch | 5.88° | ≤4.4° (best-case deflection) | **≈1.3×** *(required exceeds achievable)* | Not resolvable — required separation exceeds achievable even at the finest grid's smallest gap |
-| Top/bottom halves | Pitch | 8.84° | ≤4.4° (best-case deflection) | **≈2.0×** | Not resolvable — fails even at the coarsest possible vertical split |
+**Definition, stated explicitly:** "achievable deflection" = the maximum angular
+value actually observed during a DIRECTED (commanded) attempt at the relevant
+look, measured by frame-by-frame video scan of archived footage. This is exactly
+what the original pitch figure (≤4.4°) already used — the maximum value reached
+during `directed_clip.mp4`'s own labeled "look down" phase, explicitly excluding
+an incidental 15–18° reading recorded elsewhere in the same clip outside that
+phase (`PITCH_DIAGNOSTIC.md` §2b).
 
-Yaw and pitch give opposite answers, as expected. Pitch does not merely fail the
-*hardest* layout — it fails the *easiest possible* vertical layout too, because the
-achievable deflection (≤4.4°) never reaches even half of what a single top/bottom
-split requires (8.84°).
+**Applying that same definition to yaw finds a genuine data gap, not a symmetric
+number.** No raw-degree measurement from a DIRECTED look-left/look-right session
+exists anywhere in this repository: `logs/orientation_trials.jsonl` (schema
+version 1.0) predates the raw yaw/pitch degree fields `orientation_capture.py`
+now supports — it logged only the derived `oriented_rate` score for those
+directed segments, never a raw angle. This is stated plainly rather than papered
+over with a substitute presented as equivalent (G3).
 
-### 2.4 The verdict, and the largest honest claim
+**The one dataset genuinely comparable across axes** is `test_clip.mp4`'s
+frame-by-frame scan (`PITCH_DIAGNOSTIC.md` §2b) — the SAME clip, SAME scan
+methodology, applied to both channels simultaneously, though measuring NATURAL
+(undirected) head movement, not a directed attempt:
+
+| Axis | Range observed (test_clip.mp4, natural movement) | Max |
+|---|---|---|
+| Yaw | 16.1°–78.4° (mean 36.3°) | **78.4°** |
+| Pitch | 0.1°–31.2° (mean 8.8°) | **31.2°** |
+
+This is flagged explicitly as a DIFFERENT methodology than the directed-effort
+definition above (natural vs. commanded movement) — reported as a labelled,
+lower-confidence proxy, not silently substituted as if identical.
+
+### 2.4 The four-number table
+
+Three genuinely distinct denominators appear below, each labelled for what it
+actually is; a layout's cell is left blank where no matching real measurement
+exists, rather than filled with an invented number (G2/G3):
+
+| Layout | Axis | Required | Noise floor (directed-session, resting) | Ratio | Natural-movement max (test_clip.mp4, undirected) | Ratio | Directed-effort max (commanded attempt) | Ratio |
+|---|---|---|---|---|---|---|---|---|
+| Halves | Yaw | 15.53° | 0.65° | **≈24×** (favourable) | 78.4° | **≈0.20×** (favourable — required well within max) | *no raw-degree directed figure exists* | — |
+| Quadrants | Yaw | 15.53° | 0.65° | **≈24×** (favourable) | 78.4° | **≈0.20×** (favourable) | *no raw-degree directed figure exists* | — |
+| Quadrants | Pitch | 8.84° | *no archived resting figure exists (§2.2)* | — | 31.2° | **≈0.28×** (favourable — required well within max) | ≤4.4° | **≈2.0×** *(unfavourable — required exceeds achievable)* |
+| 3×3 grid | Yaw | 10.30° | 0.65° | **≈16×** (favourable) | 78.4° | **≈0.13×** (favourable) | *no raw-degree directed figure exists* | — |
+| 3×3 grid | Pitch | 5.88° | *no archived resting figure exists* | — | 31.2° | **≈0.19×** (favourable) | ≤4.4° | **≈1.3×** *(unfavourable)* |
+| Top/bottom halves | Pitch | 8.84° | *no archived resting figure exists* | — | 31.2° | **≈0.28×** (favourable) | ≤4.4° | **≈2.0×** *(unfavourable)* |
+
+For the noise-floor and directed-effort columns, ratio = required ÷ measured, and
+a ratio **above** 1 is unfavourable (required exceeds what's available). For the
+natural-movement-max column, ratio = required ÷ max observed, and a ratio
+**below** 1 is favourable (required separation sits comfortably inside the range
+this channel has been observed to reach, even without being told to).
+
+**Does the verdict survive the symmetric comparison unchanged? No — not
+unchanged, and the honest answer is more interesting than a plain yes or no.**
+Under the one column that is genuinely symmetric (natural-movement max, same
+clip, same method, both axes), **pitch's required separations also clear** —
+every pitch ratio in that column is comfortably below 1, the same favourable
+direction as yaw's. Read superficially, this reverses the original verdict. It
+does not, for a specific, statable reason: the natural-movement-max column
+answers "can this channel ever register a value this large", which pitch
+demonstrably can (31.2° observed, incidentally, in ordinary footage) — but the
+ROI-attribution question this document exists to answer is "can a person
+reliably PRODUCE that value when asked to look at a specific region", which is
+what the directed-effort column measures, and that column is the one where
+pitch fails at every layout including the coarsest possible one, with no
+corresponding yaw figure to compare against (a genuine gap, not filled in). The
+corroborating evidence for treating directed-effort as decisive is behavioural,
+not just the two raw-degree clips: `orientation_trials.jsonl`'s three real
+directed sessions show `look_down`'s `oriented_rate` at **1.00, 1.00, 1.00** —
+zero exceptions, indistinguishable from resting — while `look_left`/`look_right`
+reliably collapse to **0.11–0.69**. Yaw's directed sessions change the reading;
+pitch's directed sessions do not, even though the same pitch channel is proven
+capable of registering values that would change it. **That is the corrected
+finding this task's Task 1 surfaced: pitch's failure is a
+reliability-under-direction problem, not a hard magnitude ceiling** — worth
+stating precisely because a magnitude ceiling could in principle be routed
+around by a coarser layout, and this specific failure cannot (§2.5 shows it
+fails even the coarsest possible top/bottom split).
+
+### 2.5 The verdict, and the largest honest claim
 
 See the top of this document for the full verdict. In summary form against each named
 layout:
@@ -320,32 +401,87 @@ reason established above. This is not a new finding — CLAUDE.md's own
 much the surviving claim can be trusted for its single most likely real use (detecting
 disengagement, whose most common form is looking down at a phone or lap).
 
+### 2.6 Sample size behind the pitch finding — stated explicitly (Task 1.4)
+
+**n = 1 subject, 3 real directed capture sessions, 18 total records**
+(`logs/orientation_trials.jsonl`: session IDs `ddbc2c0f…`, `1fd37ee4…`,
+`ad539d4a…`, participant codes `TEST`/`TEST1`/`TEST2`, 6 fixed segments per
+session — `look_at_screen`, `look_left`, `look_right`, `look_down`, `look_up`,
+`look_away_and_back` — verified this session by reading every record's
+`session_id`/`participant_code`/`commanded_label`; no distinct-subject
+identifier beyond these three test-run labels exists in the data, and nothing
+in this repository indicates they are different people). Plus two additional
+archived clips analysed in `PITCH_DIAGNOSTIC.md` (`test_clip.mp4`,
+`directed_clip.mp4`) whose subject identity was never recorded and cannot now
+be verified (both files no longer exist on this machine — confirmed again this
+session).
+
+**This is pilot-scale, single-subject evidence. It is not a validated,
+cross-person finding, and this document does not claim it is one.** The
+*mechanism* proposed to explain the pitch finding — face foreshortening during
+a downward head tilt degrading the landmark data pitch depends on — is
+structural (a property of single-camera 2D landmark geometry under rotation,
+not of one person's particular face) and there is a real reason to expect it to
+generalise across people. **But "should generalise" is an argument from
+mechanism, not a measurement, and this document says which is which rather than
+letting the two blend together:** the *argument* is structural and plausible;
+the *measurement* is n=1. Per this task's own instruction, the verdict is
+**not** softened to compensate for the small n (the pitch finding is reported
+as reproducing cleanly across all 3 available sessions and both archived clips
+with zero exceptions — a real, consistent pattern within the data that exists),
+and the n is **not** overstated to strengthen it (three sessions from what
+appears to be one subject is not cross-person validation, and nothing here
+claims it clears the client's own D8 statistical standard — see §2.5 above and
+`docs/MATRIX_ROW_MAP.md` row 14). Cross-person confirmation remains a real,
+open, physical-run item (`docs/PROJECT_STATE.md`'s "needs a physical run"
+group) — not something this document can supply by more careful re-reading of
+the same 18 records.
+
 ---
 
-## 3. What could be built now (Task 3)
+## 3. What could be built now (Task 3 of the original investigation)
 
 Assuming Obstacle A resolves later and Task 2's verdict constrains what is honest to
 compute, against a pluggable synthetic event source — the same pattern
 `controls/leakage.py`'s `synthetic_trial_source()` already establishes in this
 codebase.
 
+**Update — the ROI dwell/switching/persistence/coverage row below is no longer
+speculative.** The "ACT ON THE ROI FEASIBILITY VERDICT" task's own Task 3 built
+it: `features.attention.ROIWindowAccumulator`, following
+`episodes.WindowAccumulator`'s tumbling-window pattern exactly, tested against a
+synthetic `(timestamp, roi_id)` supplier
+(`tests/test_roi_aggregation.py::synthetic_roi_source`, mirroring
+`controls/leakage.py`'s `synthetic_trial_source()` shape) covering nine
+scenarios including all six this task named as a minimum (clean single-region
+window, rapid alternation, a window with gaps, a window with no assignments at
+all — both "samples present but None" and "add_sample never called" readings of
+that phrase — a single assignment spanning the whole window, and a run crossing
+a window boundary). See §5 below for what it computes and does not, and
+`tests/test_roi_aggregation.py` for the full nine-check proof (all passing).
+The table row is left in place, marked done, rather than deleted, so the
+document's own history of what was speculative-then-built stays legible.
+
 | Item | What it is | Depends on | How it would be tested now |
 |---|---|---|---|
 | **Event-log reader / adapter interface** | A function `real_event_source() -> list[trial-like-record]` matching the exact shape `controls/leakage.py`'s `trial_source` contract already expects, plus a mapping into the canonical schema's already-declared `stimulus_id`/`roi_or_condition`/`action_timestamp`/`action_class` fields | The canonical schema (already built) for the *target* shape; nothing for the *source* shape, since that is the harness's own format, unknown until delivered | A hand-built synthetic fixture file standing in for "whatever the harness delivers," exercised through the adapter, asserting the output validates against `schema/canonical_log_v1.json` |
 | **Timestamp join between an external stream and our own records** | A pure function taking two wall-clock-anchored monotonic streams (ours + the harness's) and returning aligned pairs, using each side's own `CanonicalLogWriter.open_session()`-style wall-clock/monotonic anchor pair | Nothing external — `time.perf_counter()`/`datetime.now(timezone.utc)` semantics are already fully understood and testable | Two synthetic streams with a known, deliberately-injected clock offset and drift rate; assert the join recovers the known offset within a stated tolerance |
-| **ROI dwell / switching / persistence, computed from *supplied* region assignments** | Given a stream of `(timestamp, roi_id)` tuples — real or synthetic, source-agnostic — compute per-ROI dwell time, switch count, and time-since-last-switch. This is pure aggregation, structurally identical to `episodes.WindowAccumulator`/`attention.AttentionWindowAccumulator`'s existing windowing pattern | Nothing about *our own* gaze-to-ROI attribution accuracy — it aggregates whatever `roi_id` stream it is given, synthetic or real | A synthetic `roi_id` stream with known, hand-constructed dwell/switch patterns; assert the aggregator recovers the known statistics exactly, the same style `tests/test_baselines.py`'s mutation-test pattern already uses |
+| **ROI dwell / switching / persistence / coverage, computed from *supplied* region assignments** | ✅ BUILT (see update note above, `features.attention.ROIWindowAccumulator`). Given a stream of `(timestamp, roi_id)` tuples — real or synthetic, source-agnostic — compute per-ROI dwell time, switch count, and time-since-last-switch. This is pure aggregation, structurally identical to `episodes.WindowAccumulator`/`attention.AttentionWindowAccumulator`'s existing windowing pattern | Nothing about *our own* gaze-to-ROI attribution accuracy — it aggregates whatever `roi_id` stream it is given, synthetic or real | A synthetic `roi_id` stream with known, hand-constructed dwell/switch patterns; assert the aggregator recovers the known statistics exactly, the same style `tests/test_baselines.py`'s mutation-test pattern already uses |
 | **D8's statistic** (oriented-rate difference, salient vs. non-salient episodes) | Pure aggregation math over `(episode_label, oriented_rate)` pairs — the difference statistic, the block-permutation null, the percentile-bootstrap interval, per §4.14 of the response | `simulation/precision.py`'s existing episode-level bootstrap machinery (directly reusable, not reimplemented) | Synthetic episode labels + synthetic oriented-rate values with a known injected effect, mirroring `tests/test_leakage.py`'s injected-severe-leak proof pattern |
-| **A_t block placement for any of the above** | Literally: add the functions to `features/attention.py`. No new module, no new scaffolding — see Task 1.3 | Nothing beyond what already exists | The separation test already covers it automatically the moment the code lands inside `attention.py` (Task 1.3) — no new test infrastructure needed for *this* part |
+| **A_t block placement for any of the above** | ✅ Done for the ROI aggregator (landed inside `features/attention.py`, no new module). Still applies to the two rows below | Nothing beyond what already exists | ✅ Confirmed for the ROI aggregator — `tests/test_feature_separation.py` still passes with it in place |
 | **A synthetic ROI-attribution-noise generator** | Extend `simulation/generator.py`'s existing A1–A6 generative model with an "A7"-style mechanism: a true `roi_id` per trial, observed through a configurable attribution-noise parameter (directly analogous to A6's `effect_size` for the candidate signal) | `simulation/generator.py`'s existing structure — this is additive, same shape as every prior extension to that generator | The generator's own existing test pattern (`tests/test_generator.py`) — verify the true-null case (attribution noise = 1) produces chance-level accuracy, and effect_size=0-equivalent produces perfect recovery |
 | **ROI-dependent controls, on the synthetic source** | `controls/leakage.py` already accepts any `trial_source`; a synthetic ROI-labelled source (built above) can be plugged in with zero changes to the harness itself | The leakage harness (already built) + the synthetic generator extension above | Already covered by `tests/test_leakage.py`'s existing pluggable-source proof (`check_data_source_is_genuinely_pluggable`) — this would be a second instance of a pattern already demonstrated, not a new capability |
 
 **Constrained by Task 2's verdict, stated plainly:** the dwell/switching/persistence
 aggregation math above is honest to build and test against *any* supplied `roi_id`
-stream. It would **not** be honest to wire it to this system's own attempted
-gaze-to-ROI attribution beyond a coarse left/right (or plausibly 3-way) label — doing
-so for a quadrant- or grid-level attribution would silently launder Obstacle B's
-physics problem into what reads as a built, tested feature. The aggregation layer and
-the attribution layer are separable, and should stay built separably.
+stream — and, as of this update, has been. It would **not** be honest to wire it to
+this system's own attempted gaze-to-ROI attribution beyond a coarse left/right (or
+plausibly 3-way) label — doing so for a quadrant- or grid-level attribution would
+silently launder Obstacle B's physics problem into what reads as a built, tested
+feature. **`ROIWindowAccumulator` was built and tested strictly against the synthetic
+supplier for exactly this reason — no camera-derived supplier and no harness adapter
+exist anywhere in this module** (per the ACT task's own Task 3.3 instruction). The
+aggregation layer and the attribution layer are separable, and were built separably.
 
 ### Genuinely cannot be built until real events exist
 
@@ -404,7 +540,7 @@ join, without ever importing `features.attention`.
 
 | Route | Caught today? | Why / why not |
 |---|---|---|
-| (a) Direct import | **Not caught today.** `BLOCK_MODULES` already includes `"context"` (its imports are parsed), but `FORBIDDEN_EDGES` has no entry naming `context` as a source — only `x_core` and `episodes` are checked as sources. Even if `context.py` imported `attention.py` directly today, no forbidden-edge check would fire, because the only way the current check could catch it is transitively *through* `episodes.py` — and `episodes.py` does not import `context.py` (nothing does; C_t → E_t is a design relationship, not yet a real import anywhere). | **What would be needed** (described, not written): extend `FORBIDDEN_EDGES` with `("context","attention")` and `("context","audio")` as direct entries. `check_static_import_graph` already builds a graph node for `context` and already supports arbitrary `(src, forbidden)` pairs — this needs no new function, only two new tuples, so the fix is trivial once someone decides to make it. It is *not yet made* — stated as a real, currently-open gap, not a defect that was somehow already closed. |
+| (a) Direct import | ✅ **CLOSED** (ACT task, Task 2). `FORBIDDEN_EDGES` in `tests/test_feature_separation.py` now includes `("context","attention")` and `("context","audio")`. Proven non-vacuous, not just added: a temporary `from features.attention import ATTENTION_ORIENTED_SCORE_THRESHOLD` inserted into `features/context.py` made check 1 FAIL with `"context.py imports (transitively) attention.py -- path: context -> attention"`; a temporary `import features.audio` made it FAIL with the matching `context -> audio` message; both were reverted and the suite returned to PASS. **This gap existed and was found by audit (this document's own §4.2, previous revision) rather than by the guard itself — the guard had no entry naming `context` as a source even though `BLOCK_MODULES` already treated it as a graph node. Worth recording plainly: the separation test's own coverage had a real hole for as long as `features/context.py` stayed empty, and closing it took a human noticing, not the test catching itself.** `C_t -> E_t` stays permitted, correctly — neither new edge touches `episodes` or `x_core` as a source; only `context` as a source, into `attention`/`audio`, is now forbidden, matching D1's actual constraint (CLAUDE.md: `A_t -> X_core`/`A_t -> E_t` and `U_t -> X_core`/`U_t -> E_t` forbidden; `C_t -> E_t` permitted) rather than a broader, incorrect rule that would have also blocked the permitted direction. | Previously: extend `FORBIDDEN_EDGES` with two tuples, no new function needed. Now done — see the CLOSED note. |
 | (b) Shared field name | **Not caught by anything.** No existing check inspects JSON/dict *key names* in logged output at all — checks 1–4 all operate on Python import/call graphs, never on the shape of a dict a function returns. | **What would be needed**: a test asserting `WindowAccumulator.flush()`'s (and any future E_t component's) output keys are drawn from an explicit, fixed, enumerated set — never dynamically extended from a caller-supplied dict — i.e., a guard on the *discipline* (hardcoded key lists) that already exists today, turned into an explicit, checked invariant rather than an implicit property of the current code. |
 | (c) Record read from a shared log | **Not caught by anything.** This is a runtime, file-format data-flow risk, invisible to any static Python-level analysis — none of the four checks read a `.jsonl` file or reason about record types at all. | **What would be needed**: extend the check-3 philosophy (poison a module, prove real code never touches it) from in-process poisoning to log-schema poisoning — a fixture log file containing *only* attention-block record types (`attention_window_summary`, samples with only attention fields populated) fed to whatever future C_t/E_t log-reading code exists, asserting it returns nothing usable (raises, or returns an empty/filtered result) rather than silently accepting attention-typed content. |
 | (d) Join key | **Not caught by anything**, for the same reason as (c) — a data-flow risk outside any existing check's scope. | **What would be needed**: once real join logic exists, a test that constructs a log containing *only* `attention_window_summary` records for a given `session_id`/time range and asserts a "join context for this window" function returns empty rather than silently substituting the attention record under a generic key. |
@@ -413,12 +549,102 @@ join, without ever importing `features.attention`.
 *data-flow* risk (through a dict, a file, or a join), not an *import-graph* risk, and
 none of the four existing checks look at data flow at all; all four were built,
 correctly, to answer "did forbidden code get imported or called," not "did a
-forbidden-shaped value arrive some other way." Route (a) is closer to being caught —
-the graph-based machinery already exists and already handles `context` as a node —
-but the specific forbidden-edge entries that would make it fire have not been added,
-because `context.py` has never had content to trigger the need. **None of this is
-urgent while `features/context.py` stays empty** (confirmed, again, this session: zero
-functions, classes, or constants in the file). It becomes urgent the day someone
+forbidden-shaped value arrive some other way." **Route (a) is now closed** (see the
+row above) — the graph-based machinery already existed and already handled `context`
+as a node; the missing piece was the two `FORBIDDEN_EDGES` entries, now added and
+proven to fail-then-pass. Routes (b)/(c)/(d) remain open, and remain **not urgent
+while `features/context.py` stays empty** (confirmed, again, this session: zero
+functions, classes, or constants in the file). They become urgent the day someone
 starts filling C_t in — which is exactly what `features/context.py`'s own docstring
 already says, and this task's own findings do not change that timing, only sharpen
 what the guard would need to check when the day comes.
+
+---
+
+## 5. What remains blocked, and why (Task 4 of the "ACT ON THE ROI FEASIBILITY
+## VERDICT" task)
+
+This investigation produced one distinction that must not be lost by a later
+document collapsing it back into a single "ROI/attention status": **what this
+system computes ABOUT a supplied assignment is a completely different question
+from what this system can DETERMINE about gaze on its own**, and the two now
+have different, independently-stated statuses.
+
+### 5.1 ROI derivatives from a supplied assignment stream — BUILT, blocked only on the harness
+
+`features.attention.ROIWindowAccumulator` computes dwell, switching, per-ROI
+persistence (with left/right window-boundary censoring flagged), and coverage
+from a caller-supplied `(timestamp, roi_id)` stream. **This is unaffected by
+the resolution verdict in §2** — it performs no gaze-to-ROI inference of its
+own; `roi_id` is handed to it, opaque, from wherever the caller obtained it.
+Tested against a synthetic supplier (`tests/test_roi_aggregation.py`, 9/9
+checks passing, covering clean single-region, rapid alternation, gaps, no
+assignments at all, a single assignment spanning the whole window, and a run
+crossing a window boundary — see that file for the exact boundary-crossing
+behaviour chosen and why). Confirmed, by `tests/test_feature_separation.py`,
+unable to reach `X_core` or `E_t`. **This is blocked only on the client's task
+harness supplying the stream — integration work, not construction.** No
+camera-derived supplier and no harness adapter exist, deliberately (the
+harness's real event format is unknown; building one now would be exactly the
+placeholder definition this engagement has repeatedly forbidden).
+
+### 5.2 Gaze-to-ROI attribution from our own sensor — constrained by the resolution verdict
+
+This is the question §2 actually answers, and the answer did not change with
+this update, only its precision improved (§2.4). Using the Task 1 table:
+
+- **Halves (left/right, 1×2)** — survives. Yaw-only; required separation
+  clears its noise floor by ≈24× and sits at roughly a fifth of the max
+  natural yaw excursion observed in archived footage.
+- **Quadrants (2×2)** — does not survive as a 4-way attribution. Its
+  horizontal half is fine (same yaw margin as halves); its vertical half
+  fails under the directed-effort comparison (≈2.0×, required exceeds
+  achievable) even though it would numerically clear under the
+  natural-movement-max comparison — see §2.4 for why the directed-effort
+  reading governs here.
+- **3×3 grid** — does not survive as a 9-way attribution, for the same
+  reason, more severely (its vertical requirement is smaller, but so is
+  what's achievable relative to it).
+- **A bare top/bottom split (the coarsest possible vertical layout)** — does
+  not survive either. This is the finding that rules out routing around the
+  problem with a coarser layout: even the coarsest possible vertical split
+  fails the directed-effort comparison by the same ≈2.0× margin as the
+  quadrant layout's vertical half.
+
+**Nothing here is blocked on the harness.** This question is answerable from
+data already in this repository (§2), and the answer is: horizontal
+attribution is buildable and defensible (coarse 2-way, plausibly 3-way);
+vertical attribution is not, at any tested granularity, for a
+reliability-under-direction reason rather than a hard magnitude ceiling (§2.4).
+
+### 5.3 Head-gaze coherence — deliverable only in a horizontal-only form
+
+No code computes head-gaze coherence anywhere in this repository today (§1.2).
+Whether it is deliverable at all depends on both its terms, and one of
+them — the vertical/pitch component — is exactly what §2 shows is not
+resolvable. **Stated plainly: a full (horizontal + vertical) head-gaze
+coherence measure is not honestly buildable from this pipeline's current
+sensing, for the same reason vertical ROI attribution is not.** A
+**horizontal-only** form is deliverable: comparing head yaw's lateral
+direction/orientation against gaze's own coarse LEFT/RIGHT/CENTER label
+(`compute_gaze_direction`, already built, §1.2), both already shown reliable
+under direction (§2.2's yaw evidence). What that horizontal-only form WOULD
+tell you: whether head orientation and eye direction agree or disagree on
+which SIDE of the screen a person is oriented toward — a real, yaw-driven
+signal. What it would NOT tell you: anything about vertical coherence (a
+person's head level but eyes cast down, or vice versa) — the single most
+common form of a person disengaging while still facing a screen. Presenting a
+horizontal-only coherence measure as "head-gaze coherence" without that
+caveat would overclaim in exactly the way CLAUDE.md's own
+"Attention / screen-orientation" section already warns against for V_so
+itself. Not built in this task — a real, honest scope statement of what a
+future build should say it is and is not, kept separate from the buildable-now
+work in §5.1 so a later document cannot accidentally promise the vertical half
+by conflating the two.
+
+**Why these three stay visibly separate:** collapsing 5.1 into "ROI is built"
+would overclaim readiness on 5.2's still-blocked half; collapsing 5.2's
+verdict into 5.1's would make the harness look like the only remaining
+blocker, when the sensor itself is a second, independent limit that arriving
+harness data cannot remove. Keeping them apart is the only way this document
+avoids promising in September what the sensor cannot do in October.
