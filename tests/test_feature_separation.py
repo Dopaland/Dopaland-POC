@@ -99,6 +99,17 @@ FORBIDDEN_EDGES = [
     ("x_core", "audio"),
     ("episodes", "attention"),
     ("episodes", "audio"),
+    # Added by the "ACT ON THE ROI FEASIBILITY VERDICT" task: found by audit
+    # (docs/ROI_FEASIBILITY.md Task 4.2), not by this test itself -- context.py
+    # (C_t) is a BLOCK_MODULES node and its imports were already being parsed,
+    # but no FORBIDDEN_EDGES entry named it as a source, so a future
+    # `context.py -> attention.py` (or `-> audio.py`) import would have passed
+    # unnoticed. C_t -> E_t stays PERMITTED under D1 (CLAUDE.md) -- these two
+    # edges forbid only attention-/audio-derived information reaching the core
+    # BY WAY OF context, not context reaching episodes at all. See
+    # docs/D1_DEPENDENCY_MAP.md Task 2 section for the fail-then-pass proof.
+    ("context", "attention"),
+    ("context", "audio"),
 ]
 
 
