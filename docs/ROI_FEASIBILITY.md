@@ -23,19 +23,33 @@ ceiling. A symmetric re-measurement (§2.3–§2.5 below) found that framing was
 quite right: the pitch channel demonstrably CAN register values well above every
 required separation (up to 31.2° incidentally, in the same archived clip used to
 measure yaw) — so the failure is not that pitch is incapable of large values in an
-absolute sense. What actually fails is RELIABILITY UNDER DIRECTION: across three
-real, directed "look down" sessions, the system reads the subject as still
-"oriented toward the screen" 100% of the time, every session, with zero
-exceptions — the large pitch values this channel is physically capable of
-registering do not show up when a person is actually told to produce them on
+absolute sense. What actually fails is DIRECTED RELIABILITY: across three real,
+directed "look down" sessions, the system reads the subject as still "oriented
+toward the screen" 100% of the time, every session, with zero exceptions — the
+large pitch values this channel is physically capable of registering do not
+show up in the logged reading when a person is told to produce them on
 command. Yaw shows the opposite pattern: directed "look left"/"look right"
-sessions reliably and reproducibly change the reading (`oriented_rate` collapses
-from 1.00 to 0.11–0.69). The PRACTICAL conclusion is unchanged — pitch-based ROI
-attribution is not viable — but the mechanism is now stated more precisely: this
-is a directed-reproducibility failure, not a magnitude ceiling, and the
-distinction matters because a magnitude ceiling could in principle be worked
-around by choosing a coarser layout, while a reproducibility failure at the
-coarsest possible layout (a plain top/bottom split) cannot be.
+sessions reliably and reproducibly change the reading (`oriented_rate`
+collapses from 1.00 to 0.11–0.69).
+
+**A further correction, made explicit rather than left implicit: an earlier
+version of this document stated that failure as though its MECHANISM were
+established. It is not.** `oriented_rate` is a thresholded binary computed
+FROM the pitch estimate, not a direct behavioral measurement, and at least
+three distinct mechanisms produce exactly this logged pattern — the subject
+may not have actually produced a large deflection on command; the estimator
+may have failed to register a deflection that genuinely occurred; or a real,
+sub-threshold movement may have been registered and then discarded by the
+20°-threshold logic before it could change the reading. **§2.4a below finds
+the archived data cannot separate these three, and says so plainly rather than
+adopting one.** The PRACTICAL conclusion is unaffected by which of the three
+turns out to be true: **vertical ROI attribution is not deliverable in this
+engagement under any of them** — §2.4a restates this explicitly. What is NOT
+yet established is whether that unavailability is permanent (a property of
+human behaviour) or specific to this sensing approach and addressable by
+different sensing in a later phase (a property of this estimator or its
+threshold logic) — a real, open question this document now states as open
+rather than resolving it by assertion.
 
 Yaw, by contrast, clears its required separations by roughly 16–24× its own
 resting noise floor, confirmed against two independent sets of real archived data
@@ -55,6 +69,54 @@ the single most common real disengagement behaviour — will misleadingly score 
 finding; CLAUDE.md's own "Attention / screen-orientation" section already says so. It
 is repeated here because it directly bounds how much weight even the *surviving* claim
 can honestly carry.
+
+---
+
+## RETRACTION — a withdrawn claim, recorded rather than silently replaced
+
+**The claim, as originally stated** (commit `8f1b9f2`, this document's first
+version): pitch fails because "the required separation exceeds even the most
+generous real signal available" — reported as a ≈2.0× ratio (Quadrants/pitch:
+8.84° required ÷ ≤4.4° achievable; Top/bottom halves: the same 8.84°÷≤4.4°) —
+presented as a magnitude ceiling. The clear implication: pitch cannot
+physically produce enough deflection to distinguish two vertically-adjacent
+regions, at any layout, ever.
+
+**That claim was wrong, and this document's own symmetric re-check disproved
+it.** §2.3's natural-movement-max comparator, applying the identical
+methodology already used for yaw to pitch for the first time, found pitch
+reaching **31.2°** in the same archived clip (`test_clip.mp4`) — nearly 3.5×
+the quadrant layout's 8.84° requirement, and over 5× the coarsest top/bottom
+split's requirement. Under that comparator every pitch ratio is favourable
+(0.19–0.28×), the direct opposite of the original ≈2.0× "required exceeds
+achievable" claim. The magnitude-ceiling framing does not survive contact with
+this document's own later, more careful measurement.
+
+**What actually replaced it** (commit `7473742`, same session the asymmetry
+was closed): the corrected finding in §2.3–§2.5 — pitch's failure is a
+**directed-reproducibility** problem (a real, deliberate "look down" attempt
+does not register, even though the channel is proven capable of registering
+much larger values incidentally), not a hard physical ceiling on what the
+channel can ever produce. The PRACTICAL verdict (vertical ROI attribution is
+not deliverable) did not change; the MECHANISM claimed for it did, materially.
+
+**Was this sent to the client before the correction?** No. Per
+`docs/preregistration/README.md`, nothing in `docs/preregistration/` — the
+only documents in this repository ever intended for client delivery — has
+been sent to the client as of any commit in this repository's history, and
+this document itself has never been referenced anywhere as delivered. The
+magnitude-ceiling framing was superseded (commit `7473742`) in the same
+repository state it was introduced (commit `8f1b9f2`), before either version
+left this repository.
+
+**Why this is recorded explicitly, rather than left as a diff between two
+commits for someone to reconstruct:** a withdrawn claim that is visibly
+withdrawn costs nothing — a reader of this document today sees exactly what
+was claimed, that it was wrong, and what replaced it. A claim that is silently
+swapped between revisions is what destroys a document's credibility the day
+someone diffs two versions and finds a number changed with no explanation
+attached. This paragraph is that explanation, kept where a reader of the
+document will actually encounter it, not only in a commit message.
 
 ---
 
@@ -358,11 +420,164 @@ zero exceptions, indistinguishable from resting — while `look_left`/`look_righ
 reliably collapse to **0.11–0.69**. Yaw's directed sessions change the reading;
 pitch's directed sessions do not, even though the same pitch channel is proven
 capable of registering values that would change it. **That is the corrected
-finding this task's Task 1 surfaced: pitch's failure is a
-reliability-under-direction problem, not a hard magnitude ceiling** — worth
+finding this document's earlier revision surfaced: the failure shows up
+specifically under directed attempts, not as a hard magnitude ceiling** — worth
 stating precisely because a magnitude ceiling could in principle be routed
 around by a coarser layout, and this specific failure cannot (§2.5 shows it
-fails even the coarsest possible top/bottom split).
+fails even the coarsest possible top/bottom split). **What that same revision
+did NOT establish, and stated more confidently than it should have, is WHY the
+directed attempt fails to register — see §2.4a, which separates the
+established failure from its not-yet-separated mechanism.**
+
+### 2.4a The mechanism is not yet established (M1 / M2 / M3)
+
+`oriented_rate` — the value every directed-session figure above is built
+from — is a thresholded binary derived FROM `compute_v_so`'s pitch estimate,
+not a direct record of what the subject's head actually did. At least three
+distinct, genuinely different mechanisms produce exactly the same logged
+pattern (`look_down`'s `oriented_rate` = 1.00 across all three real sessions):
+
+- **M1 — BEHAVIOURAL.** The subject did not actually produce a large
+  deflection on command.
+- **M2 — ESTIMATOR.** The subject did move, and the pitch estimator failed to
+  register it — the failure mode face-foreshortening-degraded landmarks would
+  produce.
+- **M3 — THRESHOLD ARTIFACT.** Real, sub-threshold movement was registered by
+  the estimator but discarded by the 20° `ATTENTION_PITCH_THRESHOLD_DEG` logic
+  before it reached `oriented_rate`.
+
+**Can the archived data separate them? Mostly no — stated plainly, with the
+negative findings that establish it:**
+
+- `logs/orientation_trials.jsonl` (the 18 real directed-session records) was
+  read record-by-record this session: its fields are `schema_version,
+  record_type, session_id, participant_code, commanded_label, segment_index,
+  ts_utc, hold_seconds, n_samples, n_detected, detection_rate,
+  screen_orientation, gaze_direction, look_away_rate, window_quality,
+  unvalidated, label`. `screen_orientation` carries only the derived 0–1
+  score (avg/peak/variance/`oriented_rate`); `window_quality` carries only
+  `yaw_variance_deg2`. **No raw pitch value, per-frame or per-record, exists
+  anywhere in this file** — schema version 1.0 predates the raw-angle field
+  entirely. For these three sessions, M1/M2/M3 are **completely
+  undifferentiated** by anything logged.
+- `orientation_capture.py` was checked directly: its CURRENT code (schema
+  `"1.1"`, `SCHEMA_VERSION` at line 111) already collects raw per-frame
+  yaw/pitch/roll during each segment and aggregates them (avg/min/max/variance
+  via `_raw_angle_stats`) into a `raw_head_pose_deg` field on the trial
+  record — built as a `PITCH_DIAGNOSTIC.md` follow-up. **This machinery has
+  never been exercised**: all 18 archived records are schema 1.0, predating
+  it; zero schema-1.1 records exist anywhere in this repository. A re-run
+  under the current tool would already log raw pitch min/max/avg per segment
+  — useful, but still segment-aggregated, not the full per-frame time series
+  Task 3 below asks for, and still without any independent ground truth of
+  what the subject's head actually did (see next point).
+- `PITCH_DIAGNOSTIC.md`'s frame-by-frame scan of `directed_clip.mp4` (§2b) IS
+  raw, per-frame, unthresholded pitch data for one directed "look down"
+  segment — the ≤4.4° figure comes directly from it, not from a derived
+  score. This lets M3 be **ruled out for that one segment specifically**: the
+  raw value itself stayed low (0–5°) throughout, so nothing was "a real
+  ~15° movement discarded by the threshold" in that case — the raw reading
+  never reached a magnitude for the threshold to discard. **But this does not
+  separate M1 from M2**, because the scan is a re-examination of the SAME
+  estimator's own output over more frames — not an independent check of what
+  the subject's head physically did. No human visual review of the video
+  frames themselves, no operator observation, and no second sensor is
+  documented anywhere as part of that scan. Both video files it analysed
+  (`test_clip.mp4`, `directed_clip.mp4`) no longer exist on this machine
+  (confirmed again this session) and were never committed (G4) — so this
+  specific scan cannot be redone or extended.
+- Several POC-era `logs/session_*.jsonl` files (checked this session, e.g.
+  `session_09a3bc97-...jsonl`, 1,232 `sample` records) DO carry real
+  per-frame `head_pose.pitch_deg` — but from ordinary Gate-2-era captures
+  (smile/furrow/concentrate/sit-still/fidget), with no commanded look
+  direction and no independent record of what the subject's head was doing.
+  These do not help separate M1/M2/M3 either, for the same reason: real raw
+  pitch, but no directed-look experimental design and no independent ground
+  truth alongside it.
+- **No file anywhere in this repository's history contains an independent,
+  non-estimator-based ground truth of head position** (a human's frame-by-
+  frame visual judgement, an operator's live observation recorded
+  alongside the numeric reading, or a second sensor) for any "look down"
+  attempt examined to date — confirmed by search (`git log --all -- '*.csv'
+  '*pitch*' '*diagnostic*'` and a repo-wide file search for pitch-related
+  artefacts) and by reading every candidate document directly.
+
+**Which mechanism does the existing evidence lean toward? I do not agree that
+it leans toward M2, and I want to be specific about why, since I was asked to
+check this rather than adopt it.** The one piece of evidence that would most
+directly support M2 is CLAUDE.md's own STATUS section: *"on a maximal,
+sustained, **verified** chin-to-chest look-down, pitch stayed ~0.1° and
+`oriented_rate` stayed 1.0."* Read at face value, "verified" implies an
+independent confirmation that the movement occurred, which would indeed point
+at M2. But under direct examination this session, that claim does not hold up
+to the weight the word "verified" puts on it:
+
+1. **No documented verification method exists anywhere in this repository**
+   for that specific claim — no operator log, no saved video, no frame-by-
+   frame review, no second observer. A search for "chin-to-chest" across the
+   repository (`grep -ri`) finds it stated as fact in `CLAUDE.md`,
+   `stage1_step4_vectors.py`'s docstring, and `docs/PROJECT_STATE.md` — all
+   three restating the same claim, none of them citing a method behind it.
+2. **It is numerically inconsistent with the one figure in this repository
+   that IS backed by a documented method** — `PITCH_DIAGNOSTIC.md`'s
+   frame-by-frame `directed_clip.mp4` scan, a LATER and more careful
+   investigation, found the directed "look down" segment's pitch reaching
+   ≤4.4°, not ~0.1°. These may describe different sessions, but nothing in
+   this repository states that, and the order of magnitude difference (0.1°
+   vs. 4.4°, roughly 40×) is exactly the kind of discrepancy that should be
+   flagged, not smoothed over.
+3. **`PITCH_DIAGNOSTIC.md`'s own author — investigating this exact question
+   more carefully and later than the "verified" claim was written — explicitly
+   declines to treat M1 as ruled out**: its §4 states, in full acknowledgement
+   of the residual uncertainty, *"I cannot fully rule out that the specific
+   humans/attempts behind these four 'look down' windows simply didn't
+   perform a large enough sustained tilt."* Its §5 then proposes, as FUTURE,
+   NOT-YET-DONE work, *"a monitored, in-person directed capture (operator
+   watching live...) with an explicit, VERIFIED maximal chin-to-chest
+   hold, cross-checked frame-by-frame against the printed pitch value in
+   real time."* Proposing a genuinely verified chin-to-chest test as
+   still-needed future work would be redundant if a genuinely verified
+   instance with a clear result already existed. This is the strongest
+   single piece of evidence against reading the earlier "verified" claim as
+   settling the question.
+
+**My own reading:** M3 is partially ruled out, for the one segment where raw,
+unthresholded data was directly examined (`directed_clip.mp4`'s look-down
+phase) — not for the three real `orientation_trials.jsonl` sessions, where it
+remains fully open. M1 and M2 are **genuinely undifferentiated by anything
+currently in this repository** — every existing "confirmation" is itself
+derived from the same estimator being questioned, and the one claim that
+would independently support M2 lacks a documented method, is numerically
+inconsistent with the more careful investigation, and is treated as unresolved
+by that same later investigation's own author. I am not adopting "leans toward
+M2" as this document's position. The honest statement is: **the failure is
+established and reproduced from two independent sources (§2.2); the mechanism
+behind it is not yet separated, and this document does not know which of M1,
+M2, or M3 (or some mixture) is responsible.**
+
+**Why the distinction matters, stated in one paragraph, as this task asked:**
+M1 is a property of human behaviour under this specific instruction
+and setup — if true, it closes the question permanently for THIS kind of
+sensing, regardless of what estimator or hardware a later phase might use,
+because no estimator can register a movement the subject never made. M2 (and,
+narrower, M3) are properties of THIS head-pose estimator and its current
+threshold implementation specifically — if true, they could in principle be
+addressed by different sensing, a different estimator, or a different
+threshold in a later phase, without implying the underlying human behaviour is
+unmeasurable in general. Conflating the three either overclaims a permanent
+impossibility (if M2/M3 turn out to be true) or understates a real,
+behaviourally-grounded limit (if M1 turns out to be true) — exactly the kind
+of overclaim/understate error G3 exists to prevent.
+
+**The practical verdict, restated so this correction is not read as a
+reprieve:** regardless of which of M1, M2, or M3 turns out to be responsible,
+**vertical ROI attribution is not deliverable in this engagement, under any of
+the three.** Only the FUTURE is in question here — whether a later phase,
+with different sensing or a genuinely verified capture, could recover
+something this phase cannot — not the PRESENT deliverable, which does not
+exist under any mechanism. §3 (the capture protocol below) is what would
+settle which mechanism is responsible; it is specified, not built, and
+settling it is future work, not a precondition for today's verdict.
 
 ### 2.5 The verdict, and the largest honest claim
 
@@ -614,8 +829,9 @@ this update, only its precision improved (§2.4). Using the Task 1 table:
 **Nothing here is blocked on the harness.** This question is answerable from
 data already in this repository (§2), and the answer is: horizontal
 attribution is buildable and defensible (coarse 2-way, plausibly 3-way);
-vertical attribution is not, at any tested granularity, for a
-reliability-under-direction reason rather than a hard magnitude ceiling (§2.4).
+vertical attribution is not, at any tested granularity — established and
+reproduced from two independent sources (§2.2), regardless of which of the
+three candidate mechanisms turns out to be responsible for it (§2.4a).
 
 ### 5.3 Head-gaze coherence — deliverable only in a horizontal-only form
 
@@ -648,3 +864,129 @@ verdict into 5.1's would make the harness look like the only remaining
 blocker, when the sensor itself is a second, independent limit that arriving
 harness data cannot remove. Keeping them apart is the only way this document
 avoids promising in September what the sensor cannot do in October.
+
+---
+
+## 6. The capture that would settle the mechanism (Task 3, "PITCH: SEPARATE
+## THE FINDING FROM ITS EXPLANATION")
+
+**Specification only — not built.** This is a named outstanding item, added
+to `docs/PROJECT_STATE.md`'s "needs a physical run" group (§4.2 of that
+task). It requires one person with a webcam; it cannot be run in this coding
+environment (no live camera, no human operator). It is designed specifically
+to separate M1/M2/M3 (§2.4a) — nothing about ROI attribution's viability is
+expected to change as a result (§2.4a's practical verdict already holds under
+all three), but which mechanism is responsible determines whether the
+limitation is permanent or addressable by different sensing later.
+
+### 6.1 What each required element is for
+
+- **Raw per-frame yaw AND pitch, in degrees, logged — not just the derived
+  binary or rate.** This is the element `orientation_trials.jsonl` (schema
+  1.0) is missing entirely (§2.4a). Note this is PARTIALLY already built:
+  `orientation_capture.py`'s current code (schema 1.1) already aggregates raw
+  yaw/pitch/roll per segment (avg/min/max/variance, `_raw_angle_stats`) — but
+  never per-frame, and never run (zero schema-1.1 records exist). A genuinely
+  settling capture needs the full per-frame series (timestamp + raw yaw +
+  raw pitch, every sample), not just the segment-level aggregate, so a raw
+  reading can be correlated in time against the independent ground truth
+  below — a segment-level max can tell you a large value occurred SOMEWHERE
+  in the window, but not whether it occurred DURING the operator-confirmed
+  hold or during the return-to-center movement either side of it.
+- **Independent ground truth of whether the head actually moved, from the
+  frames themselves, not from the estimator being tested.** This is the
+  single element missing from every existing artefact examined in §2.4a,
+  including `PITCH_DIAGNOSTIC.md`'s own frame-by-frame scan (which re-examined
+  the SAME estimator's output, not an independent signal). Without it, no
+  future re-analysis of estimator output alone — however careful — can ever
+  separate M1 from M2, because both mechanisms produce identical estimator
+  output by construction (a small reported pitch value, whether or not a
+  large real movement occurred). Two independently-workable options,
+  detailed in §6.2.
+- **Directed phases with enough repetitions to say something about
+  reliability, not one attempt.** A single "look down" trial, pass or fail,
+  cannot distinguish "this person, this one time, didn't try hard enough"
+  (a single M1 data point) from "this consistently fails across repeated,
+  independently-confirmed genuine attempts" (evidence against M1, toward
+  M2/M3). Repetition is what turns one anecdote into a reliability estimate.
+- **The sub-threshold question addressed — log the continuous value so M3
+  can be ruled in or out separately from M2.** A binary "detected the
+  movement / did not" would leave M2 and M3 conflated: a real 12° movement
+  discarded by the 20° threshold (M3) and a real 25° movement the estimator
+  reports as 2° (M2) look identical if only the thresholded outcome is kept.
+  Logging the continuous raw value (already covered by the first element
+  above) is what makes this separable — read the raw value directly against
+  the threshold rather than only the post-threshold boolean/rate.
+
+### 6.2 The independent-ground-truth mechanism, in detail
+
+Two workable options, either sufficient on its own; a single-operator solo
+session can only use the first:
+
+1. **Live operator, blind to the number.** A second person watches the
+   subject's actual head position during each hold and records a simple
+   categorical judgement per repetition — "clearly performed the commanded
+   movement" / "partial" / "did not perform it" — **without looking at the
+   live pitch readout while making that judgement**, so the judgement is not
+   contaminated by the instrument under test. This mirrors the existing
+   Decision-45 pattern (an operator watching live during calibration) already
+   used elsewhere in this codebase, applied here to a judgement the operator
+   has never been asked to make before (this signal has never had operator
+   oversight — `PITCH_DIAGNOSTIC.md` §3 confirms the operator overlay
+   doesn't even display pitch).
+2. **Recorded video of the subject, reviewed frame-by-frame after capture,
+   blind to the logged numbers.** For a genuinely solo session. **G4
+   applies in full**: video of a real person's face is exactly the raw,
+   identifying data this repository must never commit — any video recorded
+   for this purpose stays entirely OUTSIDE the repository, on the operator's
+   own device, for the duration of the review only; only the DERIVED
+   per-repetition judgement labels (not the video itself) are ever logged
+   into the JSONL record. This is the same constraint that already ruled out
+   re-scanning `test_clip.mp4`/`directed_clip.mp4` earlier in this
+   investigation (§2.2) — the video existed once, was analysed, and was
+   never committed; this protocol should follow the same discipline from the
+   start rather than needing it enforced after the fact.
+
+### 6.3 Protocol outline (specification, not a build)
+
+| Phase | Content | Purpose | Approx. time |
+|---|---|---|---|
+| Setup | Consent, camera check, brief explanation of what will be asked | Standard | ~5 min |
+| Baseline | `look_at_screen`, held ~10s, once | Fills the pitch noise-floor gap §2.3/§2.4 already flags as missing — this protocol should log it even though it isn't the primary target | ~1 min |
+| Yaw positive control | `look_left`/`look_right`, 3 reps each, ~10s hold + ~5s return between reps | A sanity check that the protocol and operator/reviewer process itself works, using the direction already known to register reliably (§2.2) — if yaw doesn't show its known-reliable pattern under this NEW protocol, the protocol itself is suspect, not just pitch | ~1.5 min |
+| Pitch — graded intensity | `look_down` at three instructed intensities (slight / moderate / maximal), 3 reps each, same hold/return timing | Directly targets M3: a "slight" or "moderate" instructed attempt that stays sub-threshold but is still operator/reviewer-confirmed as a real, deliberate movement is exactly the case that would let sub-threshold real movement be seen and ruled in or out, separately from a wholesale failure to move at all | ~2.5 min |
+| Pitch — maximal, repeated | `look_down`, 5 reps at maximal instructed effort; `look_up`, 5 reps (lower priority — §2.2's `look_up` figures were already less extreme than `look_down`'s) | The reliability question itself: does a REPEATEDLY, INDEPENDENTLY-CONFIRMED genuine maximal attempt fail to register every time (evidence against M1, toward M2), or does it fail unevenly / does the operator/reviewer judge some attempts as not genuinely maximal (evidence for M1)? | ~3.5 min |
+| Wrap-up | Debrief, confirm video (if used) will not be committed, delete/move per G4 | Standard | ~2 min |
+
+**Estimated total run time: 15–20 minutes per subject**, single session,
+one person with a webcam plus (for the highest-confidence version) a second
+person as live operator, or a solo session with post-hoc video review kept
+outside the repository. Repeating this across the same cross-person set
+already needed for other pending validation work (Gate-2-style, ≥8 people)
+would additionally start supplying the cross-person confirmation §2.6
+identifies as still missing for the underlying pitch finding itself — a
+second, separate benefit of the same capture, not required for THIS
+mechanism question but worth noting since the same protocol would serve both.
+
+### 6.4 What a result would indicate for each mechanism
+
+- **Favours M1**: the operator/reviewer judgement itself frequently records
+  "partial" or "did not perform it" for nominally-maximal attempts — i.e.,
+  subjects, even when told to look down as far as possible, often visibly do
+  not, across repeated independent attempts.
+- **Favours M2**: the operator/reviewer judgement confirms a genuine,
+  sustained, maximal downward tilt on most or all repetitions, while the
+  simultaneously-logged raw pitch value stays low (well under the 20°
+  threshold, ideally under the ≤4.4° range already seen) during the
+  confirmed-genuine hold specifically.
+- **Favours M3**: the graded-intensity phase shows raw pitch values that are
+  real and non-trivial (say, 10–19°) during confirmed genuine "slight" or
+  "moderate" attempts, staying just under the 20° threshold — i.e., the
+  estimator IS registering real movement, just not enough to cross the
+  current threshold, which would separately raise the question of whether
+  `ATTENTION_PITCH_THRESHOLD_DEG` itself (not the estimator) is the limiting
+  factor.
+- A genuine mixture (some subjects/attempts each mechanism) is also a
+  legitimate, reportable outcome — this protocol is not designed to force a
+  single clean answer, only to make each mechanism's signature visible if
+  present.
