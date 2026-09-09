@@ -579,3 +579,209 @@ class AttentionWindowAccumulator:
         self.window_start = None
         self.samples = []
         return summary
+
+
+# ============================================================
+# ROI AGGREGATION (dwell / switching / persistence / coverage) -- "ACT ON
+# THE ROI FEASIBILITY VERDICT" task, Task 3. NEW, PURE AGGREGATION over a
+# CALLER-SUPPLIED (timestamp, roi_id) stream. Unlike everything above in
+# this file, this class computes NO roi_id itself -- it has no camera
+# input, no gaze-to-region inference, and no opinion about how many
+# regions exist or what "roi_id" means. It is windowing math over an
+# opaque label, source-agnostic by construction (see
+# tests/test_roi_aggregation.py's synthetic_roi_source(), mirroring
+# controls/leakage.py's synthetic_trial_source() pluggable-supplier shape).
+#
+# WHY THIS IS BUILDABLE NOW, DESPITE docs/ROI_FEASIBILITY.md's resolution
+# verdict: that verdict is about whether THIS repository's OWN sensor can
+# determine roi_id from gaze/head-pose (it largely cannot, for pitch --
+# see that document). This class never determines roi_id -- it is handed
+# one, from wherever the caller obtained it (today: a synthetic supplier
+# for testing only; eventually the client's task harness, NOT built here
+# -- no camera-derived supplier and no harness adapter exist in this
+# module, deliberately, since the harness's real event format is unknown
+# -- see docs/ROI_FEASIBILITY.md Task 3's "genuinely cannot be built
+# until real events exist"). Nothing below infers, corrects, validates,
+# or second-guesses the supplied roi_id.
+#
+# G1: computes and stores numbers only. No dwell/switch/coverage/
+# persistence value is ever compared against a constant; nothing here
+# decides "long", "good", "stable", or "engaged".
+# ============================================================
+
+
+class ROIWindowAccumulator:
+    """Same tumbling-window PATTERN as WindowAccumulator/
+    AttentionWindowAccumulator above (WINDOW_SECONDS,
+    add_sample/should_flush/flush, full state reset on flush -- nothing
+    carried into the next window), reused deliberately rather than
+    inventing a new accumulation shape, per this task's own instruction.
+
+    STREAM SEMANTICS: add_sample(ts, roi_id) is a STEP-FUNCTION sample --
+    roi_id is treated as holding from ts until the NEXT sample's ts (or
+    until this window's flush() time, for the last sample). roi_id=None
+    is an EXPLICIT, first-class value meaning "the supplied stream
+    reports no assignment as of this timestamp" -- it is never skipped,
+    never silently carried forward as the previous roi_id, and never
+    guessed at. This is what makes "an unassigned interval is not
+    silently dropped and is not imputed to the previous roi_id" true BY
+    CONSTRUCTION: every interval's attribution comes from an actual
+    sample this accumulator was given, never from inference about a gap
+    between samples it was not given. If the real supplied stream has a
+    genuine gap (the source stopped reporting for a while), the CALLER is
+    responsible for representing that as an explicit roi_id=None sample
+    -- this class has no independent way to tell "missing" apart from "a
+    long-but-real single-ROI dwell", since it does not know the stream's
+    expected cadence and must not invent one (G2 -- no tuned threshold).
+    Unlike the canonical schema's missingness_reason enum
+    (schema/canonical_log_v1.json), this class does not attach a REASON
+    to a gap -- it only knows THAT an interval is unassigned (roi_id is
+    None), never WHY, since the supplied stream is opaque to it by
+    design. A caller wiring this into the canonical schema is free to
+    carry its own reason for a gap separately; that reason does not
+    exist here, and it would be a G2/placeholder-definition violation to
+    invent one.
+
+    BOUNDARY-CROSSING DECISION (Task 3.4): this window is TUMBLING,
+    exactly like WindowAccumulator/AttentionWindowAccumulator -- flush()
+    fully resets state, nothing carries into the next window. A run of
+    the same roi_id still open when flush() is called is RIGHT-CENSORED
+    (flagged, not silently reported as a complete measured run) at
+    `now`; a run whose first sample IS this window's first sample is
+    LEFT-CENSORED (this window cannot see whether that roi_id started
+    earlier). A single roi_id spanning an entire window is therefore
+    marked both left- and right-censored. Chosen because (a) inventing
+    cross-window carry-over state would be new accumulation machinery
+    this task explicitly says not to build ("following the existing
+    WindowAccumulator pattern rather than inventing a new one"), and (b)
+    silently reporting a censored run as if it were a complete,
+    fully-measured one would misrepresent a lower bound as an exact
+    duration (G3). A downstream consumer that wants the true length of a
+    run spanning two windows can reconstruct it by summing the
+    right-censored tail of one window's matching roi_id run with the
+    left-censored head of the next -- this class deliberately does not
+    do that reconstruction itself, since it would require holding
+    cross-window state.
+
+    "Switching" counts a transition only between two DIFFERENT non-None
+    roi_id values, comparing each newly-seen non-None value against the
+    PREVIOUS non-None value in sequence -- an intervening None gap does
+    not itself count as a switch, and does not reset what "previous"
+    means: [A, None, A] is 0 switches (the same ROI resumed after a gap);
+    [A, None, B] is 1 switch (a real change of ROI, whether or not the
+    stream reported anything during the gap between them); [A, B, C] is
+    2. This treats "switching" as "how many times the assignment became
+    a genuinely different ROI", not "how many times the raw sample value
+    changed" (which would double-count every transition through a gap).
+
+    roi_id values must be hashable (used as dict keys) and, if these
+    summaries are later serialized as JSON, should be str or int (a
+    non-string hashable key is silently stringified by json.dumps,
+    exactly like any other dict with non-string keys)."""
+
+    def __init__(self):
+        self.window_start = None
+        self.samples = []  # list of (ts, roi_id), in the order added
+
+    def add_sample(self, ts, roi_id):
+        if self.window_start is None:
+            self.window_start = ts
+        self.samples.append((ts, roi_id))
+
+    def should_flush(self, now, window_seconds=WINDOW_SECONDS):
+        return self.window_start is not None and (now - self.window_start) >= window_seconds
+
+    def flush(self, now):
+        window_start = self.window_start
+        samples = self.samples
+        n_samples = len(samples)
+        window_duration = (now - window_start) if window_start is not None else 0.0
+
+        # Step-function intervals: sample i covers [ts_i, ts_{i+1}); the
+        # last sample covers [ts_last, now).
+        intervals = []
+        for i, (ts, roi_id) in enumerate(samples):
+            end = samples[i + 1][0] if i + 1 < n_samples else now
+            intervals.append((ts, end, end - ts, roi_id))
+
+        # --- dwell + coverage ---
+        dwell = {}
+        assigned_duration = 0.0
+        for _ts, _end, duration, roi_id in intervals:
+            if roi_id is not None:
+                dwell[roi_id] = dwell.get(roi_id, 0.0) + duration
+                assigned_duration += duration
+        coverage_fraction = (assigned_duration / window_duration) if window_duration > 0 else None
+
+        # --- switching (non-None sequence only; see class docstring) ---
+        non_none_sequence = [roi_id for _, roi_id in samples if roi_id is not None]
+        switch_count = sum(
+            1 for i in range(1, len(non_none_sequence))
+            if non_none_sequence[i] != non_none_sequence[i - 1]
+        )
+
+        # --- persistence: uninterrupted same-roi_id runs, censoring flagged ---
+        raw_runs = []  # (roi_id, first_interval_idx, duration, last_interval_idx)
+        current = None
+        for idx, (_ts, _end, duration, roi_id) in enumerate(intervals):
+            if roi_id is None:
+                if current is not None:
+                    raw_runs.append(current)
+                    current = None
+                continue
+            if current is not None and current[0] == roi_id:
+                current = (roi_id, current[1], current[2] + duration, idx)
+            else:
+                if current is not None:
+                    raw_runs.append(current)
+                current = (roi_id, idx, duration, idx)
+        if current is not None:
+            raw_runs.append(current)
+
+        persistence_runs = [
+            {
+                "roi_id": roi_id,
+                "duration": duration,
+                "left_censored": first_idx == 0,
+                "right_censored": last_idx == n_samples - 1,
+            }
+            for roi_id, first_idx, duration, last_idx in raw_runs
+        ]
+
+        persistence = {}
+        for roi_id in dwell:
+            roi_run_durations = [r["duration"] for r in persistence_runs if r["roi_id"] == roi_id]
+            arr = np.array(roi_run_durations) if roi_run_durations else None
+            persistence[roi_id] = {
+                "avg": float(arr.mean()) if arr is not None else None,
+                "peak": float(arr.max()) if arr is not None else None,
+                "variance": float(arr.var()) if arr is not None else None,
+                "n_runs": len(roi_run_durations),
+                "runs": [r for r in persistence_runs if r["roi_id"] == roi_id],
+            }
+
+        summary = {
+            "schema_version": SCHEMA_VERSION,
+            "record_type": "roi_window_summary",
+            "session_id": SESSION_ID,
+            "person_label": PERSON_LABEL,
+            "window_start_monotonic": window_start,
+            "window_end_monotonic": now,
+            "window_seconds": window_duration,
+            "n_samples": n_samples,
+            "dwell": dwell,
+            "switching": {"count": switch_count},
+            "persistence": persistence,
+            "coverage": {
+                "assigned_fraction": coverage_fraction,
+                "assigned_duration": assigned_duration,
+                "window_duration": window_duration,
+            },
+            "label": "ROI dwell/switching/persistence/coverage, computed from a "
+                     "caller-supplied (timestamp, roi_id) stream -- roi_id is opaque; "
+                     "this module makes no claim about how it was determined and "
+                     "applies no threshold to any value here.",
+        }
+        self.window_start = None
+        self.samples = []
+        return summary
