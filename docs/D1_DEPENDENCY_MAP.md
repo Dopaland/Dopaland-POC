@@ -363,3 +363,48 @@ without an import statement somewhere in their source, a runtime variant
 was judged to add no additional coverage over check 4 as written — not
 added, so as not to overstate what was built beyond what closes the
 identified gap.
+
+## 10. `context` as a FORBIDDEN_EDGES source — closed for check 1, still open for check 2
+
+Two separate, related gaps, found by audit at different times, both
+concerning `features/context.py` — recorded here together so a future
+session encounters both in the one place the separation guard's own
+documentation lives, not only in a commit message or a feasibility
+document's footnote.
+
+**Closed (the "ACT ON THE ROI FEASIBILITY VERDICT" task):**
+`FORBIDDEN_EDGES` in `tests/test_feature_separation.py` had no entry naming
+`context` as a source — `BLOCK_MODULES` already treated it as a graph node
+(its imports were parsed), but no forbidden-edge check would fire even if
+`context.py` imported `attention.py` or `audio.py` directly. Fixed by adding
+`("context","attention")` and `("context","audio")`. Proven non-vacuous, not
+just added: a temporary `from features.attention import
+ATTENTION_ORIENTED_SCORE_THRESHOLD` inserted into `features/context.py` made
+check 1 FAIL with `"context.py imports (transitively) attention.py -- path:
+context -> attention"`; a temporary `import features.audio` made it FAIL
+with the matching `context -> audio` message; both reverted, suite returned
+to PASS. `C_t -> E_t` stays permitted — neither edge names `episodes` or
+`x_core` as a source. See `docs/ROI_FEASIBILITY.md` §4.2 for the full
+account this was originally found and fixed against.
+
+**Still open, found this task, not fixed:** `check_static_call_graph`
+(check 2) is hardcoded to `for src in ("x_core", "episodes")` — see
+`tests/test_feature_separation.py`. Unlike check 1's `FORBIDDEN_EDGES` list
+(now generic over any `(src, forbidden)` pair, including `context`), check 2
+never considers `context.py` as a source at all, for any forbidden symbol.
+**Not urgent today**: `features/context.py` is still empty (confirmed again
+this session — zero functions, classes, or constants), so there is no symbol
+for check 2 to miss regardless. **It becomes a real gap the day
+`features/context.py` gains content that references a name defined in
+`attention.py`/`audio.py`** — check 1 would catch an *import* of
+`attention`/`audio` into `context.py` (the edge now exists), but check 2
+would not catch a *reference* to an attention/audio-defined symbol from
+inside `context.py` itself, the same class of violation check 2 exists to
+catch for `x_core.py`/`episodes.py`. Fixing this, when the day comes, is
+adding `"context"` to check 2's `src` tuple — the same trivial-once-decided
+shape as check 1's fix was. Not done now because there is nothing in
+`context.py` for it to protect yet, and adding an unused check is not
+evidence the check works (this document's own standing rule — see the
+opening of §6 and §9). Also recorded in `docs/PROJECT_STATE.md` so a future
+session encounters it before writing the first line of real `context.py`
+content, not only here.

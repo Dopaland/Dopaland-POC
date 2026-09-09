@@ -123,6 +123,16 @@ repository cannot supply on its own.
   through the real detector; zero real clips exist.
 - **An extended stability soak** — the only soak on record is the POC-era 41-minute
   run (`logs/soak_log.jsonl`); a longer or repeated soak is scheduled, not existing.
+- **The directed-capture protocol that would separate M1/M2/M3 behind the pitch
+  finding** — specified, not built, in `docs/ROI_FEASIBILITY.md` §6. Resolves
+  whether pitch's directed-look-down failure (§2.2/§2.4a of that document) is a
+  property of subject behaviour (permanent), this specific estimator, or its
+  threshold logic (either potentially addressable by different sensing later) —
+  needs raw per-frame yaw/pitch logging, an independent ground-truth judgement of
+  actual head movement from the frames themselves (not from the estimator being
+  tested), and repeated directed attempts at graded intensity. ~15–20 min per
+  subject; any video used for the independent judgement stays outside this
+  repository per G4, only the derived judgement labels are logged.
 
 ### Needs a client decision
 
@@ -171,12 +181,26 @@ repository cannot supply on its own.
   Adopting log loss reduced this spread to roughly a third of its size but did not
   eliminate it. Any single-seed precision number from this simulation is one draw
   from a wide distribution, not a stable estimate.
-- **Pitch (head tilt up/down) is structurally unrecoverable** from this single-camera
-  landmark pipeline — confirmed empirically (a maximal, verified chin-to-chest look-down
-  still read ~0.1° pitch), root-caused as face foreshortening degrading the underlying
-  landmark data, not a fixable bug in `yaw_pitch_roll_from_matrix`. This is why the
-  response pre-declares an elevated risk that the D8 attention-validity criterion
-  fails (§4.14) — declared in advance, not discovered after Gate 2 runs.
+- **Pitch (head tilt up/down) fails under direction — established, but the MECHANISM
+  is not yet separated from the finding.** Corrected this phase (`docs/ROI_FEASIBILITY.md`
+  §2.4a): the earlier claim that this was "structurally unrecoverable," resting on a
+  "verified" chin-to-chest observation, does not hold up under direct examination —
+  no documented verification method for that specific claim exists anywhere in this
+  repository, it is numerically inconsistent (~0.1° vs. the later, more carefully
+  measured ≤4.4°) with the one figure that IS backed by a documented method
+  (`PITCH_DIAGNOSTIC.md`'s frame-by-frame scan), and that later investigation's own
+  author explicitly declines to rule out that the subject simply didn't move enough.
+  **What IS established, from two independent real-data sources: the failure itself
+  reproduces cleanly.** What is NOT yet established: whether it is a property of
+  human behaviour (permanent), this specific estimator, or its threshold logic
+  (either potentially addressable by different sensing later) — see
+  `docs/ROI_FEASIBILITY.md` §2.4a for the three-mechanism breakdown and §6 for the
+  capture protocol that would settle it. **A future session must state the failure
+  and the mechanism as two separate claims with two separate confidence levels — do
+  not restate "structurally unrecoverable" as if it were still this document's
+  position.** This is still why the response pre-declares an elevated risk that the
+  D8 attention-validity criterion fails (§4.14) — the practical risk assessment is
+  unchanged; only the mechanism claimed for it is corrected.
 - **The three capture/UI consumers have diverged.** `stage1_step4_vectors.py`'s own
   loop, `stage3_demo_ui.py`, and `analyze_video.py` all call the identical
   `features.x_core` functions (so the validated math cannot diverge) but differ in
@@ -192,6 +216,14 @@ repository cannot supply on its own.
   not a defect in the manifest generator — but historical `logs/` files cannot be
   treated as reliably attributable without checking the manifest's `notes` column
   first.
+- **The separation guard's check 2 (static call graph) is hardcoded to
+  `("x_core", "episodes")` as sources** — it does not consider `context` even
+  though check 1's `FORBIDDEN_EDGES` now does (`docs/D1_DEPENDENCY_MAP.md` §10).
+  Not urgent while `features/context.py` stays empty (confirmed again this
+  phase); becomes a real gap the day `context.py` gains content that
+  references an `attention.py`/`audio.py`-defined symbol. Fix is adding
+  `"context"` to check 2's `src` tuple — flagged here so a future session
+  encounters it before writing the first line of real `context.py` content.
 - **One residual documentation gap, found this phase and not yet fixed**: the
   response document's §4.11 still contains an unreworded "clean object store" bullet
   that its own §4.27 correctly softened elsewhere in the same document — see
