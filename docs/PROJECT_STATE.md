@@ -19,8 +19,14 @@ documents, read in that order, answer nearly everything a fresh session will ask
 
 ## 1. Current commit and where this phase stands
 
-**HEAD at time of writing:** `6e5bef7` — "docs: reconcile row map with the corrected
-response, resolve row 21 and 27."
+**HEAD at time of writing:** `7473742` — "docs: symmetric resolution table,
+separation-guard fix, ROI status split" (the "ACT ON THE ROI FEASIBILITY
+VERDICT" task: closed the yaw/pitch resolution-comparison asymmetry, closed
+the `context`→`attention`/`audio` separation-guard gap, and built the ROI
+dwell/switching/persistence/coverage aggregation layer against a synthetic
+supplier — see `docs/ROI_FEASIBILITY.md` §2–§5 for the full account. Prior:
+`6e5bef7` — "docs: reconcile row map with the corrected response, resolve
+row 21 and 27.")
 
 **The repository-side work is complete for this phase.** "Complete" here has a
 specific, narrow meaning, not a general one: **everything that can be built without
