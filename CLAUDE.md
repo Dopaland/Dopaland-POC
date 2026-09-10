@@ -212,12 +212,66 @@ FORBIDDEN    A_t -> X_core          A_t -> E_t
 - **A_t attention features / ROI features** — blocked on the same question.
 - **Leakage controls on real action data** — harness only, synthetic data, pluggable
   source.
-- **`U_t` audio module** — stub only. No microphone, no capture, no clock sync exists.
-  Pending a keep-or-formally-remove decision.
 - **Second-camera capture** — pending hardware and an FPS feasibility test.
 
 If a task requires any of the above, STOP and say so. Do not invent a placeholder
 definition to keep moving.
+
+### `U_t` AUDIO — RETAINED AND IN ACQUISITION (decision reversed the prior recommendation)
+
+**The keep-or-formally-remove decision has been made: audio is RETAINED, and
+acquisition is authorised and built.** This reverses the sign-off response's own
+recommendation (Decision A) to formally remove `Δ_audio` — recorded as a genuine
+**scope change against frozen `D0PA1 POC Scope & Acceptance v0.5.1`, requiring
+change control** (§18), not yet processed as such. See
+`docs/preregistration/README.md`'s change-control section and
+`docs/AUDIO_ACQUISITION.md` for the full record; this file does not characterise
+the commercial position, only that the change exists and is not yet processed.
+
+**What exists**, all built and tested this task, none of it wired into
+`stage1_step4_vectors.py`'s capture loop:
+- `audio_acquisition.py` (repo root, U_t block, same placement pattern as
+  `orientation_capture.py`) — minimal acquisition instrument: own thread
+  (`AudioAcquisitionThread`, sounddevice callback-based, structurally decoupled
+  from T1/T2 the same way T1 and T2 are decoupled from each other), per-chunk
+  integrity logging (`AudioChunkLogger` → `logs/audio_chunk_integrity.jsonl`,
+  its own record type, `subject_id`/`context_id`/`device_id` from the first
+  record, missingness as a row with a fixed-vocabulary reason, never an absent
+  row) — level and timing only.
+- `privacy/audio_storage_config.py` — raw audio's storage location is read from
+  `D0PA1_AUDIO_RAW_STORAGE_LOCATION` at runtime, never a literal path in any
+  committed file (stricter than `privacy/retention.py`'s own placeholder, which
+  IS a committed literal — see that module's docstring for why: no
+  "where raw video already goes" location has ever actually been decided to
+  reuse). Raises loudly if unset; no hardcoded fallback.
+- Audio consent (`stage1_step7_consent.py`) as a SEPARATE, INDEPENDENT question
+  from video consent — declining it means the audio-acquisition module's
+  device-opening code is never even reached; the consent module itself imports
+  no audio library, machine-checked (`tests/test_consent_audio_gate.py`).
+- `.githooks/pre-commit` / `.gitignore` extended to every audio container this
+  task could name (`.opus .wma .aiff/.aif .au .caf .amr .mka .3gp/.3g2`, on top
+  of the pre-existing `.wav .mp3 .m4a .aac .ogg .flac`), with magic-byte
+  signatures for the new containers proven to fire independently of extension.
+- `FORBIDDEN_EDGES`/`tests/test_feature_separation.py` extended to cover
+  `audio_acquisition.py` itself as a direct U_t source (not just a module that
+  re-exports `features.audio`) — proven fail-then-pass.
+- **Real sync-measurement result**: see `docs/AUDIO_ACQUISITION.md` — Part A's
+  clap-based audio/video timestamp alignment measurement was **not performed**
+  this task (camera use was declined for this session; the measurement needs a
+  single physical event visible to both sensors, so audio alone cannot supply
+  it) — stated plainly, not simulated or estimated, per that task's own
+  instruction.
+
+**What does NOT exist, and is deliberately out of scope — SCOPE LINE, unchanged
+by "retained":** no audio FEATURE of any kind. No prosody, no arousal-from-voice,
+no emotion-from-speech, no valence, no stress, no spectral features, no
+transcription, no speech detection — nothing that characterises WHAT was said or
+what it might mean. `features/audio.py` (the U_t feature stub) is still
+intentionally empty. Audio feature DEFINITIONS remain the client's to sign off,
+exactly as every other new-signal definition in this project does — a future
+session must not helpfully invent them. If a task asks for anything on this
+list, STOP and say so, the same as this section already says for D2/A_t/second-
+camera above.
 
 ### HONEST-FRAMING WORDING (contractual, not stylistic)
 
@@ -249,8 +303,10 @@ detail (current commit, open items, run-vs-not-run status) this file doesn't car
   formulas, `NeutralCalibrator`, `map_to_valence_arousal`) · `episodes.py` (**validated
   path, G5** — `WindowAccumulator`, `classify_window_confidence`) · `attention.py`
   (pilot/unvalidated — `compute_v_so`, `compute_gaze_direction`, `BlinkDetector`,
-  `AttentionWindowAccumulator`) · `audio.py` / `context.py` (empty stubs, U_t/C_t — no
-  content by design) · `robust_baseline.py` (D0PA1 C1, MAD z-scoring, additive) ·
+  `AttentionWindowAccumulator`) · `audio.py` (empty stub, U_t FEATURE block — still no
+  content by design; acquisition lives in `audio_acquisition.py`, repo root, NOT in this
+  file — see "`U_t` AUDIO — RETAINED AND IN ACQUISITION") · `context.py` (empty stub,
+  C_t — no content by design) · `robust_baseline.py` (D0PA1 C1, MAD z-scoring, additive) ·
   `signal_quality.py` (D0PA1 C2/C4, missingness+confidence+coverage for the 4 core
   vectors, additive) · `manifests/*.json` (versioned per-block feature manifests).
 - **`analysis/`** — `baselines.py` (D7: raw / session_z / persistent_z, the temporal-
@@ -284,7 +340,15 @@ detail (current commit, open items, run-vs-not-run status) this file doesn't car
   storage location, a deletion routine with a dry-run default, a deletion log so the
   claim is verifiable). See `docs/PRIVACY_AND_RETENTION.md` for what is implemented
   vs. still an open policy decision (the retention period and the storage location
-  are both engineering placeholders, not proposed policy).
+  are both engineering placeholders, not proposed policy). `audio_storage_config.py`
+  (raw audio's storage location, read from an env var at runtime, never a literal
+  path in a committed file — stricter than `retention.py`'s own placeholder).
+- **`audio_acquisition.py`** (repo root, U_t block) — the audio acquisition
+  instrument: `AudioAcquisitionThread` (own thread, sounddevice callback-based),
+  `AudioChunkLogger` (per-chunk level/timing integrity records,
+  `logs/audio_chunk_integrity.jsonl`), `compute_level_stats` (peak/RMS/clipping —
+  amplitude only, no content analysis). See "`U_t` AUDIO — RETAINED AND IN
+  ACQUISITION" above and `docs/AUDIO_ACQUISITION.md`.
 - **`tests/`** — one file per module above, plus `test_refactor_snapshot.py` (the golden
   byte-exact regression net over the validated path) and `test_feature_separation.py`
   (the D1 import/call-graph + runtime-monkeypatch + shim-isolation guard).
@@ -314,10 +378,18 @@ dry-run default, a verifiable deletion log) · the §19 matrix row map, the stop
 exclusion-rules tracker, and a draft (unsent, unreviewed) pre-registration sign-off
 response.
 
+**Also built (this task, audio acquisition):** `U_t` audio ACQUISITION — capture thread,
+per-chunk integrity logging, audio-specific consent, storage-location config, extended
+separation guard (`tests/test_feature_separation.py`'s `DIRECT_UT_MODULES`). `U_t` audio
+FEATURES remain not built (see below) — acquisition and features are a real, deliberate
+split, not a partial implementation of one thing.
+
 **Not built:** D2 (prediction target: action classes, horizon, tie handling) — BLOCKED
 on the client · any `A_t`/ROI feature beyond the existing pilot V_so/gaze/blink (dwell,
 persistence, switching are nowhere in this repo) — BLOCKED on the same D2 answer · `U_t`
-audio (module is an intentionally empty stub) · `C_t` context (same, empty stub) ·
+audio FEATURES (`features/audio.py` is still an intentionally empty stub — no prosody,
+arousal-from-voice, or any audio-derived signal; only ACQUISITION is built, see above) ·
+`C_t` context (empty stub) ·
 leakage/time-shuffle controls on real action data (no real trial source exists) · a
 second-camera sensor-swap capture · wiring `CanonicalLogWriter` into any live capture
 loop · wiring `RunProvenance` into any live entry point (it exists and is tested, no
@@ -526,9 +598,13 @@ must not be refused on the strength of this list:
 - **Cross-session baseline.** POC was within-session only. D0PA1's D7 explicitly requires
   a persistent cross-session baseline representation, computed under the strict temporal
   rule. In scope.
-- **Voice / audio.** Excluded from the POC, and currently BLOCKED in D0PA1 pending a
-  keep-or-remove decision — but as a `U_t` *stub and manifest entry* only. Do not build
-  audio capture or analysis.
+- **Voice / audio.** Excluded from the POC. In D0PA1, the keep-or-remove decision has
+  now been made — RETAINED, acquisition built (see "`U_t` AUDIO — RETAINED AND IN
+  ACQUISITION" above). Acquisition (capture, integrity logging, consent, storage
+  config, separation guard) is in scope and built. Audio FEATURES (analysis of any
+  kind — prosody, arousal, emotion-from-speech) remain OUT, exactly as strictly as
+  before this decision — the exception below is scoped to acquisition only, never
+  analysis.
 
 Still OUT under D0PA1: trained vision model, face recognition/FAISS, LSTM,
 self-retraining, intervention, clinical diagnosis, weekly reports, multiple agents,

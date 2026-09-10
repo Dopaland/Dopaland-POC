@@ -138,12 +138,21 @@ repository cannot supply on its own.
   tested), and repeated directed attempts at graded intensity. ~15–20 min per
   subject; any video used for the independent judgement stays outside this
   repository per G4, only the derived judgement labels are logged.
+- **The audio/video sync measurement (Δ_audio's actual point)** — a repeated
+  hand-clap timestamp-alignment measurement, built and ready
+  (`audio_acquisition.py`'s raw-capture path, `docs/AUDIO_ACQUISITION.md` §4) but
+  **not run**: it needs a single physical event visible to BOTH the camera and
+  microphone simultaneously, and this phase's real-hardware session explicitly
+  declined camera use (audio-only was exercised instead — see
+  `docs/AUDIO_ACQUISITION.md` §3's FPS-impact proof, which used a synthetic video
+  timing harness for exactly this reason). Resolves whether audio events can be
+  placed on the video timeline to better than the resolution the study needs — if
+  the achievable alignment is worse than needed, `Δ_audio` measures alignment
+  error, not information, regardless of what else is built. No offset, spread, or
+  drift figure exists yet; none should be assumed or estimated.
 
 ### Needs a client decision
 
-- **Audio (`U_t`)** — keep or formally remove `Δ_audio`. No microphone module, capture
-  path, or clock-synchronisation method exists either way; the response recommends
-  formal removal but the decision is the client's (Decision A in the response).
 - **Second-camera sensor swap** — pending hardware procurement and an FPS feasibility
   test on the actual capture hardware (Decision B); must happen *during* real
   collection or the opportunity is permanently lost.
@@ -229,6 +238,22 @@ repository cannot supply on its own.
   references an `attention.py`/`audio.py`-defined symbol. Fix is adding
   `"context"` to check 2's `src` tuple — flagged here so a future session
   encounters it before writing the first line of real `context.py` content.
+- **Audio (`U_t`) is RETAINED, acquisition built — a scope change against frozen
+  `Scope v0.5.1`, not yet through change control.** This reverses the sign-off
+  response's own recommendation to formally remove `Δ_audio` (Decision A,
+  `docs/MATRIX_ROW_MAP.md` row 23/19). See `docs/AUDIO_ACQUISITION.md` §6 — this
+  document records that the change exists and requires the client's own §18
+  change-control process; it does not characterise the commercial position and
+  does not assert the change has been processed. Audio FEATURE definitions
+  remain unbuilt and are the client's to sign off, exactly as before this
+  decision — only acquisition (capture, integrity logging, consent, storage
+  config, separation guard) is now in scope and built.
+- **The audio/video sync figure does not exist. Do not estimate, assume, or
+  infer one from acquisition being built.** See the physical-run item above and
+  `docs/AUDIO_ACQUISITION.md` §4 — the measurement was explicitly not performed
+  this phase (camera use declined), stated plainly rather than simulated. A
+  future session must not read "acquisition works" as implying anything about
+  achievable alignment.
 - **One residual documentation gap, found this phase and not yet fixed**: the
   response document's §4.11 still contains an unreworded "clean object store" bullet
   that its own §4.27 correctly softened elsewhere in the same document — see
