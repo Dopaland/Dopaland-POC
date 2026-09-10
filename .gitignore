@@ -26,6 +26,16 @@
 *.aac
 *.ogg
 *.flac
+*.opus
+*.wma
+*.aiff
+*.aif
+*.au
+*.caf
+*.amr
+*.mka
+*.3gp
+*.3g2
 *.jpg
 *.jpeg
 *.png

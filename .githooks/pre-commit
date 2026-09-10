@@ -26,6 +26,14 @@ import sys
 MEDIA_EXTENSIONS = {
     ".mp4", ".avi", ".mov", ".mkv", ".webm", ".wmv", ".flv", ".m4v", ".mpg", ".mpeg",
     ".wav", ".mp3", ".m4a", ".aac", ".ogg", ".flac",
+    # Audio additions (D0PA1 audio acquisition task): every extension named
+    # explicitly by that task's own list, plus every other container capable
+    # of carrying an audio track this hook did not already recognise via
+    # ftyp (.3gp/.3g2 share MP4's ftyp box) or EBML (.mka shares MKV/WEBM's
+    # EBML header) -- those two are covered by magic bytes already and are
+    # listed here anyway, belt-and-suspenders, so the extension check alone
+    # (cheaper, runs first) also catches them without needing content sniffed.
+    ".opus", ".wma", ".aiff", ".aif", ".au", ".caf", ".amr", ".mka", ".3gp", ".3g2",
     ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".heic", ".webp", ".raw",
 }
 
@@ -36,11 +44,20 @@ MAGIC_SIGNATURES = [
     (b"GIF89a", "GIF"),
     (b"BM", "BMP"),
     (b"RIFF", "RIFF container (WAV/AVI)"),
-    (b"ftyp", "MP4/MOV (ftyp box, offset-scanned)"),
-    (b"\x1aE\xdf\xa3", "MKV/WEBM (EBML)"),
+    (b"ftyp", "MP4/MOV/3GP (ftyp box, offset-scanned)"),
+    (b"\x1aE\xdf\xa3", "MKV/WEBM/MKA (EBML)"),
     (b"ID3", "MP3 (ID3 tag)"),
-    (b"OggS", "OGG"),
+    (b"OggS", "OGG/Opus"),
     (b"fLaC", "FLAC"),
+    # Audio additions (D0PA1 audio acquisition task) -- same "content, not
+    # just extension" discipline as the signatures above, so a wrong or
+    # missing extension on any of these containers still gets caught.
+    (b"\x30\x26\xb2\x75\x8e\x66\xcf\x11", "WMA/ASF (header GUID)"),
+    (b"AIFF", "AIFF (form type, inside a FORM chunk)"),
+    (b"AIFC", "AIFF-C (form type, inside a FORM chunk)"),
+    (b".snd", "AU/SND (Sun/NeXT audio)"),
+    (b"caff", "CAF (Core Audio Format)"),
+    (b"#!AMR", "AMR (adaptive multi-rate audio)"),
 ]
 
 SECRET_PATTERNS = [
