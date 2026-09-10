@@ -1,0 +1,409 @@
+# Client Figures Pack
+
+Assembled by the "D0PA1 — FIGURES PACK FOR THE CLIENT DOCUMENTS" task.
+**Documentation only — no code was changed to produce this file.** Every
+figure below is traced to a specific artefact (a file, a record type, a
+test, or a commit) and a production date where one is knowable. **Anything
+that could not be traced to a real artefact is marked NOT TRACEABLE and
+excluded from the number, not filled in with an estimate** — per this
+task's own instruction, dropping a number is preferred to printing one that
+cannot be defended.
+
+This document also carries the corrections record (Task 3), the audio
+scope-change record (Task 4), and the outstanding-items list (Task 5), so
+that everything intended for eventual client use lives in one place.
+
+**Nothing in this document has been sent to the client.** Same status as
+every file in `docs/preregistration/` — see that directory's own `README.md`.
+
+---
+
+## 1. Precision and thresholds
+
+| Figure | Value | Meaning | Artefact | Date |
+|---|---|---|---|---|
+| Worst-cell half-width | **0.0339** macro-F1 points (individual seeds up to 0.0444) | The widest bootstrap CI half-width found across the D6 sweep grid, at the most pessimistic real cell (25 min session, rare-class frequency 0.02) | `artefacts/precision_analysis_v2.md`, line 313 (re-checked this task) | D6 sweep, addendum pass — see file header |
+| Realistic-cell spread | 0.013–0.043, mean 0.021 (45 min, rare=0.05) | How much the same CI half-width varies just from which synthetic subject is drawn, at a more typical configuration | Same file, line 318 | Same |
+| Decidability ratio (log loss vs. macro-F1) | **~2.1×** average, no exceptions across cells/effect sizes tested; spread in bootstrap half-width reduced to **~1/3** | Adopting multiclass log loss as the primary metric materially improves how reliably a fixed effect size can be told apart from a CI half-width, versus macro-F1 | Same file, "Metric comparison" section, lines 411–418 | Same |
+| Information figure thresholds derive from | **0.272 nats** (uniform-predictor baseline 1.609 nats − context-only M0b baseline 1.337 nats) | The context-only model (base rates, time-in-session, previous action) already captures this much structure over chance — the yardstick a core behavioural model must clear a meaningful fraction of to be worth anything | `docs/preregistration/D0PA1_Section19_SignOff_Response.docx` §4.7 (extracted and read directly this task) | Current committed response revision |
+| Resulting δ (Gate 3 / attention / audio / latent) | **0.05 nats** (0.20 × 0.272 = 0.054, rounded down) | The proposed minimum-effect threshold for every "does the core model add meaningful information" decision this study makes | Same document | Same |
+| δ=0.03 candidate — DROP reachability | At the pessimistic worst cell (25 min, rare=0.02): **DROP is not reachable for any non-negative true effect** (half-width 0.0339 alone exceeds δ=0.03) | A smaller candidate threshold than 0.05 nats was also evaluated and found impractical at the worst realistic cell | `artefacts/precision_analysis_v2.md`, lines 268–270, 366–370 | Same |
+
+---
+
+## 2. Reliability
+
+**No real reliability result exists for this study.** `docs/RELIABILITY.md`
+states this as its own first line: the required data (three sessions, three
+separate days, fixed protocol, matched repeatable units) has not been
+collected, and every number the reliability machinery has ever produced in
+this repository is either a synthetic correctness check or a structural
+smoke test that reports no magnitude at all.
+
+| Figure | Value | Meaning | Artefact | Status |
+|---|---|---|---|---|
+| SEM (synthetic correctness check) | Computed 0.1896, target 1/√30 = 0.1826 (3.8% relative error) | Confirms `compute_sem()` recovers a KNOWN synthetic population value — a machinery-correctness check, **not a reliability finding about any real signal** | `tests/test_reliability.py`, check 14 (re-run live this task) | SYNTHETIC ONLY |
+| RC (repeatability coefficient) | `1.96 × √2 × SEM` — formula only, no real magnitude ever computed | The formula is implemented and unit-tested; no real RC number exists for any signal in this study | `analysis/reliability.py` | NOT TRACEABLE to any real result — only a formula exists |
+| CV% — reported vs. omitted | **Deliberately not to be trusted for V_pd-shaped signals**: a synthetic V_pd-shaped (heavy-tailed, near-zero-mean) exploration found CV% swinging from hundreds to tens of thousands of percent, confirmed to match its own formula exactly (not a bug) — a real property of dividing by a near-zero grand mean | `docs/RELIABILITY.md`, "V_pd's known shape" section | Reason for omission: near-zero-mean signals make percentage-of-mean measures uninformative by construction, not a data quality issue |
+
+**Recommendation for the client pack: state plainly that D3's reliability
+machinery is built, unit-tested, and ready, but that no SEM/RC/CV figure
+exists yet for any real signal in this study** — the three-session
+matched-protocol data this machinery requires has not been collected.
+
+---
+
+## 3. Quiet baseline (subject present, sitting still — NOT the null-input control)
+
+Renamed this engagement's own prior task ("AFTER THE PHYSICAL RUN," Task 3) — this
+run required a present human by the module's own design and is genuinely
+a different thing from the empty-scene control below.
+
+| Figure | Value | Artefact | Date |
+|---|---|---|---|
+| Per-signal std / robust scale (mad_scaled) | v_bf: 0.0348 / 0.0270 · v_es: 0.0436 / 0.0407 · v_jc: 0.0173 / 0.0148 · v_pd: 0.00605 / 0.00180 | `logs/null_input_06e8d2be-f603-4c18-a654-98fb375fbd13.jsonl`, `null_input_summary` record | This engagement's "PHYSICAL RUN SESSION" task |
+| V_pd's ratio (std ÷ mad_scaled) | **≈3.36×** | Computed directly from the two figures above (0.00605 / 0.00180) | Same session |
+| Detection-rate pattern | Per-minute: 0.003 → 0.000 → 0.000 → 0.222 → 0.933 → 0.997 → 0.990 → 0.681 → 0.000 → 0.000 (overall 0.295, 3,612/12,231 frames) | Same log file, per-sample records, re-aggregated this engagement's own "AFTER THE PHYSICAL RUN" task | Same |
+| Explanation | Most consistent with: not-yet-settled-into-frame for the first ~2 minutes (no interactive "ready?" gate exists in `controls/null_input.py`), present but seated at a real, roughly constant off-axis angle (avg yaw −18° to −30°) for the ~5-minute middle stretch, and likely leaving frame again before the full 10 minutes for the final ~2 minutes. **Stated as an inference from telemetry, not a witnessed fact** — no video was kept (G4), and the calibrator bug was directly ruled out as a cause by reading the code (detection state is set before any calibration logic runs) | `docs/PROJECT_STATE.md`, "Quiet-sitting baseline" section | "AFTER THE PHYSICAL RUN" task |
+
+**Caveat carried forward from that same section**: this one real run's own
+5-minute "good" stretch was itself off-axis, not a canonical centred
+baseline — the dispersion figures above describe "dispersion during
+whatever this particular stretch actually was," not a clean reference
+condition. A second run under monitored, centred conditions would be needed
+before citing these numbers as a stable baseline.
+
+**⚠️ The `1.6e-4` / `2.6e-3` / `≈16.75×` V_pd figures also in this
+repository are a DIFFERENT measurement from the ≈3.36× above — see Task 2,
+claim 1 below for the full reconciliation. Do not conflate the two.**
+
+---
+
+## 4. Empty-scene control (no subject) — **NOT TRACEABLE, NEVER RUN**
+
+**No figure exists for this section.** The genuine empty-scene/null-input
+control — camera on, nobody in frame — was planned in this engagement's
+"AFTER THE PHYSICAL RUN" task (its own Task 4) but that task was interrupted
+before Task 4 or Task 5 ran; only Tasks 1–3 (the calibrator fix, the ROI
+re-derivation, and the renaming/explanation above) were completed and
+committed. Checked directly this task, not assumed: `ls logs/null_input_*.jsonl`
+shows exactly one file, the quiet-sitting baseline from §3 above — no
+second, empty-scene run exists anywhere in `logs/`.
+
+**This section is intentionally left with no figures rather than filled
+with a plausible-sounding placeholder.** The single most important number
+this control would produce — whether any signal ever emits a value with no
+subject present, i.e. a false-signal event — is unmeasured. Repo status
+(`docs/MATRIX_ROW_MAP.md` row 16 / the sign-off response's own item 16):
+still `BUILT, NOT YET RUN ON REAL DATA`, and that status is currently
+accurate for a genuine empty-scene run specifically (the quiet-sitting run
+does not satisfy it, per the renaming above).
+
+---
+
+## 5. Pitch and ROI
+
+| Commanded intensity | Real attempt(s) | Achieved pitch (avg / max magnitude) | Detection rate | Required (Quadrants/top-bottom, 8.84°) | Required (3×3, 5.88°) |
+|---|---|---|---|---|---|
+| Small (slight glance) | 1 attempt, n=1 sample | 5.66° | 0.08% (1/1282) | 1.56× — unfavourable | 1.04× — unfavourable |
+| Medium (moderate tilt) | 2 attempts | 2.24° avg (att.1) / 3.00° avg (att.2) | 10.98% / 19.58% | 2.95–3.94× — unfavourable | 1.96–2.62× — unfavourable |
+| Maximal (chin-to-chest) | 2 attempts, both independently judged "genuine maximal" | 31.6° avg / 15.2° avg (max 43.1°/23.6°) | 27.45% / 12.55% | 0.28–0.58× — favourable | 0.19–0.39× — favourable |
+
+Artefact: `logs/orientation_trials.jsonl`, schema-1.1 records
+(`look_down_small_1`, `look_down_medium_1`/`_2`, `look_down_maximal_1`/`_2`).
+Required separations: `docs/ROI_FEASIBILITY.md` §2.1 (unchanged this task).
+Full derivation and the detection-rate methodology caveat (the recording
+loop's `n_samples` counts processing cycles, not unique camera frames — a
+real limitation found this task by reading `orientation_capture.py`
+directly): `docs/ROI_FEASIBILITY.md` §2.7.
+
+**Yaw, for context**: clears its own required separations by **≈24×** its
+resting noise floor (0.65° std, from `look_at_screen` segments across 3
+real sessions) — `docs/ROI_FEASIBILITY.md` §2.1/§2.4.
+
+**Verdict**: vertical ROI attribution is **not deliverable, at any tested
+granularity including the coarsest (top/bottom) split** — unchanged from
+every prior version of this finding. **What has moved is the reason, twice
+now**: originally a magnitude ceiling (retracted), then a "directed
+reliability" framing implying large values never show up under command
+(now shown incomplete — they do, at maximal effort), and now: **magnitude
+is solved only at maximal commanded effort and still fails at ordinary
+intensity; availability (8–27% of processing cycles producing any reading,
+even at the single best maximal attempt) is the dominant blocker; a
+secondary, real consistency problem exists (two equally-judged-maximal
+attempts differed ≈2× in magnitude)**. Full three-way breakdown:
+`docs/ROI_FEASIBILITY.md` §2.7.4.
+
+---
+
+## 6. Audio
+
+| Figure | Value | Artefact | Date |
+|---|---|---|---|
+| Sync offset, spread, drift | **NOT MEASURED.** Attempted 5 times ("PHYSICAL RUN SESSION," real hardware, real human clapping) with real clap-correlated audio detected every time, but no video-motion-detection threshold across 5 iterations produced a trustworthy match (either too sensitive — false matches from general motion — or too strict — 0–3 events, unusable). The one run that DID produce matched pairs (40ms mean / 281ms std) is explicitly NOT reported as a result, per this engagement's own instruction not to present a noisy match as real data. A genuine empty-scene-style re-attempt (Task 5 of "AFTER THE PHYSICAL RUN") was never run either | `docs/AUDIO_ACQUISITION.md` §4, §7 | Attempted across 3 sessions total; never succeeded |
+| Audio thread's effect on pipeline frame rate | T1 (capture-equivalent): 29.998→29.997 fps (Δ −0.001); T2 (processing-equivalent): 8.374→8.374 fps (Δ ≈0) | `docs/AUDIO_ACQUISITION.md` §3, "FPS-impact proof" table | "AUDIO PART A" task |
+| **Caveat on what that FPS measurement actually exercised** | This used a **synthetic** two-thread harness reproducing the real architecture's TIMING SHAPE (T1 at a fixed 30fps target, T2 sleeping 120ms/frame — CLAUDE.md's own previously-measured Gate-1 figure, reused exactly) — NOT the real webcam or real MediaPipe FaceLandmarker/PoseLandmarker detection. The AUDIO side was real (real `AudioAcquisitionThread`, real default microphone). **This is evidence about thread contention under a timing-realistic synthetic load, not a measurement of the real webcam pipeline's real FPS with real detection alongside real audio capture** — that specific combination was never measured and should not be inferred from this table | Same document, same section | Same |
+
+---
+
+## 7. Separation and provenance
+
+| Figure | Value | Artefact | Date checked |
+|---|---|---|---|
+| Number of separation checks | **4** — [1] static import graph, [2] static call graph, [3] runtime monkeypatch (attention/audio poisoned), [4] compatibility-shim isolation | `tests/test_feature_separation.py`, re-run live this task | Today |
+| What each covers | [1]/[2]: whether `x_core.py`/`episodes.py` import or call anything defined in `attention.py`/`audio.py`, directly or transitively. [3]: whether real end-to-end computation still works with `attention`/`audio` poisoned to raise on any attribute access. [4]: whether a repo-root module either re-exports across blocks (a "shim") or, as of the audio task, IS direct U_t content itself (`DIRECT_UT_MODULES = {"audio_acquisition"}`) | Same file | Same |
+| Forbidden edges (6 total) | `(x_core,attention)`, `(x_core,audio)`, `(episodes,attention)`, `(episodes,audio)`, `(context,attention)`, `(context,audio)` | `tests/test_feature_separation.py` lines 97–113 | Same |
+| Which were demonstrated failing before being relied on | **All six**, plus the separate `DIRECT_UT_MODULES` check. The first four: `docs/D1_DEPENDENCY_MAP.md` §6 (a real, pasted failure from a deliberately introduced `ATTENTION_ORIENTED_SCORE_THRESHOLD` import). The two `context` edges: `docs/ROI_FEASIBILITY.md` §4.2 (a temporary `features.attention`/`features.audio` import into `context.py`, each independently made check 1 fail with the exact expected path message, then reverted). `audio_acquisition` as direct U_t content: `docs/AUDIO_ACQUISITION.md` §5.2 (a temporary `import audio_acquisition` into `x_core.py` failed check 4 with the exact expected message, reverted) | Cited documents | Various, see each |
+| Golden regression hash | **`f7fa0575fba2959b9c21e88314e2fef645e8aa66fe11443102288db9dc1792b8`** (current, matches the committed golden file — re-run live today) | `tests/test_refactor_snapshot.py` | Today. **See the note below** — this is NOT the hash this task's own Step 0 names |
+| Verification pass result | **27 of 27** checkable implementation-status claims in the sign-off response **VERIFIED** against live test re-runs | `docs/RESPONSE_VERIFICATION.md` §1 | 2026-09-04, re-checked in the addendum same date |
+
+**⚠️ Golden hash discrepancy, flagged rather than silently resolved.** This
+task's own Step 0 states the golden SHA256 "must be unchanged:
+`4f9c0f1786c18e8dbe5e3048b8b6b6e280cf6c434b9c53b119344746fc31bcff`." That is
+the hash from BEFORE the "AFTER THE PHYSICAL RUN" task's Task 1.3 fix (the
+`NeutralCalibrator` degenerate-reference bug), which was explicitly
+authorized in that task's own prompt, changed the calibration reference's
+output shape by two new fields, and was already regenerated, diffed
+(confirmed the ONLY change was those two fields), and committed
+(`44c02be`) before this task began. The CURRENT hash
+(`f7fa0575...`) is what a fresh run of the golden test matches today,
+confirmed live this task. Re-running against the OLD hash would report a
+false mismatch for a change already authorized and committed in a prior
+task — reported here explicitly rather than either silently substituting
+the new hash for the old one in this document, or silently suppressing the
+discrepancy.
+
+---
+
+## 8. Matrix
+
+**Status counts, re-derived directly from the response document's own §4
+table this task** (not carried forward from any previous statement,
+including this document's own draft above until just now):
+
+| Status | Count |
+|---|---|
+| `RETURNED · EVIDENCED` | **11** |
+| `RETURNED · BUILT, NOT YET RUN ON REAL DATA` | **7** |
+| Plain `RETURNED` | **9** |
+| `DECISION REQUIRED` | **3** |
+| **Total** | **30** |
+
+Artefact: `docs/MATRIX_ROW_MAP.md` line 21 and `docs/RESPONSE_VERIFICATION.md`
+§5's addendum, both independently re-counted from the response's own §4
+table (`docs/preregistration/D0PA1_Section19_SignOff_Response.docx`) rather
+than taken on the document's own §6 summary text — checked this task by
+extracting the document's raw text directly and confirming the count is
+not carried forward from a stale prior statement.
+
+---
+
+## 9. Task 2 — claims checked against artefacts
+
+| # | Claim | Result | Artefact |
+|---|---|---|---|
+| 1 | V_pd's robust scale ≈16× smaller than its SD | **CONFIRMED — both figures are real, of different data.** ≈16.75× is from `session_eb41ba71…jsonl`'s CALIBRATION-PHASE-only v_pd samples (n=653, an expressive Gate-2-era session). ≈3.36× is from the quiet-sitting baseline's WHOLE-SESSION v_pd (10 min, a person trying to sit still). Both use the identical `1.4826×MAD` formula. **They are not interchangeable** — cite whichever matches the context (calibration-phase dispersion vs. whole-session quiet-sitting dispersion) and never the other's number | `docs/RESPONSE_VERIFICATION.md` §2; `docs/PROJECT_STATE.md`'s quiet-baseline table |
+| 2 | δ=0.03 has no reachable DROP outcome | **CONFIRMED, at the pessimistic worst cell specifically** (25 min, rare=0.02, half-width 0.0339 > δ=0.03). **Not universally true** — a less pessimistic table in the same artefact shows δ=0.03 still has a DROP range [0, 0.0151] at a different (non-worst-case) configuration. State the qualifier, not a blanket claim | `artefacts/precision_analysis_v2.md`, lines 268–270 (worst-cell) vs. lines 123–128 (a different cell) |
+| 3 | Metric change: ≈2.1× better decidability, spread to ≈1/3 | **CONFIRMED exactly** — "~2.1×... no exceptions" and "~3×" smaller spread, verbatim | `artefacts/precision_analysis_v2.md` lines 411–418 |
+| 4 | δ = 0.20 × 0.272 ≈ 0.054, rounds to 0.05 | **CONFIRMED verbatim**, extracted directly from the sign-off response document's own text | `docs/preregistration/D0PA1_Section19_SignOff_Response.docx` |
+| 5 | Longest soak on record ≈41 minutes | **CONFIRMED exactly** (2486.9s = 41.45 min) and confirmed to genuinely be the longest — the only other two soak_summary records on record are 90.7s and 80.5s, both from this engagement's own later, unsuccessful extended-soak attempts | `logs/soak_log.jsonl`, all `soak_summary` records, re-scanned live this task |
+| 6 | 27 claims verified, 27 to the stated figures | **WRONG as stated, in its second half.** "27 of 27 checkable claims VERIFIED" is the document's own accurate headline (confirmed). But NOT all 27 matched their stated figures on first check — one was found UNDERSTATED (3 checks claimed, 4 actual) and needed a later revision to correct; the object-store "returns clean" claim was found NOT currently true (a dangling tree object existed) and needed a repository action before it held. "Verified" and "verified exactly as first stated, with nothing needing correction" are different claims — the first is true, the second is not | `docs/RESPONSE_VERIFICATION.md` §1 (row 4.1: "UNDERSTATED"), §3.2 (fsck), §5 (addendum) |
+| 7 | 11 evidenced, 7 built-not-run, 9 definitions, 3 decisions | **CONFIRMED exactly** — 11+7+9+3=30 | `docs/MATRIX_ROW_MAP.md` line 21 |
+| 8 | ROI aggregation passes 9/9 against a synthetic supplier | **CONFIRMED** — re-ran live this task, 9/9 PASS | `tests/test_roi_aggregation.py`, re-run today |
+| 9 | 1 of 11 sessions affected by the calibrator bug, already caveated, never sent | **CONFIRMED**, with an additional check this task didn't skip: searched both client-facing `.docx` files directly for the affected session, the bug, and the excursion figure — every hit found ("null-input," "excursion," "calibrator") is a GENERIC, pre-existing reference to the control's own design/row name, not to this session's actual run or its bug. Nothing built on the affected figure has ever appeared in a document intended for the client | `logs/*.jsonl` scan; `docs/preregistration/*.docx` direct text extraction, this task |
+| 10 | Only one camera exists; simultaneous two-camera capture not possible | **CONFIRMED, re-verified live this task** (indices 1–3 all fail to open; only index 0 opens) | Live `cv2.VideoCapture` probe, this task |
+| 11 | Vertical attribution not deliverable, now resting on availability not magnitude | **CONFIRMED, directionally, with an incompleteness the claim itself doesn't mention.** Availability is the dominant blocker, correctly. But magnitude is only solved at MAXIMAL commanded effort — it is still unfavourable at ordinary/moderate intensity (§5 above), and a secondary, real consistency problem also exists (≈2× magnitude difference between two equally-judged-maximal attempts). "Resting on availability rather than magnitude" is the right headline; it omits two real qualifiers this document's own §2.7.4 states explicitly | `docs/ROI_FEASIBILITY.md` §2.7 |
+
+---
+
+## 10. Task 3 — the corrections record, complete
+
+**The prompt's own list names ten items while stating "I count eight" —
+this is a direct arithmetic mismatch in the prompt's own text, reported
+here rather than quietly resolved by picking a number.** Counting the
+prompt's own bullets (separated by "·"): multi-hour stability claim /
+version control implied to predate the work / separation test as three
+checks / acceptance check as in progress / evidenced-row count of five /
+object store "returns clean" / vertical ceiling of roughly twice / pitch
+claim of ≈0.1° as structural / blocked-microphone level as a real room
+measurement / quiet baseline as null-input control — that is **ten** items,
+not eight. Every one of the ten is a real, independently traceable
+correction (verified below). **No eleventh correction was found** beyond
+what these ten already cover — the "directed reliability" framing that
+later moved to "availability" (this task's own §5 above) is part of the
+SAME evolving pitch/ROI finding chain as items 7 and 8, not a distinct
+additional retraction.
+
+| # | What was claimed | What is true | How found | Reached the client? |
+|---|---|---|---|---|
+| 1 | Stability was "multi-hour" | Longest logged soak is ~41 minutes | Self-disclosed inside the vendor's own Build Status Report, present in this exact self-corrected form in the FIRST version ever committed to this repository (`71b95eb`) — **the original, uncorrected claim predates this repository's own version-controlled history entirely; it cannot be independently inspected here, only referenced by the correction itself** | Never — no version of either vendor document has ever been sent (`docs/preregistration/README.md`, "What has been SENT to the client") |
+| 2 | Version control was implied to predate the work / commit dates could be read as when code was written | "This repository was not under version control until this month... no commit has been backdated, no history has been reconstructed" | Same nature as #1 — self-disclosed from the first committed version, original claim not independently inspectable in this repo's history | Never |
+| 3 | The separation test was "three checks" | It runs **four** | `docs/RESPONSE_VERIFICATION.md` §1 (row 4.1), corrected in the response's later revision, re-verified in §5's addendum | Never |
+| 4 | The harness acceptance check was described as "in progress" (§2) while §4.2 separately said it "has not started" — an internal contradiction | It has not started, stated consistently now in both places | `docs/RESPONSE_VERIFICATION.md` §3.3, resolved in §5's addendum | Never |
+| 5 | Five rows carry implementing code / inspectable artefacts (§6 summary) | Eleven do, by the document's own §4 table | `docs/RESPONSE_VERIFICATION.md` §3.1, corrected to eleven in §5's addendum, independently re-derived to match | Never |
+| 6 | "The object store... returns clean" (unqualified) | Pruned after hook verification; a dangling object from ordinary commit activity is not evidence of anything | `docs/RESPONSE_VERIFICATION.md` §3.2, reworded in §4.27 of the corrected response — **but §4.11's own bullet list still reads the old unqualified phrase, a residual gap not fully corrected** (§5's addendum) | Never |
+| 7 | The vertical (pitch) magnitude ceiling was ≈2× (required exceeds achievable) | Retracted within `docs/ROI_FEASIBILITY.md` itself — later real measurement found pitch reaching 31.2° incidentally, far above every requirement | `docs/ROI_FEASIBILITY.md`, "RETRACTION" section — corrected in the SAME repository state it was introduced, never left it | Never |
+| 8 | Pitch "stayed ~0.1°" on a "verified" maximal chin-to-chest look-down — described as structural, unfixable | Real graded maximal attempts (this engagement, "PHYSICAL RUN SESSION" task) register pitch up to −43.1°; the "verified" claim had no documented verification method anywhere, was numerically inconsistent (~0.1° vs. a separately-measured ≤4.4°), and the investigation that produced the ≤4.4° figure explicitly declined to rule out the subject simply not moving enough. **See the detailed answer below** | Multi-session: first flagged as unverifiable (`docs/ROI_FEASIBILITY.md` §2.4a, "PITCH: SEPARATE THE FINDING FROM ITS EXPLANATION" task), then directly refuted by real data | Never — CLAUDE.md and `docs/PROJECT_STATE.md` both carried it, neither is client-facing |
+| 9 | A logged audio level (`peak_abs ≈3.05e-5`) was "genuine captured evidence... real (very quiet) room level" | That exact value is the 16-bit PCM quantization floor an OS-blocked/silent stream returns — very likely the same artefact, not real ambient sound | Found by testing microphone content access directly the following session (two mics, two host APIs, all returning exact zero or the same floor) | `docs/AUDIO_ACQUISITION.md` §7.3 | Never |
+| 10 | The quiet-sitting-subject-present run was called "the null-input control" | It required a present human by the module's own design; a true null/empty-scene input is a different, still-outstanding question (§4 above) | This engagement's own "AFTER THE PHYSICAL RUN" task, Task 3.1 | Never |
+
+**On item 8, the one the prompt asks about specifically — how long it stood
+and what was built on it:**
+
+- **How long:** the claim appears, worded almost identically, in three
+  places this session found (`CLAUDE.md`'s "Attention / screen-orientation"
+  section, `stage1_step4_vectors.py`'s own docstring, and
+  `docs/PROJECT_STATE.md`) — a search for "chin-to-chest" across the
+  repository's history finds no dated point at which it entered any of
+  them with a cited verification method. It survived at least two
+  dedicated investigations before being tested directly: `PITCH_DIAGNOSTIC.md`
+  (a later, more careful frame-by-frame scan that found ≤4.4°, not ~0.1°,
+  and whose own author declined to rule out the subject simply not moving
+  enough) and the "PITCH: SEPARATE THE FINDING FROM ITS EXPLANATION" task
+  (which found no documented verification method anywhere and formally
+  separated the finding from its claimed mechanism, without yet refuting
+  the magnitude itself). It was only directly refuted — not merely
+  cast into doubt — by the "PHYSICAL RUN SESSION" task's real,
+  graded-intensity, independently-judged capture.
+- **What downstream reasoning was built on it:** the ROI feasibility
+  verdict's original "magnitude ceiling" framing (item 7 above, ≤4.4°
+  vs. a required 8.84°, a ≈2.0× shortfall) was built directly on the same
+  family of evidence this claim belonged to; the D8 attention-validity
+  risk pre-declaration in the sign-off response (§4.14, an elevated-risk
+  flag for the client's own attention-validity criterion) cites the pitch
+  finding as its reason; and CLAUDE.md's own "Attention /
+  screen-orientation" section used it to justify treating pitch as
+  permanently unfixable rather than an open mechanism question. **None of
+  this downstream reasoning has been retracted wholesale** — the
+  PRACTICAL conclusion (vertical ROI attribution is not deliverable) is
+  unchanged through every correction; what moved, twice, is the reason
+  claimed for it.
+
+---
+
+## 11. Task 4 — the audio scope-change record
+
+**What was decided.** The client's own keep-or-formally-remove decision on
+`Δ_audio` was made in the opposite direction from the sign-off response's
+own recommendation (Decision A, which recommends formal removal): **audio
+is RETAINED**, and acquisition was authorised and built.
+
+**What has been built since that decision** (the "AUDIO PART A" task):
+
+- An audio acquisition instrument (`audio_acquisition.py`) — its own
+  thread, structurally decoupled from video capture/processing the same
+  way those two threads are decoupled from each other; per-chunk
+  integrity logging (level, timing, dropout/overrun counts, two
+  independently-sourced timestamps) to its own file
+  (`logs/audio_chunk_integrity.jsonl`); no content analysis anywhere in
+  the module (amplitude only — peak, RMS, clipping).
+- A separate, independent audio consent question — declining it means the
+  acquisition module's device-opening code is architecturally
+  unreachable, machine-checked (`tests/test_consent_audio_gate.py`).
+- Raw audio's storage location as env-var configuration, never a literal
+  path in any committed file (`privacy/audio_storage_config.py`).
+- The privacy/media guard extended to eight additional audio container
+  formats, by extension AND by magic-byte content sniffing, proven
+  fail-then-pass on real payloads.
+- The D1 feature-separation guard extended to cover `audio_acquisition.py`
+  itself as direct U_t content (not merely a module that re-exports
+  `features.audio`) — a real gap found by audit, fixed, proven
+  fail-then-pass.
+
+**What remains unbuilt, deliberately, unchanged by "retained":** no audio
+FEATURE of any kind — no prosody, no arousal-from-voice, no
+emotion-from-speech, no valence, no stress, no spectral features, no
+transcription, no speech detection. `features/audio.py` (the U_t feature
+stub) is still intentionally empty. **Audio feature definitions remain the
+client's to define, exactly as strictly as every other new-signal
+definition in this project** — this engagement has not proposed, and will
+not proactively invent, any.
+
+**Change-control status.** Retaining audio is a substantive change against
+`D0PA1 POC Scope & Acceptance v0.5.1` (frozen) and against the sign-off
+response's own proposed direction. Per the client's own §18/§12, this
+requires documented change control. **That change-control process has not
+yet run.** `docs/AUDIO_ACQUISITION.md` §6, `CLAUDE.md`'s own `U_t` section,
+and `docs/PROJECT_STATE.md` are the engineering record that the decision
+exists and what it produced — they are not the change-control record
+itself, which remains a separate, not-yet-done step.
+
+---
+
+## 12. Task 5 — what is actually outstanding
+
+One list, every open item in exactly one bucket. An item needing two kinds
+of thing is split into two rows, per this task's own instruction.
+
+### Needs the client's harness
+
+- D2 prediction target (action classes, horizon, tie/rapid-succession handling)
+- Real `A_t`/ROI attention features beyond the built-and-tested aggregation
+  math (dwell/switching/persistence/coverage — `ROIWindowAccumulator` is
+  done; only the supplied event stream is missing)
+- The leakage and time-shuffle controls' run on real trial data
+- D3/D7's reliability and baseline machinery run on real sessions (also
+  needs subject time — see its own row below, this is the harness half of
+  a split item)
+- `CanonicalLogWriter` wired into a real capture loop
+- The D4 confirmatory reproduction (archived real video + real logged
+  feature stream)
+- The harness acceptance check itself (not started, per the response's own
+  §4.2 correction)
+
+### Needs a client decision
+
+- Second-camera sensor swap — pending hardware procurement AND an FPS
+  feasibility test once hardware exists (two needs, kept as one bucket
+  entry since the decision — procure hardware — gates both)
+- Session length and expected ABANDON/NO_ACTION frequency (Decision C) —
+  the two largest levers in the D6 precision simulation
+- Sign-off on every proposed threshold (δ_Gate3/δ_attention/δ_audio/δ_latent
+  at 0.05 nats, the blink-positive pass criterion, the synthetic-recovery
+  success threshold, the eight stopping/exclusion rules)
+- The actual retention period and storage location for raw media (both
+  currently engineering placeholders, `docs/PRIVACY_AND_RETENTION.md`)
+- The unified raw-media-root proposal (`docs/PRIVACY_AND_RETENTION.md`'s
+  proposed, not decided, pattern)
+- The audio scope change's own §18 change-control sign-off (Task 4 above)
+
+### Needs hardware that does not exist
+
+- A second physical camera (confirmed again this task — indices 1–3 all
+  fail to open; only one camera exists on this machine)
+
+### Needs subject time
+
+- D3/D7's three-session, fixed-protocol, matched-unit reliability data
+  (the subject-time half of the split item above)
+- 10 real one-minute blink clips + manual frame-by-frame counts
+- The genuine empty-scene control does NOT need subject time (that is its
+  whole point) — **it needs machine time only**, see below; it is listed
+  there, not here, specifically because conflating "needs a human present"
+  with "needs a human absent" would misclassify it
+- Cross-person confirmation of the pitch/ROI finding (the same ≥8-person
+  Gate-2-style protocol already specified in `docs/ROI_FEASIBILITY.md` §6)
+
+### Needs nothing but machine time
+
+- **The empty-scene control itself** — camera on, nobody in frame, ten
+  minutes. Genuinely the cheapest remaining item; not run yet only because
+  the task that scoped it was interrupted before reaching it, not because
+  anything blocks it
+- **A real audio/video sync measurement re-attempt with a different visual
+  event** (a light flash rather than clap motion, per
+  `docs/AUDIO_ACQUISITION.md` §4's own stated likely fix) — needs a
+  cooperating human briefly, but the METHOD change itself (not more subject
+  time) is what's actually missing; classified here rather than under
+  "needs subject time" because the blocker is methodological, not a time
+  commitment
+- **An extended stability soak run from an interactive terminal** — the
+  soak code itself is ready; the blocker found this engagement
+  (`cv2.getWindowProperty`-based shutdown falsely triggering under a
+  backgrounded launch context) is specific to how this engagement's own
+  sessions invoke it, not to the soak itself
+- Rewording `§4.11`'s residual "clean object store" bullet to match `§4.27`
+  (item 6 in the corrections record above)
+- Updating `docs/MATRIX_ROW_MAP.md` row 16 and the response's own item 16
+  now that the quiet-sitting run (though not a true empty-scene run) has
+  happened — a small, accurate-status-text fix, no new capture needed
