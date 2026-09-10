@@ -177,6 +177,78 @@ repository cannot supply on its own.
   corrected wording, this has not started; the harness package has not yet been
   opened by a session.
 
+### "AFTER THE PHYSICAL RUN" task, Task 1 — calibrator bug blast-radius check
+
+Before fixing the `NeutralCalibrator` bug found last phase (see below), this
+task checked whether it had already affected any PREVIOUSLY REPORTED figure
+— from the logged record, not from reasoning about the code.
+
+**Every `calibration_complete`/`null_input_calibration_complete` record in
+`logs/` was scanned this task** (11 total across 10 POC-era `session_*.jsonl`
+files plus the one real `null_input_*.jsonl` file) and each composite
+vector's real-sample count (`n`) checked for the degenerate
+all-composites-zero pattern the bug produces:
+
+| File | v_bf n | v_es n | v_pd n | Degenerate? |
+|---|---|---|---|---|
+| session_09a3bc97… | 549 | 549 | 633 | No |
+| session_2be7a0e4… | 736 | 736 | 747 | No |
+| session_35bd3488… | 716 | 716 | 715 | No |
+| session_518d2fe5… | 620 | 620 | 619 | No |
+| session_677e0e86… | 755 | 755 | 754 | No |
+| session_91da6e39… | 614 | 614 | 613 | No |
+| session_bc384003… | 614 | 614 | 613 | No |
+| session_d7339aaa… | 641 | 641 | 645 | No |
+| session_eb41ba71… | 588 | 588 | 654 | No |
+| session_fd54305e… | 620 | 620 | 620 | No |
+| null_input_06e8d2be… | 0 | 0 | 0 | **YES** |
+
+**1 of 11 (9%) sessions with a completed calibration is affected — the
+quiet-sitting baseline from last phase, and only that one.** Every POC-era
+`session_*.jsonl` file has hundreds of real composite samples per vector;
+none is degenerate.
+
+**Which previously reported figures rest on the affected session, traced
+specifically, per this task's own instruction:**
+
+- **The dispersion table** (`v_bf`/`v_es`/`v_jc`/`v_pd` std/mad_scaled/
+  `zero_dispersion`) from that same session — **NOT affected**.
+  `compute_dispersion` (`controls/null_input.py`) reads `raw_values`,
+  appended whenever `face_detected` was true, entirely independent of
+  `calibrator`/`is_calibrated()` — re-verified directly from the code again
+  this task, not just re-cited from last task's claim (G3: do not trust a
+  prior session's status claim over a fresh check).
+- **The `excursion_count = 0` figure, same session, same table** — **the
+  ONE affected figure**, and it was already reported as compromised, in the
+  same document, in the same task that produced it (last phase's own
+  PROJECT_STATE.md text, and that task's own final report to the user, both
+  stated the excursion detector never ran rather than presenting "0" as a
+  clean pass). It was never presented anywhere, at any point, as an
+  unqualified clean result.
+- **`docs/MATRIX_ROW_MAP.md` row 16 ("Null-input control")** and
+  **`docs/RESPONSE_VERIFICATION.md` §2's V_pd robust-scale figures
+  (1.6e-4 / 2.6e-3 / ratio ≈16.75)** — checked specifically, since both
+  reference real log data near this topic. Row 16's own text already says
+  "BUILT, NOT YET RUN ON REAL DATA" (now itself stale post-physical-run, a
+  separate, smaller correction — not a calibrator-bug consequence) and does
+  not cite the excursion figure. The V_pd robust-scale figures trace to
+  `session_eb41ba71-7b48-4126-ae6f-8162b79ca890.jsonl` (confirmed above:
+  `v_pd n=654`, NOT degenerate) — **not affected**, a different, real
+  session.
+- **`docs/preregistration/` (the only documents in this repository ever
+  intended for client delivery)** — searched specifically: no reference to
+  the quiet-sitting/null-input session, the excursion figure, or this bug
+  anywhere. **Nothing built on the affected figure has ever been sent to the
+  client** — this stays in the "found and corrected before it left this
+  repository" category, not the "already delivered, now needs a retraction
+  to the client" category. See Task 6's corrections-record entry for the
+  same distinction stated plainly for the record.
+
+**Conclusion: the bug's blast radius is one session, one figure, that
+figure was already caveated everywhere it appeared, and nothing built on it
+reached the client.** This is a real, checked result — not an assumption
+that "it probably didn't matter."
+
 ### Needs a physical run — THREE items actually run this phase ("PHYSICAL RUN SESSION")
 
 **Task 0 gate result, stated first because it governs everything below:**
@@ -188,14 +260,26 @@ explained; not investigated further, per the task's own scope — recorded
 as a fact: it was blocked one phase, it is not blocked this phase, on the
 same machine.
 
-**1. Null-input control — RUN, 10 real minutes, subject present** (Task
-2). The user's own reading of "null input" (empty chair, no person) was
-directly challenged and not adopted — `controls/null_input.py`'s own
-docstring and instructions specify a present, resting human, because
-`compute_v_pd` needs real pose landmarks to produce any dispersion figure
-at all; an empty chair would yield `insufficient_samples`, not a
-measurement. Real result, `logs/null_input_06e8d2be-f603-4c18-a654-98fb375fbd13.jsonl`
-(12,234 records, kept — contains no image, only derived numbers):
+**1. Quiet-sitting baseline (NOT the null-input/empty-scene control) — RUN,
+10 real minutes, subject present.** **Renamed by the "AFTER THE PHYSICAL RUN"
+task's Task 3** — this heading previously called the run below "the
+null-input control," and that name was wrong, not just informal. The
+technical argument for why a HUMAN was needed for what was actually run
+(`compute_v_pd` needs real pose landmarks to produce any dispersion figure
+at all) is still correct — an empty chair genuinely cannot produce THIS
+particular measurement, a per-signal dispersion figure under the pipeline's
+normal calibrated path. But that is a reason this run needed a person, not
+a reason it deserves the name "null input" — a true null/empty-scene input
+means literally no subject in frame, and what "null-input" conceptually
+promises is the false-signal floor: what the pipeline reports when there is
+nothing to measure at all. That is a DIFFERENT, still-outstanding question,
+answered for real for the first time in this task's own Task 4 below, not
+by the quiet-sitting run described here. Real result,
+`logs/null_input_06e8d2be-f603-4c18-a654-98fb375fbd13.jsonl`
+(12,234 records, kept — contains no image, only derived numbers; filename
+unchanged from when it was logged, since renaming a committed log file
+after the fact would break its own internal `session_id`-based traceability
+for no real benefit — only the DESCRIPTION of what it is changes here):
 
 | Signal | std | mad_scaled | zero_dispersion | excursions (0-min baseline) |
 |---|---|---|---|---|
@@ -212,28 +296,79 @@ in a roughly 3-minute middle stretch. Not interpreted here (G1); a real,
 reportable instability in how reliably this setup holds detection over 10
 minutes.
 
-**A real bug in the G5-protected validated path was found and is NOT
-fixed here** (G5 — this document records it; a future task with explicit
-permission would fix it): `features/x_core.py`'s `NeutralCalibrator`
-completes calibration purely on WALL-CLOCK elapsed time
-(`should_complete()`), independent of whether any real (non-`None`)
-samples were collected. This session's 25-second calibration window fell
-entirely inside the near-zero-detection opening minutes — **zero real
-samples for every signal** — and `complete()` silently produced a
-reference of `{mean: null, std: null, n: 0}` for all three composite
-signals and all three covariates. `classify_calibration_quality` did
-**not** flag this (`possibly_not_neutral: false, reasons: []`) — a
-completed-but-empty calibration is currently invisible to the one check
-meant to catch calibration problems. Consequence, confirmed directly: the
-excursion detector's `z` stayed `None` for the entire session (a `None`
-reference makes every subsequent z-score computation skip), so
-**`excursion_count = 0` for all four signals is NOT evidence of a clean
-null result — it is an artefact of the detector never running at all**
-this session. The dispersion table above is unaffected (`compute_dispersion`
-reads `raw_values`, collected independently of calibration, whenever
-`face_detected` was true) — only the excursion/false-event-rate half of
-Task 2's ask is compromised, and it is reported as compromised, not
-smoothed into a false "0/min, clean" claim.
+**The detection pattern, explained (Task 3.2) — real, checked against the
+data, not just proposed:** a per-minute breakdown of `yaw_deg` alongside the
+detect rate (computed fresh this task from the same real log) shows the
+near-zero opening two minutes (0.3%, 0.0%, 0.0%) are followed by five
+minutes of strong detection (22%→93%→99.7%→99.0%→68%) during which the
+subject's face, when detected, sat at a consistently large, roughly
+constant yaw offset (avg −18° to −30°, individual readings ranging as
+extreme as −79.2° to +8.3°) — not centred on the camera — before dropping
+back to exactly zero for the final two minutes (8, 9). **Ruled out directly,
+by reading the code, not by elimination:** the calibrator bug above CANNOT
+be the cause — `face_detected`/`pose_detected` in `controls/null_input.py`
+are set purely from MediaPipe's own `detect_for_video` success/failure,
+called and recorded before `calibrator.add_sample()`/`calibrator.complete()`
+run at all; nothing about calibration state feeds back into detection.
+**Also checked and ruled out: no D0PA1-added quality gate (the 35°-yaw
+CLAUDE.md describes) is applied in this script at all** — only MediaPipe's
+own `min_face_presence_confidence`/`min_tracking_confidence` thresholds are
+in effect, so the extreme yaw readings during the "good" stretch are real
+MediaPipe successes despite the large angle, not gated readings. **The most
+data-consistent explanation, stated as an inference from telemetry rather
+than a witnessed fact (no video was kept, per G4, so this cannot be
+independently confirmed from a recording):** the subject was most likely
+not yet settled into frame for the first ~2 minutes (there is no
+interactive "ready?" gate in `controls/null_input.py` between printing
+operator instructions and starting the 10-minute clock — the clock starts
+almost immediately after the two MediaPipe models load), was present but
+seated at a real, substantial, roughly constant angle to the camera — not
+looking straight at the lens — for the ~5-minute middle stretch (consistent
+with a camera/screen physically offset from where the subject was actually
+oriented, a framing detail, not a lighting or warm-up effect), and most
+likely left frame again before the full 10 minutes elapsed for the final
+~2 minutes (a long, complete, zero-detection stretch is more consistent
+with physical absence than with a merely bad angle, since a person present
+but off-axis for 10 minutes straight would be expected to occasionally
+re-center and produce at least some detections, as the middle stretch
+itself shows). **A camera-hardware or lighting warm-up effect is considered
+and rated less likely**, given the scale (minutes, not the sub-second-to-
+low-second range typical of auto-exposure/auto-gain settling). **Until this
+is independently confirmed by a monitored re-run, the DENOMINATOR question
+this section's own Task 4 caution flags remains open**: this session's
+5-minute "good" stretch is itself not a clean, centred, at-rest baseline —
+it is a real person, present, but oriented well off-axis for its duration —
+so even the dispersion figures above should be read as "dispersion during
+whatever this particular 5-minute stretch actually was," not as "dispersion
+during a canonical, centred, quiet-sitting baseline." This is a genuine,
+reportable limitation of the ONE run collected, not evidence the pipeline
+itself is unstable.
+
+**A real bug in the G5-protected validated path was found last task and is
+FIXED this task, with explicit Task-1.3 permission** (see Task 1's own
+blast-radius check below for which sessions were and were not affected, and
+`features/x_core.py`'s `NeutralCalibrator` for the fix itself):
+`should_complete()` used to complete calibration purely on WALL-CLOCK
+elapsed time, independent of whether any real (non-`None`) sample was ever
+collected. This session's 25-second calibration window fell entirely inside
+the near-zero-detection opening minutes — **zero real samples for every
+signal** — and `complete()` silently produced a reference of
+`{mean: null, std: null, n: 0}` for all three composite signals and all
+three covariates, while `is_calibrated()` still reported `True` for it.
+Consequence, confirmed directly at the time: the excursion detector's `z`
+stayed `None` for the entire session, so **`excursion_count = 0` for all
+four signals was NOT evidence of a clean null result — it was an artefact
+of the detector never running at all** this session. The dispersion table
+above is unaffected (`compute_dispersion` reads `raw_values`, collected
+independently of calibration, whenever `face_detected` was true, re-verified
+directly from the code again this task) — only the excursion/false-event-rate
+half of the original ask was compromised, and it was reported as
+compromised at the time, not smoothed into a false "0/min, clean" claim.
+Post-fix, `is_calibrated()` now correctly reports `False` for this exact
+degenerate case (`missingness_flag: true, missingness_reason:
+"not_yet_calibrated"` stamped on the reference) — this record of what
+happened is retained rather than rewritten, since the log file itself is
+immutable and was produced under the pre-fix code.
 
 **2. Directed pitch capture — RUN, graded intensity + yaw positive
 control + real-time independent judgement** (Task 3), via a new script,

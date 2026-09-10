@@ -70,6 +70,33 @@ finding; CLAUDE.md's own "Attention / screen-orientation" section already says s
 is repeated here because it directly bounds how much weight even the *surviving* claim
 can honestly carry.
 
+**⚠️ UPDATE, "AFTER THE PHYSICAL RUN" task — the paragraph above describing
+`oriented_rate` staying 1.00 with zero exceptions is now PARTIALLY WRONG, not
+just under-explained, and this update corrects it rather than only
+re-flagging it a third time.** Real, graded-intensity, independently-judged
+directed pitch data now exists (§2.7 below is the full re-derivation; this is
+the short version). At MAXIMAL commanded effort, large pitch values (up to
+−43.1°, two attempts averaging −31.6° and −15.2°) genuinely DO register — the
+"large values never show up" claim was true of every session tested before
+this one, but is no longer true in general. **What replaces it, re-derived
+from the real numbers rather than re-asserted: the practical verdict is
+unchanged (vertical ROI attribution is still not deliverable, at any tested
+granularity), but the REASON has moved a second time** — from "directed
+reliability" (implying the value itself doesn't show up) to **availability**
+(the value shows up, but a usable reading exists for only 8–27% of a
+maximal-effort look-down attempt, using this task's own cycle-based
+detection-rate accounting — see §2.7.2 for the important caveat on what that
+percentage actually measures) **plus a secondary, real consistency problem**
+(two equally-judged-maximal attempts differed by roughly 2× in magnitude).
+Magnitude itself is favourable at maximal effort but is NOT solved at
+ordinary/moderate look-down intensity — §2.7.1's own numbers show required
+separations still exceed what a "slight" or "moderate" commanded glance
+produced. §2.7 is the full derivation; the VERDICT paragraphs above are left
+as originally corrected (not rewritten a third time in place) so this
+document's own history of what was claimed, when, stays legible — read this
+note as superseding their specific "oriented_rate stays 1.00... large values
+do not show up" claim, not the document's bottom-line verdict.
+
 ---
 
 ## RETRACTION — a withdrawn claim, recorded rather than silently replaced
@@ -467,6 +494,19 @@ VERDICT) has NOT yet been rewritten to reflect this** — flagged here so a
 future session does not read the unrevised text below as still current
 without also reading this note.
 
+**✅ Done by the "AFTER THE PHYSICAL RUN" task: §2.7 below is that rewrite.**
+It re-derives the resolution comparison (§2.1's table) using ONLY this real
+graded data plus the resting noise floor already established, separates the
+magnitude question from the (now-dominant) availability/detection-rate
+question, and restates the verdict against all three candidate grounds
+(magnitude / consistency / availability) explicitly, rather than leaving
+that synthesis to a future session again. The top-of-document VERDICT
+carries its own short pointer to the same section. §2.4a's mechanism
+question (M1/M2/M3) itself is NOT what §2.7 re-derives — that stays as this
+section leaves it (undifferentiated, n=1) — §2.7 is about the RESOLUTION
+verdict (§2.1–§2.5), a related but distinct question this document has kept
+visibly separate throughout.
+
 `oriented_rate` — the value every directed-session figure above is built
 from — is a thresholded binary derived FROM `compute_v_so`'s pitch estimate,
 not a direct record of what the subject's head actually did. At least three
@@ -617,8 +657,11 @@ settling it is future work, not a precondition for today's verdict.
 
 ### 2.5 The verdict, and the largest honest claim
 
-See the top of this document for the full verdict. In summary form against each named
-layout:
+See the top of this document for the full verdict — and §2.7 for the
+"AFTER THE PHYSICAL RUN" task's re-derivation against real graded pitch
+data, which corrects the REASON the vertical half fails below (availability,
+not magnitude) without changing the resolvable/not-resolvable calls
+themselves. In summary form against each named layout:
 
 - **Halves (left/right)** — resolvable. Yaw only; comfortably clears its bar.
 - **Quadrants (2×2)** — not resolvable as a 4-way attribution. The horizontal half of
@@ -687,6 +730,166 @@ claims it clears the client's own D8 statistical standard — see §2.5 above an
 open, physical-run item (`docs/PROJECT_STATE.md`'s "needs a physical run"
 group) — not something this document can supply by more careful re-reading of
 the same 18 records.
+
+### 2.7 Re-derivation against the real graded pitch data ("AFTER THE
+### PHYSICAL RUN" task, Task 2)
+
+The vertical verdict has moved twice already (§2's own RETRACTION section):
+first a magnitude ceiling, then a directed-reliability problem. Real graded
+pitch data now exists (`logs/orientation_trials.jsonl`, schema 1.1, labels
+`look_down_small_1`, `look_down_medium_1`/`_2`, `look_down_maximal_1`/`_2` —
+full numbers in `docs/PROJECT_STATE.md`'s "Directed pitch capture" entry).
+This section re-derives the verdict from those numbers rather than arguing
+from the prior framing a third time.
+
+#### 2.7.1 Magnitude, re-derived — required vs. achieved, by commanded intensity
+
+Required separations are unchanged from §2.1 (halves/quadrants yaw 15.53°,
+quadrants/top-bottom pitch 8.84°, 3×3 yaw 10.30°/pitch 5.88°). The resting
+noise-floor denominator for pitch is **still a genuine data gap** — checked
+again this task, not assumed: `logs/null_input_06e8d2be…jsonl` (the real
+10-minute quiet-sitting run, §3 below) logs `yaw_deg` per sample but no
+pitch field at all, and `graded_pitch_capture.py` never ran a
+`look_at_screen` resting phase this task (only directed look-down/look-left/
+look-right phases). No real archived pitch-at-rest figure exists anywhere in
+this repository, before or after this task — stated plainly rather than
+filled with an invented number (G2/G3).
+
+What DOES now exist is a real, graded, independently-judged
+directed-effort-max figure, at three commanded intensities:
+
+| Commanded intensity | Real attempt(s) | Achieved pitch (avg / max magnitude) | Required (Quadrants/top-bottom, 8.84°) | Required (3×3, 5.88°) |
+|---|---|---|---|---|
+| Small (slight glance) | 1 attempt, n=1 sample | 5.66° (single reading — not a real distribution) | ratio 1.56× — **unfavourable** | ratio 1.04× — **unfavourable** |
+| Medium (moderate tilt) | 2 attempts | 2.24° avg / 3.00° avg (max 5.58°/11.6°) | ratio 2.95–3.94× — **unfavourable** | ratio 1.96–2.62× — **unfavourable** |
+| Maximal (chin-to-chest) | 2 attempts, both independently judged "genuine maximal" | 31.6° avg / 15.2° avg (max 43.1°/23.6°) | ratio 0.28–0.58× (max: 0.21–0.38×) — **favourable** | ratio 0.19–0.39× (max: 0.14–0.25×) — **favourable** |
+
+**Reading this table plainly, in both directions, is the whole point of
+re-deriving it rather than re-asserting a verdict:** the old ≤4.4°
+directed-effort figure that drove the "magnitude ceiling" and later
+"directed-reliability" framings is dead — a real, independently-judged
+maximal attempt clears every required separation, at every layout, by a
+comfortable margin, using EITHER of the two maximal repetitions on its own.
+**But magnitude is only solved at maximal commanded effort.** At medium and
+small intensity — arguably closer to how a person actually glances down at
+a phone or lap than a deliberate chin-to-chest tuck — the required
+separation still exceeds what was achieved, at every layout including the
+coarsest (top/bottom). This is a real, asymmetric finding: the channel CAN
+carry the required discrimination, but only under an instructed maximal
+effort unlikely to represent ordinary disengagement behaviour. Both halves
+of that sentence are load-bearing; neither should be dropped to make the
+finding cleaner than it is.
+
+#### 2.7.2 Detection rate — the number this task's own instruction expected to dominate
+
+During the same look-down attempts, the fraction of samples that produced
+ANY reading at all (`n_detected / n_samples`, as directly logged) was:
+
+| Attempt | Detection rate |
+|---|---|
+| small | 1/1282 = 0.08% |
+| medium 1 | 124/1129 = 10.98% |
+| medium 2 | 224/1144 = 19.58% |
+| maximal 1 | 182/663 = 27.45% |
+| maximal 2 | 94/749 = 12.55% |
+
+**A real methodological caveat, found this task by reading
+`orientation_capture.py`'s `record_segment()` directly rather than assumed:
+`n_samples` counts PROCESSING-LOOP CYCLES, not unique camera frames.** The
+recording loop polls the shared single-slot frame buffer (`s1.latest_frame`)
+as fast as the CPU allows, re-running full face detection on whatever frame
+is currently buffered — including the SAME frame more than once if T1
+(camera capture, nominally ~27–30fps per `logs/soak_log.jsonl`) hasn't
+delivered a new one yet. The implied per-second cycle rates in this data
+(67–128 cycles/sec, computed as `n_samples / 10s`) are well above the
+camera's own real delivery rate, confirming this is really happening, not a
+theoretical concern. **This means the detection-rate percentages above are
+a real, directly-measured property of what this script's processing loop
+actually returned, but they are NOT a directly interpretable "fraction of
+real time with a usable reading"** — a run of several cycles in a row
+re-detecting (or re-failing to detect) the identical stale frame would
+inflate both the numerator and denominator by the same repeated event,
+without a documented way to separate genuine per-frame detection from
+repeated re-processing of one frame from the data actually logged (no
+frame-identity or frame-timestamp field was captured to allow a clean
+correction). **This document does not compute a "corrected" percentage** —
+doing so would require an assumption about camera delivery rate during
+this exact run that isn't independently verified from this run's own data,
+and G2/G3 both weigh against presenting an invented correction as if
+measured. What IS solid: `look_left_control_2` (the yaw positive control,
+same script, same loop) shows a 57.8% raw detection rate — well above every
+look-down figure, including maximal — so whatever the loop's re-polling
+behaviour contributes to these percentages, it does not erase the real,
+large gap between yaw's and pitch's detection rates; the qualitative
+finding (pitch's usable-reading fraction is low, and lower than yaw's own,
+even under the same measurement artefact) survives the caveat even though
+the exact percentages should not be read as literal wall-clock fractions.
+
+**What this means for attribution, stated at the level of confidence the
+data supports:** even setting the process-cycle caveat aside entirely and
+taking the raw percentages at face value, the BEST observed detection rate
+during any look-down attempt (27.45%, maximal 1) means roughly three
+readings out of every four processing cycles produced nothing — during a
+genuinely, independently-confirmed maximal effort, the most favourable
+condition tested. A system attempting continuous per-frame or even
+per-window-majority vertical attribution would frequently have no reading
+to attribute at all, regardless of how good the reading is when one exists.
+This is a different, and by this task's own read of the data, now a
+LARGER practical obstacle than magnitude, which §2.7.1 shows is solved at
+maximal effort.
+
+#### 2.7.3 Consistency — real, secondary
+
+The two maximal attempts were judged, independently and in real time,
+"same effort... genuine maximal" both times, yet produced avg magnitudes of
+−31.6° and −15.2° (≈2.0× apart) and maxes of −43.1° and −23.6° (≈1.8× apart).
+This is real evidence the ESTIMATOR is inconsistent even when it does
+register a large value, not evidence of inconsistent subject effort (the
+judgement, collected before either number was shown, treated both as
+equally genuine). It bears on how much confidence to place in any single
+reading that DOES come through, but — unlike availability — it does not by
+itself prevent attribution outright: an inconsistent-but-present large
+negative reading is still informative in a coarse, binary sense (something
+large happened), just not in a way that would support a precise magnitude-
+based multi-way split.
+
+#### 2.7.4 The verdict, restated against the three candidate grounds
+
+This task's own framing proposed testing, not adopting, a specific
+expectation: that the verdict now rests on availability and partly
+consistency, with magnitude no longer the operative constraint. **The data
+supports that expectation, with one real qualification the framing did not
+anticipate:**
+
+- **Magnitude: SOLVED at maximal commanded effort, NOT solved at ordinary
+  (small/medium) commanded effort** (§2.7.1). This is not a clean "no longer
+  a constraint" — it is intensity-dependent, and most real disengagement is
+  plausibly closer to "ordinary" than "maximal chin-to-chest."
+- **Availability: now the dominant, practically decisive constraint**
+  (§2.7.2) — even at the single most favourable condition tested (maximal
+  effort), roughly three in four processing cycles produced no reading at
+  all. This holds under the raw, directly-logged numbers even before
+  considering whether the process-cycle caveat would move the true figure
+  up or down.
+- **Consistency: real and secondary** (§2.7.3) — a genuine estimator-level
+  finding, but one that degrades confidence in a present reading rather
+  than preventing attribution the way total absence of a reading does.
+
+**Has the verdict flipped? No — stated directly, not softened.** Vertical
+ROI attribution is still not deliverable, at any tested granularity
+including the coarsest possible (top/bottom) split. What has changed, for
+the second time, is the REASON: not a magnitude ceiling (retracted, §2 top),
+not a blanket "large values never show up" directed-reliability failure
+(also now shown incomplete — they DO show up under maximal effort), but an
+**availability problem, compounded by a real magnitude gap at ordinary
+(non-maximal) commanded intensity and a secondary estimator-consistency
+problem**. The practical answer this engagement has stated since the first
+version of this document — vertical region attribution is not something
+this sensing approach can deliver — is unchanged for the third time running,
+while its explanation has now moved three times. That instability in the
+REASON, not the practical answer, is itself worth naming honestly: it
+reflects how little real directed data existed before this task, not
+carelessness in any single version of this document.
 
 ---
 
