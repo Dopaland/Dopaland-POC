@@ -19,21 +19,43 @@ documents, read in that order, answer nearly everything a fresh session will ask
 
 ## 1. Current commit and where this phase stands
 
-**HEAD at time of writing:** `b5f440a` — "docs: audio moves from BLOCKED to
-RETAINED AND IN ACQUISITION" (the "AUDIO PART A" task: the client's
-keep-or-formally-remove decision on `Δ_audio` has been made — RETAINED.
-Built: the privacy guard extended to every audio container; an audio
-acquisition instrument (`audio_acquisition.py`, own thread, per-chunk
-level/timing integrity logging, no content analysis); audio consent as a
-separate, independent, architecturally-unreachable-when-declined question;
-raw audio's storage location as env-var config, never a committed literal;
-the separation guard extended to cover `audio_acquisition.py` itself as
-direct U_t content (a real gap found by audit, the same way the
-`context`→`attention`/`audio` gap was found the prior task). The FPS-impact
-proof used a synthetic video-timing harness against the real microphone
-(camera use was declined for this session); the audio/video sync
-measurement — Part A's actual point — was **not performed**, stated plainly
-per that task's own instruction, since it needs a physical event visible to
+**HEAD at time of writing:** `0fc829e` — "docs: correct stale physical-run
+claims, record the sync-measurement attempt" (the "ENVIRONMENT AUDIT, SYNC
+MEASUREMENT, G5 RIPPLE CHECK" task: tested — not re-read — every prior
+session's "this coding environment cannot provide a live webcam" claim and
+found it stale; a real camera and a real default microphone both open,
+stream, and hold open simultaneously without failure or measurable
+degradation, though only one physical camera exists (checked specifically,
+per this task's own caution not to conflate that with a second camera).
+Attempted the clap-based sync measurement live with the user's real-time
+cooperation, entirely in-memory, and hit a genuinely new, non-hardware
+blocker: no real acoustic content reached this process across two
+microphones and two host APIs, consistent with an OS-level
+microphone-privacy restriction — corrected the prior task's "genuine ...
+room level" reading as very likely this same access-blocked silence
+artifact, not real ambient sound. Verified the G5 ripple from the prior
+task's consent-signature change directly (identical one-line diffs, dead
+unused variable, additive-only record fields) and confirmed the line was
+drawn correctly. Named the raw-media storage-location gap (neither video
+nor audio has ever had one decided) as one item and proposed, without
+deciding, a unified env-var-rooted pattern for both — see
+`docs/AUDIO_ACQUISITION.md` §7 and `docs/PRIVACY_AND_RETENTION.md`'s named
+open item.
+Prior: `b5f440a` — "docs: audio moves from BLOCKED to RETAINED AND IN
+ACQUISITION" (the "AUDIO PART A" task: the client's keep-or-formally-remove
+decision on `Δ_audio` has been made — RETAINED. Built: the privacy guard
+extended to every audio container; an audio acquisition instrument
+(`audio_acquisition.py`, own thread, per-chunk level/timing integrity
+logging, no content analysis); audio consent as a separate, independent,
+architecturally-unreachable-when-declined question; raw audio's storage
+location as env-var config, never a committed literal; the separation guard
+extended to cover `audio_acquisition.py` itself as direct U_t content (a
+real gap found by audit, the same way the `context`→`attention`/`audio` gap
+was found the prior task). The FPS-impact proof used a synthetic
+video-timing harness against the real microphone (camera use was declined
+for that session); the audio/video sync measurement — Part A's actual
+point — was **not performed** that session, stated plainly per that task's
+own instruction, since it needs a physical event visible to
 both sensors and only audio was exercised. See `docs/AUDIO_ACQUISITION.md`
 for the full record, including the change-control note: this decision
 reverses the sign-off response's own recommendation and is a scope change
