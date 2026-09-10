@@ -150,7 +150,146 @@ repository cannot supply on its own.
   corrected wording, this has not started; the harness package has not yet been
   opened by a session.
 
-### Needs a physical run — CORRECTED this phase, a stale environment assumption found by testing
+### Needs a physical run — THREE items actually run this phase ("PHYSICAL RUN SESSION")
+
+**Task 0 gate result, stated first because it governs everything below:**
+the microphone-content-access block found last phase (exact 16-bit
+quantization floor / exact digital zero regardless of real noise) is
+**gone this session** — a 2-second gate recording showed real, varying
+signal (min=-0.084, max=0.057, std=0.00247, 1362 distinct values). Not
+explained; not investigated further, per the task's own scope — recorded
+as a fact: it was blocked one phase, it is not blocked this phase, on the
+same machine.
+
+**1. Null-input control — RUN, 10 real minutes, subject present** (Task
+2). The user's own reading of "null input" (empty chair, no person) was
+directly challenged and not adopted — `controls/null_input.py`'s own
+docstring and instructions specify a present, resting human, because
+`compute_v_pd` needs real pose landmarks to produce any dispersion figure
+at all; an empty chair would yield `insufficient_samples`, not a
+measurement. Real result, `logs/null_input_06e8d2be-f603-4c18-a654-98fb375fbd13.jsonl`
+(12,234 records, kept — contains no image, only derived numbers):
+
+| Signal | std | mad_scaled | zero_dispersion | excursions (0-min baseline) |
+|---|---|---|---|---|
+| v_bf | 0.0348 | 0.0270 | false | 0 |
+| v_es | 0.0436 | 0.0407 | false | 0 |
+| v_jc | 0.0173 | 0.0148 | false | 0 |
+| v_pd | 0.00605 | 0.00180 | false | 0 |
+
+Overall `detect_rate = 0.295` (3,612/12,231 frames) — but this hides a
+real, structured pattern, not a stable rate: per-minute face-detect rate
+went 0.003 → 0.000 → 0.000 → 0.222 → 0.933 → 0.997 → 0.990 → 0.681 → 0.000
+→ 0.000 across the 10 minutes — near-zero at the start and end, ~99% only
+in a roughly 3-minute middle stretch. Not interpreted here (G1); a real,
+reportable instability in how reliably this setup holds detection over 10
+minutes.
+
+**A real bug in the G5-protected validated path was found and is NOT
+fixed here** (G5 — this document records it; a future task with explicit
+permission would fix it): `features/x_core.py`'s `NeutralCalibrator`
+completes calibration purely on WALL-CLOCK elapsed time
+(`should_complete()`), independent of whether any real (non-`None`)
+samples were collected. This session's 25-second calibration window fell
+entirely inside the near-zero-detection opening minutes — **zero real
+samples for every signal** — and `complete()` silently produced a
+reference of `{mean: null, std: null, n: 0}` for all three composite
+signals and all three covariates. `classify_calibration_quality` did
+**not** flag this (`possibly_not_neutral: false, reasons: []`) — a
+completed-but-empty calibration is currently invisible to the one check
+meant to catch calibration problems. Consequence, confirmed directly: the
+excursion detector's `z` stayed `None` for the entire session (a `None`
+reference makes every subsequent z-score computation skip), so
+**`excursion_count = 0` for all four signals is NOT evidence of a clean
+null result — it is an artefact of the detector never running at all**
+this session. The dispersion table above is unaffected (`compute_dispersion`
+reads `raw_values`, collected independently of calibration, whenever
+`face_detected` was true) — only the excursion/false-event-rate half of
+Task 2's ask is compromised, and it is reported as compromised, not
+smoothed into a false "0/min, clean" claim.
+
+**2. Directed pitch capture — RUN, graded intensity + yaw positive
+control + real-time independent judgement** (Task 3), via a new script,
+`graded_pitch_capture.py` (kept — reuses `orientation_capture.py`'s real
+`record_segment`/`build_trial_record` unmodified; appends to the same
+`logs/orientation_trials.jsonl`, same schema). Yaw positive control:
+1/2 attempts detected any face at all (`look_right_control`: 0/709
+frames, no judgement collected because there was nothing to judge;
+`look_left_control_2`: yaw avg −34.9° range [−39.4°, −25.1°],
+independently judged "held fully the whole time" — confirms the protocol
+and setup CAN produce clean, real, judgement-matched yaw data, even
+though this session's own yaw sample is incomplete).
+
+**Graded pitch result — a genuine, materially significant reversal of
+every prior session's finding, reported plainly rather than downplayed:**
+
+| Phase | Judgement (collected in real time) | Detection rate | Raw pitch avg | Raw pitch range |
+|---|---|---|---|---|
+| small (slight glance) | held slight glance, full duration | 1/1282 (0.08%) | 5.66° (single sample) | n/a |
+| medium #1 | held moderate tilt, full duration | 124/1129 (11%) | 2.24° | [−3.21°, 5.58°] |
+| medium #2 | held moderate tilt, full duration | 224/1144 (20%) | 3.00° | [−11.1°, 11.6°] |
+| maximal #1 | genuine maximal chin-to-chest, full duration | 182/663 (27%) | −31.6° | [−43.1°, −15.2°] |
+| maximal #2 | "same effort as attempt 1, genuine maximal" | 94/749 (13%) | −15.2° | [−23.6°, −1.17°] |
+
+**Unlike every session before this one, pitch DID register large,
+real values during genuinely, independently-judged maximal attempts** —
+up to −43.1° at the extreme, an order of magnitude beyond the ≤4.4°
+figure `docs/ROI_FEASIBILITY.md` and `PITCH_DIAGNOSTIC.md` built the
+"pitch is structurally unreliable" finding on, and starkly inconsistent
+with CLAUDE.md's own "verified chin-to-chest... pitch stayed ~0.1°"
+claim, which `docs/ROI_FEASIBILITY.md` §2.4a already flagged last phase
+as undocumented and unverifiable. **Magnitude also scaled with commanded
+intensity in the expected direction** (|5.66°| small → |2.24–3.00°|
+medium → |15.2–31.6°| maximal) — the graded-series signature Task 3.2
+asked for, and evidence against a simple "the estimator never responds to
+real pitch effort" story.
+
+**What is NOT resolved, stated as plainly as the reversal itself:**
+(a) a sign inconsistency — medium readings were positive, maximal
+readings were negative, unexplained, flagged rather than silently
+normalised; (b) detection RATE during every pitch attempt stayed low
+(0.08%–27%) even when pitch DID register — most of every window still
+produced no reading at all, a real, separate limitation from the
+magnitude question; (c) both maximal attempts were judged EQUALLY
+genuine and maximal by the same real-time report, yet produced
+substantially different magnitudes (−31.6° vs −15.2°, roughly 2×) —
+real evidence of estimator INCONSISTENCY, not subject inconsistency,
+bearing on M2 specifically; (d) n=1 subject, one session, 2 maximal reps
+— this reverses a claim that itself rested on comparably thin evidence,
+not a large validation. `docs/ROI_FEASIBILITY.md` needs a substantive
+update reflecting all of this — flagged here, not yet written (see that
+document's own note).
+
+**3. The sync measurement — attempted 5 times, no reliable figure**
+(Task 4). The microphone side worked cleanly and consistently across
+every attempt (real, clap-correlated transient onsets detected via a
+percentile-based threshold each time). The video side — simple
+frame-to-frame grayscale-difference motion detection — did not: across 5
+threshold/timing adjustments, it was either too sensitive (matching
+general movement, not just claps: 19 video events for ~8 real claps,
+producing a 9-pair match with an 828ms spread — almost certainly
+contaminated by false matches, not real sync jitter) or too strict
+(0–3 video events, no usable matches at all). **No offset, spread, or
+drift figure is reported** — the noisy 40ms mean / 281ms std from the
+one run that DID produce matches is explicitly NOT trusted or reported as
+a result, because the match quality itself was not trustworthy (per
+Task 4.4's own instruction: a method whose error may exceed the true
+offset tells you nothing). This is a different outcome from either prior
+session (no hardware, no content access) — hardware and content both
+worked; the specific visual-event-detection METHOD chosen today was not
+specific enough. A brighter, more visually distinctive event (e.g. a
+light flash) rather than hand-clap motion against a mostly-static
+background would likely resolve this; not attempted this session.
+
+**4. Blink clips — explicitly skipped**, per the task's own instruction
+("if the session is running long, skip this... Tasks 2, 3 and 4 matter
+more"). This session ran long. Zero real clips exist, unchanged.
+
+**5. Second-camera sensor swap — unchanged, genuinely still
+hardware-blocked** (only one camera exists, confirmed again implicitly
+by every capture this session using camera index 0 exclusively).
+
+### Prior phase's environment-audit framing, retained below for its own record
 
 **"This coding environment cannot provide a live camera" was stale, and had been
 stale for at least one prior session before anyone tested it.** The "ENVIRONMENT
@@ -179,13 +318,31 @@ the "needs a client decision" group below, unchanged.
 need a real human's TIME as a study subject, which this correction does not by
 itself supply:**
 
-- **An extended stability soak** — camera hardware no longer blocks this; a soak
-  test does not require an actively-participating human subject the whole time (a
-  "no face detected" state is a valid, loggable outcome, not a failure). **Of the
-  five items in this group, this is the one genuinely runnable with no further
-  arrangement beyond what this session already confirmed works.** Not run this
-  session (out of this task's scope) — the only soak on record remains the POC-era
-  41-minute run (`logs/soak_log.jsonl`).
+- **An extended stability soak — attempted this session ("PHYSICAL RUN SESSION"),
+  real finding, NOT currently sustaining a long run.** Two real launches of
+  `python stage3_demo_ui.py --soak`, both clean exits (`clean_exit: true`,
+  `any_thread_death: false`, `any_exception: false` both times — not crashes),
+  but both self-terminated far short of an extended soak: 90.7s (3 samples,
+  FPS 27.91–29.97, mem 310.5→309.0 MB) and 80.5s (2 samples, FPS 28.92–29.95,
+  mem 311.8→305.1 MB). Root cause diagnosed by reading `stage3_demo_ui.py`'s
+  own shutdown logic (not modified — G5): it treats
+  `cv2.getWindowProperty(WINDOW_TITLE, cv2.WND_PROP_VISIBLE) < 1` (or a raised
+  `cv2.error`) as equivalent to the operator closing the window via the
+  X-button, and this condition appears to self-trigger reliably when the
+  script is launched through a backgrounded tool-invoked process rather than
+  an interactive desktop session with a persistently composited window. This
+  is an execution-context limitation, not a code defect and not a data
+  finding about the pipeline itself — the two short runs' own FPS/memory
+  numbers are consistent with the POC-era 41-minute soak's steady-state
+  values, they just don't cover enough wall-clock time to say anything new
+  about drift or leaks. **Not resolved this session** (would require either
+  changing G5-protected shutdown logic without permission, or running from an
+  execution context this session doesn't have). The only soak long enough to
+  speak to genuine long-run stability remains the POC-era 41-minute run
+  (`logs/soak_log.jsonl`) — a person running `python stage3_demo_ui.py --soak`
+  themselves, in their own interactive terminal with a real visible window,
+  would be expected not to hit this self-close condition, since it appears
+  tied to the backgrounded-launch context specifically, not to the soak code.
 - **The null-input control's own 10-minute camera session** — the camera-hardware
   half of "this environment cannot provide either" is stale. The human-operator
   half is not: this control needs a real human sitting still, as the study subject,

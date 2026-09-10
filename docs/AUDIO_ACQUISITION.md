@@ -277,7 +277,41 @@ session and should not be inferred from this table.
 
 ---
 
-## 4. The sync measurement (Task 4) — NOT PERFORMED
+## 4. The sync measurement (Task 4) — NOT PERFORMED last phase; ATTEMPTED THIS PHASE, still no reliable figure
+
+**"PHYSICAL RUN SESSION" task update.** The Task 0 gate (a 2-second
+recording) found the microphone-content block from last phase gone: real,
+varying signal (min −0.084, max 0.057, std 0.00247, 1362 distinct values).
+Not explained, not investigated — recorded as a fact on the same machine,
+one phase apart.
+
+With that resolved, the clap-sync measurement was attempted live, 5 times,
+entirely in-memory (confirmed after every attempt: no raw audio or video
+sample ever written to disk). **The microphone side worked cleanly and
+consistently every time** — real, clap-correlated transient onsets found
+via a percentile-based threshold, in every one of the 5 attempts. **The
+video side — simple frame-to-frame grayscale-difference motion
+detection — did not.** Across 5 threshold adjustments it was either too
+sensitive (general movement, not just claps, crossed the threshold: one
+run found 19 video "events" against ~8 real claps, and the resulting
+9-pair match had a 40ms mean / 281ms std / 828ms range — a spread almost
+certainly dominated by false matches pairing a real clap's audio against
+an unrelated nearby motion spike, not real sync jitter) or too strict
+(0–3 video events, no usable matches).
+
+**No offset, spread, or drift figure is reported.** The one run that DID
+produce matched pairs is explicitly not trusted as a result — per Task
+4.4's own instruction, a method whose match quality cannot be trusted
+tells you nothing, and reporting that 40ms/281ms pair as if it were a
+clean measurement would be exactly the kind of fabricated-looking number
+this document exists to avoid. This is a genuinely different outcome from
+both prior attempts: last phase, neither hardware nor audio content was
+available at all; this phase, both were available and a human was
+actively cooperating, but the specific visual-event-DETECTION method
+chosen (frame-differencing against a mostly-static face-and-background
+scene) was not specific enough to isolate individual clap events
+reliably. A more visually distinctive event — a light flash rather than
+hand-clap motion — would likely resolve this; not attempted this phase.
 
 **Per Task 4.4's own instruction: stated plainly, not simulated, not
 estimated from specifications.**

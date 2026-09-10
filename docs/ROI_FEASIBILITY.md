@@ -431,6 +431,42 @@ established failure from its not-yet-separated mechanism.**
 
 ### 2.4a The mechanism is not yet established (M1 / M2 / M3)
 
+**⚠️ UPDATE, real data, "PHYSICAL RUN SESSION" task — this section's
+analysis below was written from archived data only and is now
+PARTIALLY SUPERSEDED. Read this note before the rest of §2.4a.** A real,
+graded-intensity, independently-judged directed pitch capture was run
+(not archived data — a live session, `logs/orientation_trials.jsonl`,
+labels `look_down_small_1`/`look_down_medium_1`/`_2`/`look_down_maximal_1`/`_2`).
+**Maximal, genuinely-held attempts registered pitch as large as −43.1°**
+(two attempts, both independently judged "genuine maximal effort" before
+the number was shown: −31.6° avg and −15.2° avg), with rough scaling by
+commanded intensity (small≈6° → medium≈2–3° → maximal≈15–32°) — this
+directly contradicts the ≤4.4° figure this section's own §2.2/§2.3 built
+the "directed effort caps out low" framing on, and contradicts CLAUDE.md's
+now-corrected "verified chin-to-chest... ~0.1°" claim even more sharply.
+**M3 (threshold artefact) is now further weakened as an explanation**
+(real registered values FAR exceed the 20° `ATTENTION_PITCH_THRESHOLD_DEG`,
+so nothing is being discarded by that gate in the maximal case) — and
+**M1 (behavioural non-production) looks less likely too**, since both
+attempts were independently confirmed as genuine before the number was
+known. What is NOT resolved: (a) DETECTION RATE during every pitch
+attempt stayed low (0.08%–27%) even when pitch DID register — most of
+each window still produced no reading, a distinct problem from magnitude,
+and arguably now the more interesting open M2-adjacent question:
+INTERMITTENT tracking loss, not a wrong VALUE; (b) a sign inconsistency
+between medium (positive) and maximal (negative) readings, unexplained;
+(c) both maximal attempts judged equally genuine produced magnitudes
+differing ~2× (−31.6° vs −15.2°) — real evidence the ESTIMATOR is
+inconsistent even when it does register something, independent of
+subject behaviour; (d) n=1 subject, one session, two maximal reps — this
+reversal itself rests on thin evidence and must not be overstated into
+"pitch now works." Full numbers: `docs/PROJECT_STATE.md`'s "Directed
+pitch capture" entry. **This section's own verdict-level text below
+(§2.4a's "my own reading," §2.5's granularity table, and the top-of-document
+VERDICT) has NOT yet been rewritten to reflect this** — flagged here so a
+future session does not read the unrevised text below as still current
+without also reading this note.
+
 `oriented_rate` — the value every directed-session figure above is built
 from — is a thresholded binary derived FROM `compute_v_so`'s pitch estimate,
 not a direct record of what the subject's head actually did. At least three

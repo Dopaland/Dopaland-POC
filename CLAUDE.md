@@ -657,15 +657,39 @@ V_so (screen orientation, `stage1_step4_vectors.py`) and its study tool
 (`orientation_capture.py`) are a **PILOT feature, NOT POC-ready.** Keep the
 code — do not delete it — but it stays marked as such.
 
-- **Finding:** directed testing confirmed YAW (left/right) is detected
-  reliably. PITCH (looking up/down) is **UNRELIABLE** — on a maximal,
-  sustained, verified chin-to-chest look-down, pitch stayed ~0.1° and
-  `oriented_rate` stayed 1.0, indistinguishable from looking straight at
-  the screen.
-- **Root cause is STRUCTURAL, not a bug:** `yaw_pitch_roll_from_matrix` is
-  provably exact on synthetic rotations; the face foreshortens when
-  looking down, degrading the landmark data pitch depends on. **Do NOT
-  attempt to "fix" pitch** in this approach — it is not fixable here.
+- **Finding, CORRECTED by the "PHYSICAL RUN SESSION" task (real,
+  independently-judged data, not re-read from an earlier claim):**
+  directed testing confirmed YAW (left/right) is detected reliably. PITCH
+  is **UNRELIABLE**, but NOT in the way this section previously said —
+  the earlier "on a maximal, sustained, verified chin-to-chest look-down,
+  pitch stayed ~0.1°" claim had no documented verification method
+  anywhere in this repository (`docs/ROI_FEASIBILITY.md` §2.4a already
+  found this last phase) and does not match what an actual, real,
+  graded-intensity, independently-judged session found: **maximal,
+  genuinely-held look-down attempts registered pitch as large as −43.1°**
+  (two attempts, both independently confirmed "genuine maximal effort"
+  in real time, before the numbers were shown — −31.6° avg and −15.2°
+  avg respectively), with magnitude scaling roughly with commanded
+  intensity (small ≈6°, medium ≈2–3°, maximal ≈15–32°). The earlier
+  "~0.1°, always" claim is retracted — see `docs/PROJECT_STATE.md`'s
+  "Directed pitch capture" entry and `docs/ROI_FEASIBILITY.md` for the
+  full data and its own real limitations (n=1, one session, a sign
+  inconsistency between medium and maximal readings not yet explained,
+  and DETECTION RATE during pitch attempts staying low — 0.08%–27% —
+  even when pitch DID register, a separate problem from magnitude).
+  `oriented_rate` still read close to 1.0 much of the time this session
+  too (low detection rate means most window-samples are simply missing,
+  not necessarily "reading as oriented") — the ORIGINAL practical
+  conclusion (pitch-based ROI attribution is not viable today) is
+  UNCHANGED; what changed is the mechanism claimed for it, again.
+- **Root cause is NOT settled as purely structural** — the earlier
+  "structural, not a bug" framing assumed the ~0.1° figure was real and
+  permanent; today's contradicting data reopens the M1/M2/M3 question
+  `docs/ROI_FEASIBILITY.md` §2.4a already named rather than closes it.
+  `yaw_pitch_roll_from_matrix` remains provably exact on synthetic
+  rotations (unchanged); face foreshortening under real look-down remains
+  a plausible contributing mechanism, but "not fixable here" is no longer
+  the settled position this section can assert without a caveat.
 - **Why this matters:** the most common disengagement cue is looking
   down, which this signal can't see. Shipping a yaw-only signal as
   "attention"/"engagement"/"focus"/"distraction" would **overclaim** —
