@@ -46,6 +46,8 @@
         "std": 0.00281848612989663
       }
     },
+    "missingness_flag": false,
+    "missingness_reason": null,
     "person_label": null,
     "quality": {
       "drifted_vectors": [],

@@ -328,9 +328,35 @@ class NeutralCalibrator:
         self.start_ts = None
         self.samples = []
         self.reference = None  # frozen once complete
+        # Tracks whether complete() has run at all, separate from
+        # is_calibrated() below -- see is_calibrated()'s own docstring for
+        # why these two are no longer the same question. This one preserves
+        # the original one-shot freeze timing (should_complete() still fires
+        # exactly once, at the same wall-clock point as before) regardless
+        # of whether the result turned out usable.
+        self._completed = False
 
     def is_calibrated(self):
-        return self.reference is not None
+        """True only if a completed reference exists AND it is usable --
+        i.e. at least one composite vector actually collected a real
+        sample. Found via a real physical run ("PHYSICAL RUN SESSION"
+        task): should_complete() fires on WALL-CLOCK elapsed time alone,
+        independent of whether any real (non-None) sample was ever added.
+        A calibration window that falls entirely inside a no-face-detected
+        stretch used to freeze a reference of {mean: None, std: None, n: 0}
+        for every composite vector, and this method returned True for it
+        anyway (self.reference was merely non-None) -- an unreachable
+        calibration silently reporting itself as calibrated. Downstream,
+        every z-score computed against that reference is already None
+        (mean is None), so no fabricated NUMBER was ever produced -- but
+        the STATE was wrong: callers (this file's own map_to_valence_arousal
+        gate, controls/null_input.py's ExcursionDetector gate,
+        stage1_step4_vectors.py's "calibration_status" field) all read
+        is_calibrated() as their single source of truth for "did this
+        session get a real baseline", and all of them silently treated a
+        null baseline as a real one. Fixed here, not in any caller (G5) --
+        see complete()'s own missingness_flag/missingness_reason fields."""
+        return self.reference is not None and not self.reference.get("missingness_flag", False)
 
     def seconds_remaining(self, now):
         if self.start_ts is None:
@@ -338,7 +364,7 @@ class NeutralCalibrator:
         return max(0.0, self.calibration_seconds - (now - self.start_ts))
 
     def add_sample(self, ts, composite, covariate, yaw_deg=None):
-        if self.is_calibrated():
+        if self._completed:
             return
         if self.start_ts is None:
             self.start_ts = ts
@@ -346,7 +372,7 @@ class NeutralCalibrator:
 
     def should_complete(self, now):
         return (
-            not self.is_calibrated()
+            not self._completed
             and self.start_ts is not None
             and (now - self.start_ts) >= self.calibration_seconds
         )
@@ -364,11 +390,23 @@ class NeutralCalibrator:
         possibly_not_neutral, reasons, drifted_vectors = classify_calibration_quality(
             self.samples, self.COMPOSITE_KEYS, yaw_vals
         )
+        composite_stats = {k: self._stats(self.samples, "composite", k) for k in self.COMPOSITE_KEYS}
+        # An unreachable calibration -- the wall-clock window elapsed but
+        # not one composite vector ever collected a real (non-None) sample,
+        # e.g. a 25s window that fell entirely inside a no-face-detected
+        # stretch. Stamped explicitly, using this pipeline's existing
+        # missingness_flag/missingness_reason vocabulary (features/
+        # signal_quality.py, schema/canonical_log_v1.json's "not_yet_calibrated"
+        # enum value -- declared there, never previously emitted anywhere),
+        # rather than left as a reference whose emptiness a caller has to
+        # infer from n==0 buried in every composite entry. is_calibrated()
+        # reads this flag directly (see its own docstring).
+        degenerate = all(v["n"] == 0 for v in composite_stats.values())
         self.reference = {
             "person_label": PERSON_LABEL,
             "calibrated_at_monotonic": now,
             "calibration_seconds": now - self.start_ts,
-            "composite": {k: self._stats(self.samples, "composite", k) for k in self.COMPOSITE_KEYS},
+            "composite": composite_stats,
             "covariates": {k: self._stats(self.samples, "covariate", k) for k in self.COVARIATE_KEYS},
             # in-capture contamination flag -- see classify_calibration_quality.
             # Flagged, not auto-rejected: the operator decides whether to redo.
@@ -376,7 +414,10 @@ class NeutralCalibrator:
             # readable for future Gate 2 tooling); reasons is the same
             # information as human-readable strings.
             "quality": {"possibly_not_neutral": possibly_not_neutral, "reasons": reasons, "drifted_vectors": drifted_vectors},
+            "missingness_flag": degenerate,
+            "missingness_reason": "not_yet_calibrated" if degenerate else None,
         }
+        self._completed = True
         return self.reference
 
     def deviation(self, key, raw_value):
