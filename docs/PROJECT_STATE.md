@@ -19,7 +19,47 @@ documents, read in that order, answer nearly everything a fresh session will ask
 
 ## 1. Current commit and where this phase stands
 
-**HEAD at time of writing:** `044ebca` — "docs: record PHYSICAL RUN SESSION
+**HEAD at time of writing:** `b9ea218` — "docs: add client figures pack --
+traced figures, corrections record, audio scope-change record, outstanding
+items" (the "FIGURES PACK FOR THE CLIENT DOCUMENTS" task, documentation
+only: assembled `docs/CLIENT_FIGURES.md` from artefacts already in this
+repository, marking anything untraceable rather than filling it in —
+notably the empty-scene control, which was never run, and the audio sync
+measurement, which has never succeeded across 3 real attempts. Checked
+eleven candidate claims from the user's own strategy notes against live
+re-runs and direct `.docx` text extraction: ten confirmed, one found wrong
+(a "27 of 27 verified to the stated figures" overclaim — the headline
+27-of-27 VERIFIED count is accurate, but not every claim matched its exact
+stated figure on first check). Compiled the corrections record for the
+first time in one place: ten real corrections, none ever sent to the
+client — verified by reading both client-facing `.docx` files' raw text
+directly rather than trusting either document's own status labels; the
+user's own prompt listed ten items while stating "eight," reported as a
+direct count mismatch.
+Prior: `44c02be` (fix) / `e4aa779` (docs) — the "AFTER THE PHYSICAL RUN"
+task, Tasks 1–3 only (Tasks 4–6 — the empty-scene control, a sync
+remeasurement, and the final retraction/report — were never run; that
+session was interrupted before reaching them, and this repository's
+working tree held the completed portion uncommitted until the next task
+committed it). Task 1: found and fixed, with explicit permission, the
+`NeutralCalibrator` bug reported by the prior task
+(`is_calibrated()` returning `True` for a reference with zero real
+samples) — `is_calibrated()` now checks an explicit `missingness_flag`
+stamped on the reference rather than only "reference is not None";
+should_complete()'s one-shot timing itself is unchanged. Blast-radius
+check: scanned every real `calibration_complete` record in `logs/` (11
+total) and found exactly 1 affected (the quiet-sitting baseline), its
+dispersion table independently unaffected, and its one affected figure
+(`excursion_count=0`) already reported as compromised at the time, never
+sent to the client. Task 2: re-derived the vertical ROI verdict from real
+graded pitch data rather than re-arguing the prior framing — magnitude is
+solved at maximal commanded effort but not at ordinary intensity;
+detection rate (8–27% even at the best maximal attempt) is now the
+dominant blocker; practical verdict unchanged, reason moved a second
+time. Task 3 (partial): renamed the quiet-sitting baseline away from
+"null-input control" and explained its detection-rate pattern from the
+real per-frame log.
+Prior: `044ebca` — "docs: record PHYSICAL RUN SESSION
 findings — null-input, pitch, sync, soak" (the "D0PA1 — PHYSICAL RUN SESSION"
 task: the first session in this engagement to perform real camera/microphone
 captures rather than investigate, build, or audit. Task 0 mic gate passed
