@@ -128,38 +128,71 @@ repository cannot supply on its own.
   corrected wording, this has not started; the harness package has not yet been
   opened by a session.
 
-### Needs a physical run (a live camera and/or a human operator this environment cannot provide)
+### Needs a physical run — CORRECTED this phase, a stale environment assumption found by testing
 
-- **The null-input control's own 10-minute camera session** — its pure-computation
-  pieces (dispersion, excursion detection, config hashing) are unit-tested; the
-  camera loop itself has never executed, synthetic or real.
-- **10 real one-minute blink clips + manual frame-by-frame counts** — the positive
-  blink control's harness is built and validated against synthetic aperture streams
-  through the real detector; zero real clips exist.
-- **An extended stability soak** — the only soak on record is the POC-era 41-minute
-  run (`logs/soak_log.jsonl`); a longer or repeated soak is scheduled, not existing.
+**"This coding environment cannot provide a live camera" was stale, and had been
+stale for at least one prior session before anyone tested it.** The "ENVIRONMENT
+AUDIT, SYNC MEASUREMENT, G5 RIPPLE CHECK" task tested rather than read the claim
+(`cv2.VideoCapture(0)` opens, reads real 640×480 frames, ~26–27 fps standalone in a
+raw read loop, MSMF backend) and a real default microphone (`sounddevice` enumerates
+"Microphone Array (Intel Smart Sound Technology)", 4-channel, MME/DirectSound/WASAPI
+variants all listed) — **both can be held open simultaneously with neither failing nor
+measurably degrading** (camera: 25.9–26.2 fps with the mic stream running vs.
+26.0–26.6 fps alone, two repeats, well inside run-to-run noise; mic: ~47,800–48,000
+samples/sec against a 48,000 target both ways, zero overrun flags either way). See
+`docs/AUDIO_ACQUISITION.md` §7 for the full record, including a NEW finding this
+audit surfaced (genuine microphone *content* access is separately blocked for this
+process — a different problem from hardware availability, and NOT resolved by this
+correction).
+
+**Checked specifically, per this task's own caution: a camera existing is not a
+second camera existing.** Indices 1–3 all fail to open (`cv2.VideoCapture` returns
+`isOpened()==False`) — only one physical camera exists on this machine. The
+simultaneous-two-camera sensor-swap requirement (D0PA1 hard constraint #6) is
+**not** satisfied by this correction and remains genuinely hardware-blocked — see
+the "needs a client decision" group below, unchanged.
+
+**What this actually unblocks, stated precisely rather than declared wholesale
+"runnable" — most of these items were never blocked on camera hardware ALONE; they
+need a real human's TIME as a study subject, which this correction does not by
+itself supply:**
+
+- **An extended stability soak** — camera hardware no longer blocks this; a soak
+  test does not require an actively-participating human subject the whole time (a
+  "no face detected" state is a valid, loggable outcome, not a failure). **Of the
+  five items in this group, this is the one genuinely runnable with no further
+  arrangement beyond what this session already confirmed works.** Not run this
+  session (out of this task's scope) — the only soak on record remains the POC-era
+  41-minute run (`logs/soak_log.jsonl`).
+- **The null-input control's own 10-minute camera session** — the camera-hardware
+  half of "this environment cannot provide either" is stale. The human-operator
+  half is not: this control needs a real human sitting still, as the study subject,
+  for 10 minutes — a real, substantial time commitment this session did not attempt
+  to arrange (a brief, one-off cooperation for the sync measurement below is not the
+  same thing as a structured 10-minute session). Its pure-computation pieces remain
+  unit-tested only; the camera loop itself has still never executed, synthetic or
+  real.
+- **10 real one-minute blink clips + manual frame-by-frame counts** — same
+  correction and same caveat: camera hardware no longer blocks this; the repeated
+  human time (10 separate one-minute sessions) plus manual counting labor was not
+  attempted this session. Zero real clips exist.
 - **The directed-capture protocol that would separate M1/M2/M3 behind the pitch
-  finding** — specified, not built, in `docs/ROI_FEASIBILITY.md` §6. Resolves
-  whether pitch's directed-look-down failure (§2.2/§2.4a of that document) is a
-  property of subject behaviour (permanent), this specific estimator, or its
-  threshold logic (either potentially addressable by different sensing later) —
-  needs raw per-frame yaw/pitch logging, an independent ground-truth judgement of
-  actual head movement from the frames themselves (not from the estimator being
-  tested), and repeated directed attempts at graded intensity. ~15–20 min per
-  subject; any video used for the independent judgement stays outside this
-  repository per G4, only the derived judgement labels are logged.
-- **The audio/video sync measurement (Δ_audio's actual point)** — a repeated
-  hand-clap timestamp-alignment measurement, built and ready
-  (`audio_acquisition.py`'s raw-capture path, `docs/AUDIO_ACQUISITION.md` §4) but
-  **not run**: it needs a single physical event visible to BOTH the camera and
-  microphone simultaneously, and this phase's real-hardware session explicitly
-  declined camera use (audio-only was exercised instead — see
-  `docs/AUDIO_ACQUISITION.md` §3's FPS-impact proof, which used a synthetic video
-  timing harness for exactly this reason). Resolves whether audio events can be
-  placed on the video timeline to better than the resolution the study needs — if
-  the achievable alignment is worse than needed, `Δ_audio` measures alignment
-  error, not information, regardless of what else is built. No offset, spread, or
-  drift figure exists yet; none should be assumed or estimated.
+  finding** (`docs/ROI_FEASIBILITY.md` §6) — same correction, same caveat: camera
+  hardware no longer blocks it; the ~15–20 minute structured human session (graded-
+  intensity directed attempts, independent judgement) was not attempted this
+  session.
+- **The audio/video sync measurement (Δ_audio's actual point)** — **attempted this
+  session, with full hardware access and a cooperating human subject, and still not
+  completed — for a genuinely different reason than camera/mic unavailability.**
+  See `docs/AUDIO_ACQUISITION.md` §7 for the full account: the microphone's own
+  ACCESS API succeeds (opens, streams, correct timing) but no real acoustic content
+  — including a user's own deliberate loud claps, tested twice, across two
+  different physical microphones and two different host APIs (MME, WASAPI) — ever
+  reached this process. This is consistent with an OS-level microphone-privacy
+  restriction on this specific process, not a hardware absence. No offset, spread,
+  or drift figure exists yet; none should be assumed or estimated from acquisition
+  code existing, and none should be assumed resolved by the camera/mic
+  correction above — this is a separate, newly-found blocker.
 
 ### Needs a client decision
 
