@@ -19,7 +19,34 @@ documents, read in that order, answer nearly everything a fresh session will ask
 
 ## 1. Current commit and where this phase stands
 
-**HEAD at time of writing:** `0fc829e` — "docs: correct stale physical-run
+**HEAD at time of writing:** `044ebca` — "docs: record PHYSICAL RUN SESSION
+findings — null-input, pitch, sync, soak" (the "D0PA1 — PHYSICAL RUN SESSION"
+task: the first session in this engagement to perform real camera/microphone
+captures rather than investigate, build, or audit. Task 0 mic gate passed
+(real signal, not the OS-policy silence artefact from the prior session,
+which is now recorded in the corrections record below). Task 2 null-input
+control run for real, 10 minutes, with a human subject present — see the
+challenge/acceptance record and the full dispersion table below — and found
+a real bug in the G5-protected `NeutralCalibrator`: a zero-real-sample
+calibration window silently produces a null reference, which silently
+disables `ExcursionDetector` for the rest of the run. Task 3 graded-intensity
+pitch capture (new `graded_pitch_capture.py`, reusing `orientation_capture.py`'s
+never-before-run schema-1.1 path) found real pitch up to -43.1 deg on maximal
+attempts, scaling with commanded intensity — directly contradicting the
+previously documented "~0.1 deg, structural, not fixable" claim, which is
+retracted in `CLAUDE.md` and `docs/ROI_FEASIBILITY.md` this task; the
+underlying mechanism (M1/M2/M3) is reported as still undifferentiated, not
+rounded toward a tidy answer. Task 4 sync measurement: 5 video-motion-
+threshold iterations across 5 real recordings never produced a trustworthy
+audio/video match; no offset/spread/drift figure is reported, per the task's
+own instruction not to present a noisy match as real data. Task 5 (blink
+clips) explicitly skipped, session ran long. Task 6: the stability soak was
+attempted twice for real and both times self-terminated after ~80-90s — a
+real, diagnosed, environment-specific limitation (not a code defect), stated
+honestly rather than claimed as a running soak — see the corrected item
+below. Every raw recording made this session was deleted and confirmed;
+only derived, non-identifying JSONL logs were kept.
+Prior: `0fc829e` — "docs: correct stale physical-run
 claims, record the sync-measurement attempt" (the "ENVIRONMENT AUDIT, SYNC
 MEASUREMENT, G5 RIPPLE CHECK" task: tested — not re-read — every prior
 session's "this coding environment cannot provide a live webcam" claim and
