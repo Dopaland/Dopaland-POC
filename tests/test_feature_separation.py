@@ -445,21 +445,39 @@ def discover_cross_block_shims(local_table):
     return shims
 
 
+# D0PA1 audio acquisition task, Task 5.1 -- a gap found by audit, the same
+# way the context->attention/audio FORBIDDEN_EDGES gap was found: audio
+# acquisition (Task 3) added audio_acquisition.py, a REPO-ROOT module that
+# IS U_t content itself (real microphone capture) rather than a features/
+# module. discover_cross_block_shims() above only flags a repo-root module
+# as forbidden if it IMPORTS features.attention/features.audio -- but
+# audio_acquisition.py deliberately does NOT import features.audio (it
+# needs no feature-block content, only sounddevice/numpy), so that
+# detection-by-re-export logic would never flag it, even though x_core.py
+# or episodes.py importing it directly would be exactly the U_t -> X_core /
+# U_t -> E_t violation D1 forbids. Named here explicitly, and unioned into
+# the forbidden-target set below, rather than only ever checked for
+# RE-EXPORTING U_t content -- some modules simply ARE U_t content.
+DIRECT_UT_MODULES = {"audio_acquisition"}
+
+
 def check_shim_isolation():
     local_table = _local_module_table()
     shims = discover_cross_block_shims(local_table)
+    direct_ut = DIRECT_UT_MODULES & set(local_table)
+    forbidden_targets = shims | direct_ut
     graph = {name: _direct_local_imports(path, local_table) for name, path in local_table.items()}
     violations = []
     for src in ("features.x_core", "features.episodes"):
         reachable = transitive_closure(graph, src)
-        for shim in sorted(reachable & shims):
-            path = _find_path(graph, src, shim)
-            violations.append(
-                f"{src} imports (transitively) '{shim}', a cross-block compatibility "
-                f"shim that re-exports features.attention/features.audio symbols -- "
-                f"path: {' -> '.join(path)}"
-            )
-    return violations, sorted(shims)
+        for target in sorted(reachable & forbidden_targets):
+            path = _find_path(graph, src, target)
+            if target in shims:
+                reason = "a cross-block compatibility shim that re-exports features.attention/features.audio symbols"
+            else:
+                reason = "a U_t (audio) module in its own right, not merely a re-exporting shim"
+            violations.append(f"{src} imports (transitively) '{target}', {reason} -- path: {' -> '.join(path)}")
+    return violations, sorted(shims), sorted(direct_ut)
 
 
 # ============================================================
@@ -499,9 +517,10 @@ def run_all():
         print(f"      FAIL: {runtime_message}")
         failures.append(runtime_message)
 
-    shim_violations, shims_found = check_shim_isolation()
+    shim_violations, shims_found, direct_ut_found = check_shim_isolation()
     print("[4/4] COMPATIBILITY-SHIM ISOLATION (repo-root modules re-exporting across blocks)")
     print(f"      cross-block shim module(s) discovered: {shims_found or '(none)'}")
+    print(f"      direct U_t module(s) present in this repo: {direct_ut_found or '(none)'}")
     if shim_violations:
         print("      FAIL:")
         for v in shim_violations:
