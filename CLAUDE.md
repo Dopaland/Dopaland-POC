@@ -402,10 +402,16 @@ lists above forbid.
 Do not mistake any of these for validated — each has only ever seen synthetic input or
 has not been run at all:
 
-- **`controls/null_input.py`** — the camera-loop orchestration has never been run. It
-  needs a live webcam and a human operator sitting still for the configured duration
-  (10 min default); this coding environment cannot provide either. Its pure-computation
-  pieces (`compute_dispersion`, `ExcursionDetector`, config hashing) are unit-tested.
+- **`controls/null_input.py`** — the camera-loop orchestration has never been run.
+  **The "this coding environment cannot provide either [a live webcam or a human
+  operator]" framing here was found STALE this phase, by testing rather than
+  assuming** (the "ENVIRONMENT AUDIT, SYNC MEASUREMENT, G5 RIPPLE CHECK" task): a
+  real camera opens and delivers real frames in this environment. What is still
+  genuinely needed — and was NOT resolved by that correction — is a real human
+  sitting still, as the study subject, for the configured 10-minute duration; see
+  `docs/PROJECT_STATE.md`'s "needs a physical run" group for the current, precise
+  status. Its pure-computation pieces (`compute_dispersion`, `ExcursionDetector`,
+  config hashing) are unit-tested.
 - **`controls/blink_positive.py`** — exercised only against synthetic aperture streams
   (known ground-truth blink onsets) through the real, unmodified `BlinkDetector`. **No
   real one-minute clip has been recorded, no real clip has been processed, and no

@@ -94,6 +94,11 @@ never written into a committed file, only its hash. Verified by AST
 (`tests/test_audio_storage_config.py`): no default value on the dataclass
 field, no path-shaped string literal anywhere in the module's own source.
 
+**Named as an open item, with a proposed (not decided) unified resolution
+for both raw video and raw audio**: `docs/PRIVACY_AND_RETENTION.md`'s
+"Named open item: raw media of BOTH kinds has no decided, documented home"
+section.
+
 ---
 
 ## 2. Consent (Task 2)
@@ -122,6 +127,28 @@ Golden snapshot re-confirmed unchanged after this change.
   `audio_consent_reason: "declined_by_participant"` — never a silently
   missing field (Task 2.3). Declining video logs nothing at all (unchanged
   pre-existing behaviour) and the audio question is never asked.
+
+**The G5 ripple, checked directly this phase (the "ENVIRONMENT AUDIT, SYNC
+MEASUREMENT, G5 RIPPLE CHECK" task's Task 3), not merely re-asserted:**
+`git show` on the consent commit for all four touched files
+(`stage1_step4_vectors.py`, `stage1_step9_gate2_capture.py`,
+`orientation_capture.py`, `stage3_demo_ui.py`) shows an **identical
+one-line change in every file** — the `run_consent_gate(...)` unpacking
+line, plus an explanatory comment — with no other line touched. A repo-wide
+search for `audio_consented` confirms it is bound and never read again
+anywhere in any of the four files (dead, intentionally-unused plumbing, not
+silently feeding into anything downstream). The `_log_consent` diff against
+the original baseline import (`1854609`) shows the original five fields
+(`event`, `session_id`, `person_label`, `ts_utc`, `ts_monotonic`) are
+byte-identical, unmoved, unrenamed — the three new fields (`video_consent`,
+`audio_consent`, `audio_consent_reason`) are purely additive.
+`tests/test_consent_audio_gate.py` check 4 directly proves the video-decline
+path is unchanged: `(False, None, None)`, zero records logged, the exact
+pre-existing shape with the new tuple position appended. **Conclusion: the
+line was drawn correctly — this was plumbing only, not a behavioural
+change to any G5-protected capture/processing logic**, confirmed by direct
+diff inspection this phase, not only by the discipline followed while
+making the change.
 
 **What was NOT retrofitted, stated plainly (G3):** the EXISTING video
 capture loop's per-sample/window-summary record schema
@@ -353,3 +380,120 @@ not the change-control record itself, which is a separate, not-yet-done
 step (the same distinction `docs/preregistration/README.md` already draws
 between a dated commit recording a change and the client's own sign-off
 process for it).
+
+---
+
+## 7. Environment audit and the sync measurement — attempted, and a new finding (the "ENVIRONMENT AUDIT, SYNC MEASUREMENT, G5 RIPPLE CHECK" task)
+
+### 7.1 The environment claim was stale — tested, not assumed
+
+Every prior session in this engagement stated that "this coding environment
+cannot provide" a live webcam or a human operator. This session tested that
+claim directly rather than repeating it:
+
+- **Camera**: `cv2.VideoCapture(0)` opens and reads real frames (640×480,
+  MSMF backend), ~26.0–26.6 fps in a raw read loop (no CLAHE/detection).
+  Indices 1–3 all fail to open — **only one physical camera exists**; the
+  simultaneous-two-camera sensor-swap requirement (hard constraint #6) is
+  genuinely still unmet, checked specifically rather than swept into the
+  general correction.
+- **Microphone**: `sounddevice` enumerates a real default input device
+  ("Microphone Array (Intel Smart Sound Technology)", 4 input channels),
+  opens a stream, and delivers samples at the correct rate and timing
+  (~47,800–48,000 samples/sec against a 48,000 target, zero overrun flags).
+- **Both simultaneously**: held open together across two repeated 6-second
+  trials with neither failing nor either rate measurably degrading (camera
+  25.9–26.2 fps with the audio stream running vs. 26.0–26.6 fps alone;
+  audio ~47,757–47,835 samples/sec either way) — within ordinary run-to-run
+  variance, not a systematic effect.
+
+**This corrects, not merely supplements, the prior session's own framing**
+(§3's FPS-impact proof used a synthetic video-timing harness specifically
+*because* camera use was believed off-limits that session by the user's own
+choice for that session — that choice was reasonable given what was known
+then; the environment's actual capability was simply never tested before
+this task).
+
+### 7.2 The sync measurement — attempted live, and a new, different blocker found
+
+With the user's real-time cooperation (asked directly, confirmed present,
+agreed to clap on cue), two full attempts were made at the clap-based
+sync measurement described in §4, entirely in-memory (no raw audio or
+video sample ever written to disk at any point in either attempt — video
+kept only the immediately-previous grayscale frame for differencing,
+discarded on every iteration; audio kept only the in-process numpy buffer
+for the script's lifetime):
+
+- **Attempt 1** (60s): video motion detection worked correctly (real,
+  non-trivial frame-to-frame variation, sensible percentile spread up to
+  ~9.1) — but audio-event detection degenerated (near-zero median/MAD in a
+  near-silent recording drove the threshold to ~0, flagging over 500,000
+  spurious "events"). Diagnosed as a thresholding bug, not a data problem,
+  and fixed (moved to a percentile-based threshold with an absolute floor).
+- **Attempt 2** (65s, corrected thresholding): **zero audio events detected,
+  and the raw audio amplitude was pinned at the 16-bit quantization floor
+  (3.0517578125×10⁻⁵ = exactly 1/32768) for the entire recording** — no
+  variation whatsoever, including during the window the user was actively
+  clapping.
+- **Two further short diagnostics**, run to isolate the cause: (a) the same
+  microphone via the WASAPI host API (device index 9, 4-channel, since MME
+  might itself be the problem) returned **exact digital zero** across all
+  channels, not even the quantization floor; (b) a **completely different
+  physical microphone** (`Microphone (Realtek HD Audio Mic input)`, device
+  index 13, not the Intel array at all) also returned **exact digital
+  zero**, with the user again asked to make a loud noise during the
+  5-second window.
+
+**Conclusion: genuine acoustic content does not reach this process, on this
+machine, in this session — across two different physical microphones and
+two different host APIs (MME, WASAPI), with a human actively present and
+cooperating.** This is consistent with an OS-level microphone-privacy
+restriction (e.g. Windows' "allow desktop apps to access your microphone"
+setting returning a nominally-successful but silent stream rather than an
+error, a documented Windows behaviour) rather than any hardware absence —
+the API layer reports success at every step (device found, stream opens,
+correct sample count and timing delivered), which is exactly why this
+was not visible in §3's earlier FPS-impact/integrity work and needed a
+live, content-aware test to surface.
+
+**Per Task 2.4's own instruction: stated plainly, and stopped there.** No
+attempt was made to force a detection by lowering the threshold further
+(that would report noise as a clap — a fabricated result, explicitly
+forbidden) or to substitute a workaround (e.g. a screen flash photographed
+by the camera) for the specified single-physical-event method.
+
+**No offset, spread, or drift figure is reported. None was measured.**
+
+### 7.3 A correction to §3's own earlier claim
+
+§3's FPS-impact section (prior task) reported a real audio chunk's level as
+`peak_abs ≈ 3.05×10⁻⁵, rms ≈ 1.46×10⁻⁵`, described at the time as **"genuine
+captured evidence... real (very quiet) room level."** Given §7.2's finding —
+that this exact value (3.0517578125×10⁻⁵) is the 16-bit PCM quantization
+floor a blocked/silent stream returns via the MME host API, observed
+identically this session under conditions (active clapping) that should
+have produced a large, obvious departure from it — **that earlier
+characterisation is very likely wrong.** The prior session's reading was, in
+retrospect, almost certainly this same access-blocked silence artifact, not
+genuine ambient room sound. This is recorded here explicitly, the same
+discipline `docs/ROI_FEASIBILITY.md`'s own RETRACTION section uses: a
+withdrawn characterisation, stated as withdrawn, not silently corrected.
+**What is NOT retracted**: the integrity-logging *mechanism* itself
+(`AudioChunkLogger`, the record schema, the missingness vocabulary, the
+real bug found and fixed in `_on_finished`) — all of that is independent of
+whether the amplitude values it logged that session reflected real room
+sound or blocked-stream silence, and none of it is affected by this
+correction.
+
+### 7.4 What this means for the outstanding-items list
+
+Corrected in `docs/PROJECT_STATE.md`'s "needs a physical run" group and in
+`CLAUDE.md`'s D0PA1.3 section: the camera/microphone-hardware-absence
+framing was stale for four of the five physical-run items (they need a real
+human's TIME as a study subject, not camera hardware, which is a different
+and not-yet-resolved obstacle) and remains accurate for the second-camera
+requirement (genuinely only one camera exists). The sync measurement
+specifically was attempted, with hardware and a human both available, and
+hit a new, more specific, non-hardware blocker — audio content access —
+which is now the operative open question for that one item, not camera/mic
+absence.
