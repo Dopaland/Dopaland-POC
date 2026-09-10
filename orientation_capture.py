@@ -483,7 +483,10 @@ def orientation_processing_thread(result_holder):
 
 
 def main():
-    consented, participant_code = run_consent_gate(SESSION_ID)
+    # audio_consented is unused -- this is a video-orientation study tool,
+    # no audio path. Unpacked only because run_consent_gate's signature
+    # changed (D0PA1 audio acquisition task).
+    consented, audio_consented, participant_code = run_consent_gate(SESSION_ID)
     if not consented:
         return
 

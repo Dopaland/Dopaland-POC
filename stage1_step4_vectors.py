@@ -889,7 +889,12 @@ def main():
     # started and nothing recorded.
     from stage1_step7_consent import run_consent_gate
 
-    consented, person_label = run_consent_gate(SESSION_ID)
+    # audio_consented is unused here -- this orchestrator has no audio
+    # capture path (D0PA1 audio acquisition is a separate module,
+    # audio_acquisition.py, not wired into this file's capture loop).
+    # Unpacked (not ignored) only because run_consent_gate's signature
+    # changed to return it; nothing else on this line or below changed.
+    consented, audio_consented, person_label = run_consent_gate(SESSION_ID)
     if not consented:
         return
     PERSON_LABEL = person_label

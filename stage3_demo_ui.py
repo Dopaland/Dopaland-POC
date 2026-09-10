@@ -2076,7 +2076,10 @@ def main():
 
     # Consent gate runs before any thread, camera, or model load -- same
     # ordering s1.main() uses, reusing the same camera-free consent module.
-    consented, person_label = run_consent_gate(SESSION_ID)
+    # audio_consented is unused here -- stage3_demo_ui.py has no audio path.
+    # Unpacked only because run_consent_gate's signature changed (D0PA1
+    # audio acquisition task).
+    consented, audio_consented, person_label = run_consent_gate(SESSION_ID)
     if not consented:
         return
     PERSON_LABEL = person_label

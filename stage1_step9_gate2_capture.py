@@ -510,7 +510,10 @@ def review_block(cap, trial, block_name):
 
 
 def main():
-    consented, person_label = run_consent_gate(SESSION_ID)
+    # audio_consented is unused -- Gate 2 capture is video-only. Unpacked
+    # only because run_consent_gate's signature changed (D0PA1 audio
+    # acquisition task).
+    consented, audio_consented, person_label = run_consent_gate(SESSION_ID)
     if not consented:
         return
 
