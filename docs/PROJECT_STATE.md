@@ -19,19 +19,29 @@ documents, read in that order, answer nearly everything a fresh session will ask
 
 ## 1. Current commit and where this phase stands
 
-**HEAD at time of writing:** `720af64` — "docs: record check-2 context gap and
-pitch-mechanism correction in state docs" (the "PITCH: SEPARATE THE FINDING
-FROM ITS EXPLANATION" task: retracted the pitch magnitude-ceiling claim
-explicitly, separated the established directed-look-down FAILURE from its
-not-yet-separated MECHANISM (M1 behavioural / M2 estimator / M3 threshold
-artifact — disagreed with the prompt's own suggested "leans toward M2"
-reading), and specified — not built — the capture protocol that would settle
-which mechanism is responsible. See `docs/ROI_FEASIBILITY.md` §2.4a and §6.
-Prior: `7473742` — "docs: symmetric resolution table, separation-guard fix,
-ROI status split" (closed the yaw/pitch resolution-comparison asymmetry,
-closed the `context`→`attention`/`audio` separation-guard gap, and built the
-ROI dwell/switching/persistence/coverage aggregation layer against a
-synthetic supplier).)
+**HEAD at time of writing:** `b5f440a` — "docs: audio moves from BLOCKED to
+RETAINED AND IN ACQUISITION" (the "AUDIO PART A" task: the client's
+keep-or-formally-remove decision on `Δ_audio` has been made — RETAINED.
+Built: the privacy guard extended to every audio container; an audio
+acquisition instrument (`audio_acquisition.py`, own thread, per-chunk
+level/timing integrity logging, no content analysis); audio consent as a
+separate, independent, architecturally-unreachable-when-declined question;
+raw audio's storage location as env-var config, never a committed literal;
+the separation guard extended to cover `audio_acquisition.py` itself as
+direct U_t content (a real gap found by audit, the same way the
+`context`→`attention`/`audio` gap was found the prior task). The FPS-impact
+proof used a synthetic video-timing harness against the real microphone
+(camera use was declined for this session); the audio/video sync
+measurement — Part A's actual point — was **not performed**, stated plainly
+per that task's own instruction, since it needs a physical event visible to
+both sensors and only audio was exercised. See `docs/AUDIO_ACQUISITION.md`
+for the full record, including the change-control note: this decision
+reverses the sign-off response's own recommendation and is a scope change
+against frozen `Scope v0.5.1`, not yet processed through the client's §18
+change control.
+Prior: `720af64` — "docs: record check-2 context gap and pitch-mechanism
+correction in state docs" (the "PITCH: SEPARATE THE FINDING FROM ITS
+EXPLANATION" task).)
 
 **The repository-side work is complete for this phase.** "Complete" here has a
 specific, narrow meaning, not a general one: **everything that can be built without
