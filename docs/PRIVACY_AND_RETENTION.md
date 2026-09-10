@@ -101,6 +101,72 @@ checkout's actual `logs/` path) exist so the mechanism above is testable end-to-
   mechanism this task built is the verifiability half of that eventual rule; the
   extraction-and-immediate-deletion procedure itself is not yet designed.
 
+## Named open item: raw media of BOTH kinds has no decided, documented home (Task 4, "ENVIRONMENT AUDIT, SYNC MEASUREMENT, G5 RIPPLE CHECK")
+
+**Stated as one named gap, not two separate ones, because it is the same
+unresolved decision showing up twice:**
+
+- **Raw video** has never had a storage location decided anywhere in this
+  repository's history. `RetentionConfig.storage_location`'s default
+  (`logs/`, inside this checkout) is explicitly labelled above as a
+  placeholder for testing the mechanism, not a decision — and the retention
+  and deletion machinery therefore points, by default, at something
+  unsettled: a directory inside the repository's own working tree, which is
+  not the same thing as "outside the repository, access-controlled" (§17's
+  own requirement).
+- **Raw audio** was built this phase (`privacy/audio_storage_config.py`)
+  with NO default at all — `resolve_audio_storage_config()` reads
+  `D0PA1_AUDIO_RAW_STORAGE_LOCATION` from the environment and raises if
+  unset, deliberately avoiding even a placeholder literal, given audio's
+  elevated identifiability. This is stricter than the video pattern, but it
+  is stricter in the sense of "refuses to guess," not in the sense of
+  "resolves the question" — an unset environment variable is still an
+  undecided location, just one that fails loudly instead of defaulting
+  quietly.
+
+**The result: two different placeholder patterns (a permissive default vs.
+a hard-fail-if-unset), pointing at the same underlying unresolved fact —
+this project has never decided where raw participant media actually
+lives.** That is worth naming as one gap rather than leaving it implicit in
+two separate modules' docstrings, because a future session extending either
+mechanism could otherwise "fix" one without noticing the other was never
+answered either.
+
+### Proposed resolution — a pattern, not a decision
+
+**Proposed, not implemented, not decided** — per this task's own
+instruction, this is the client's and the user's decision to make, not
+this repository's to resolve by writing code:
+
+1. **One environment variable naming a raw-media root, outside the
+   repository** (e.g. `D0PA1_RAW_MEDIA_ROOT`), resolved the same way
+   `privacy/audio_storage_config.py` already does — no committed literal,
+   no default, raises loudly if unset. This generalises the stricter
+   pattern already built for audio to video as well, rather than leaving
+   video on the older, more permissive placeholder.
+2. **Modality subdirectories under that one root** (`video/`, `audio/`),
+   so a single decision (where the root lives, who controls access to it)
+   governs both media types, rather than two independently-configured
+   locations that could silently drift apart (e.g. video staying inside
+   the repo checkout while audio moves outside it, which is close to
+   today's actual inconsistent state).
+3. **`RetentionConfig.storage_location` would point at the resolved root**
+   (or a per-modality subpath under it) once this is decided, replacing
+   today's `logs/`-inside-the-checkout default — the retention/deletion
+   *mechanism* in `privacy/retention.py` does not change; only which path
+   it is configured to scan does.
+4. **Why one root rather than two independently-named variables**: a
+   single decision point is easier for the client to review and sign off
+   once (§17's own ask — "must be documented before recordings exist"),
+   and it structurally prevents the two modalities from silently ending up
+   under different access-control regimes without that being a deliberate
+   choice.
+
+This proposal is not applied anywhere in code. `privacy/audio_storage_config.py`
+keeps its own env var as built this phase; unifying it under a shared root
+variable, if that is the direction chosen, is future work contingent on the
+decision, not assumed here.
+
 ## What must NOT be done with this document
 
 Per G2/G3: do not read the `365.0`-day / current-`logs/`-path defaults above as
