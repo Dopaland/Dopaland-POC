@@ -440,7 +440,15 @@ has not been run at all:
 - **Re-run the golden snapshot test after any change** — `python
   tests/test_refactor_snapshot.py` — and state explicitly whether it matched or not,
   quoting the SHA256 either way. Current golden SHA256:
-  `4f9c0f1786c18e8dbe5e3048b8b6b6e280cf6c434b9c53b119344746fc31bcff`.
+  `f7fa0575fba2959b9c21e88314e2fef645e8aa66fe11443102288db9dc1792b8`.
+  **Supersedes** `4f9c0f1786c18e8dbe5e3048b8b6b6e280cf6c434b9c53b119344746fc31bcff`
+  — the "AFTER THE PHYSICAL RUN" task's Task 1.3 fixed a real bug in
+  `NeutralCalibrator` (G5 path, explicit one-time permission granted by that
+  task) and regenerated the golden file; the diff was confirmed to be
+  exactly the two new `missingness_flag`/`missingness_reason` fields on the
+  calibration reference, nothing else on the validated path moved. See
+  `docs/GATE0_PROVENANCE.md`'s own dated supersession note for the full
+  record.
 - **Guards are proven by making them fire, not asserted.** The pre-commit media/secret
   hook, `tests/test_feature_separation.py`'s import-graph + shim-isolation checks, D7's
   leakage test, and the blink-positive harness were each demonstrated FAILING on a

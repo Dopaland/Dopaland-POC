@@ -153,9 +153,16 @@ Concretely, as of this commit:
   open (one residual textual gap; two judgment-call boundary questions).
 - `git fsck --full --strict` returns clean (verified this session, after
   `git reflog expire --expire=now --all` + `git gc --prune=now`).
-- The golden regression test (`tests/test_refactor_snapshot.py`) has matched its
+- The golden regression test (`tests/test_refactor_snapshot.py`) matched its
   committed SHA256 (`4f9c0f1786c18e8dbe5e3048b8b6b6e280cf6c434b9c53b119344746fc31bcff`)
-  through every commit in this phase — the validated path (G5) has not moved.
+  through every commit up to `13e3dd4`. **That hash is now superseded** —
+  the "AFTER THE PHYSICAL RUN" task's Task 1.3 fixed a real
+  `NeutralCalibrator` bug (explicit, one-time G5 permission) and
+  regenerated the golden file; the diff was confirmed to be exactly the two
+  new `missingness_flag`/`missingness_reason` fields, nothing else on the
+  validated path moved. **Current golden SHA256, matched at every commit
+  since `44c02be`:** `f7fa0575fba2959b9c21e88314e2fef645e8aa66fe11443102288db9dc1792b8`.
+  See `docs/GATE0_PROVENANCE.md`'s dated supersession note for the full record.
 
 Last several commits, most recent first (see `git log` for the full history):
 

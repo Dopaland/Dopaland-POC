@@ -15,6 +15,47 @@ against the committed golden file each time — see the commit history for
 the literal pass/fail output at each point, not just this document's word
 for it.
 
+**⚠️ Golden hash supersession, recorded here durably — this is the one
+exception to "nothing on the validated path was touched" above, and it was
+authorised, not incidental.** The "AFTER THE PHYSICAL RUN" task's Task 1.3
+found and fixed a real bug in `features/x_core.py`'s `NeutralCalibrator`:
+`is_calibrated()` returned `True` for a completed calibration reference
+that had collected zero real (non-`None`) samples for every composite
+vector — a calibration window that fell entirely inside a no-face-detected
+stretch — silently disabling every downstream consumer (excursion
+detection, the V/A mapping, `stage1_step4_vectors.py`'s own
+`calibration_status` field) for the rest of that session, with nothing
+in the log distinguishing this from a genuine, usable calibration. That
+task's own prompt granted explicit, one-time permission to fix this one
+G5-path item. The fix: `is_calibrated()` now checks an explicit
+`missingness_flag`/`missingness_reason` (`"not_yet_calibrated"`, the
+pipeline's existing fixed missingness vocabulary) stamped onto the
+reference by `complete()`, rather than only `reference is not None`. The
+one-shot completion TIMING itself (`should_complete()`'s wall-clock
+trigger) is unchanged — a separate internal flag preserves the original
+freeze-once behaviour so the fix cannot cause repeated re-completion or
+unbounded sample growth (verified by a dedicated test,
+`tests/test_neutral_calibrator.py`).
+
+Because this changes the calibration reference's own output shape (two new
+fields on every reference, present or degenerate), the golden snapshot
+necessarily changed too — this was confirmed by diffing the freshly
+generated snapshot against the previous committed golden file BEFORE
+regenerating it: **the only difference was the two new fields on a normal
+(non-degenerate) reference; nothing else in the validated path's output
+moved.**
+
+- **Superseded hash:** `4f9c0f1786c18e8dbe5e3048b8b6b6e280cf6c434b9c53b119344746fc31bcff`
+  (valid through commit `13e3dd4`)
+- **Current hash:** `f7fa0575fba2959b9c21e88314e2fef645e8aa66fe11443102288db9dc1792b8`
+  (from commit `44c02be` onward)
+- Commit: `44c02be` — "fix: NeutralCalibrator no longer reports a degenerate
+  window as calibrated"
+- Also recorded in `CLAUDE.md`'s "STANDING VERIFICATION HABITS" section and
+  `docs/PROJECT_STATE.md` §1, so a session or a client reading any one of
+  the three finds the same explanation rather than a bare, unexplained
+  hash change.
+
 ---
 
 ## A1 — Experiment ID and run provenance
