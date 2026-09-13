@@ -22,6 +22,20 @@ from the previous version of this file): counting the 30-row table row by row gi
 `RETURNED`, 3 `DECISION REQUIRED`** — summing to 30, and matching the response's own
 §6 summary exactly (see `docs/RESPONSE_VERIFICATION.md` §5 for the row-by-row count).
 
+**⚠️ Now stale by one row, deliberately left un-recomputed until the response
+document's own §4/§6 are updated to match** ("THE LAST GAP BEFORE THE DOCUMENTS
+GO" task): row 16 (null-input control) moved to `EVIDENCED` below, since the
+genuine empty-scene control was finally run this task with a real, clean
+result. That makes the CORRECT current count **12 EVIDENCED, 6 BUILT-NOT-RUN,
+9 RETURNED, 3 DECISION REQUIRED** (still 30) — but the response document's own
+§4/§6 text has been updated to match this in the same task (see row 16's own
+entry below), so by the time this file and the response document are both
+read together, the counts agree again. This note exists only so a reader
+comparing this line's OLD "11/7/9/3" text against the actually-current
+document does not read that as a fresh discrepancy — it was true when
+written, one row moved on a specific, dated, cited basis, and both documents
+were updated together.
+
 **Repo status vocabulary** (unchanged from the previous version of this file):
 
 - `IMPLEMENTED` — code exists, is tested, and the capability works as built.
@@ -54,7 +68,7 @@ applied — those remain for a human, after sign-off, against real data.
 | 13 | D6 precision simulation | EVIDENCED | IMPLEMENTED-BUT-NEVER-RUN-ON-REAL-DATA (my earlier framing) → revised to IMPLEMENTED | Yes (after revision) | Three sweep passes confirmed by artefact count; worst-cell (0.034) and realistic-cell spread (0.013–0.043, mean 0.021) both verified exactly against `artefacts/precision_analysis_v2.md`. Revising my own earlier "never-run-on-real-data" framing for this row: D6's deliverable is inherently a synthetic feasibility study (per the client's own §9), so "real data" was never the bar for this row — `EVIDENCED` is the more accurate repo status, and my prior version of this file was arguably too conservative here. |
 | 14 | D8 attention validity | RETURNED | DEFINED-NOT-IMPLEMENTED | Yes | Statistic/null/failure-rule all now proposed in §4.14; no code computes any of it (correctly — D0PA1's own Gate 2 has not run). The V_so pitch-unreliability pre-declaration is real and matches CLAUDE.md's own finding. |
 | 15 | Positive control (blink) | BUILT, NOT YET RUN ON REAL DATA | IMPLEMENTED-BUT-NEVER-RUN-ON-REAL-DATA | Yes | `controls/blink_positive.py`; F1 1.0/0.615 and the AST criterion-check both re-verified live this session. No real clip exists. |
-| 16 | Null-input control | BUILT, NOT YET RUN ON REAL DATA | IMPLEMENTED-BUT-NEVER-RUN-ON-REAL-DATA | Yes | `controls/null_input.py`; camera loop confirmed untested. The new V_pd robust-scale figures (1.6e-4 vs SD 2.6e-3, ratio ~16.75) were independently reproduced this session from a real log — see `docs/RESPONSE_VERIFICATION.md` §2. |
+| 16 | Null-input control | EVIDENCED (updated this task — see note) | IMPLEMENTED, run against real data | Yes | `controls/null_input.py`. **Two distinct real runs now exist and must never be conflated (found and corrected this task):** (a) the **quiet-sitting baseline** — subject present, sitting still, blank screen, 10 real minutes ("PHYSICAL RUN SESSION" task) — this is what the row's own original §4.16 text ("Person still, blank screen") actually specifies, and it produced the real per-signal std/mad_scale dispersion figures (`docs/CLIENT_FIGURES.md` §3), not a genuinely-null result, since a real detected subject was present for part of the run; (b) the **empty-scene control** — camera on, no subject at all, 10 real minutes ("THE LAST GAP BEFORE THE DOCUMENTS GO" task) — a genuinely different, harder test: 0/17,888 frames detected, every signal `insufficient_samples`, `calibration_completed: false` (correctly, post the Task-1.3 calibrator fix), and **zero false-signal events of any kind across an exhaustive per-sample scan** — no face, no pose, no composite/covariate value, no yaw reading, ever, in 10 real minutes. This second run is what the row's own closing sentence ("settles this on genuinely null input") actually asked for, and it had never been run until this task. The V_pd robust-scale figures (1.6e-4 vs SD 2.6e-3, ratio ~16.75) cited in §4.16's own text are from a THIRD, unrelated real session's calibration phase (`docs/RESPONSE_VERIFICATION.md` §2) — not from either control above; the quiet-sitting baseline's own ratio is ≈3.36×, a different number from different data (`docs/CLIENT_FIGURES.md` Task-2 claim 1). |
 | 17 | Negative control | EVIDENCED | IMPLEMENTED-BUT-NEVER-RUN-ON-REAL-DATA (my earlier framing) → revised to IMPLEMENTED | Yes (after revision) | Unaware-caller verification re-confirmed live this session in two separate test files. Revising my earlier framing: this control's entire deliverable (a meaningless signal, wired in automatically) needs no real data to be complete — the response's `EVIDENCED` is the more accurate call, same reasoning as row 13. |
 | 18 | Time-shuffle | BUILT, NOT YET RUN ON REAL DATA | IMPLEMENTED-BUT-NEVER-RUN-ON-REAL-DATA | Yes | `controls/time_shuffle.py`; diagnostic-only stamping confirmed in the output itself, not just documentation. |
 | 19 | Modality ablation | DECISION REQUIRED | BLOCKED-ON-CLIENT-DECISION | Yes | Contingent on the audio keep/remove decision (Decision A in the response). |

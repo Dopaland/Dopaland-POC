@@ -79,25 +79,45 @@ claim 1 below for the full reconciliation. Do not conflate the two.**
 
 ---
 
-## 4. Empty-scene control (no subject) — **NOT TRACEABLE, NEVER RUN**
+## 4. Empty-scene control (no subject) — **RUN, real result**
 
-**No figure exists for this section.** The genuine empty-scene/null-input
-control — camera on, nobody in frame — was planned in this engagement's
-"AFTER THE PHYSICAL RUN" task (its own Task 4) but that task was interrupted
-before Task 4 or Task 5 ran; only Tasks 1–3 (the calibrator fix, the ROI
-re-derivation, and the renaming/explanation above) were completed and
-committed. Checked directly this task, not assumed: `ls logs/null_input_*.jsonl`
-shows exactly one file, the quiet-sitting baseline from §3 above — no
-second, empty-scene run exists anywhere in `logs/`.
+Run for the first time this task ("THE LAST GAP BEFORE THE DOCUMENTS GO"),
+after the "AFTER THE PHYSICAL RUN" task's own Task 4 was interrupted before
+reaching it. Camera on, nobody in frame (the user confirmed the frame clear
+of anyone and any face-like content — posters, photos, screens — before
+this started), ten real minutes, the normal `controls/null_input.py` path,
+no special harness.
 
-**This section is intentionally left with no figures rather than filled
-with a plausible-sounding placeholder.** The single most important number
-this control would produce — whether any signal ever emits a value with no
-subject present, i.e. a false-signal event — is unmeasured. Repo status
-(`docs/MATRIX_ROW_MAP.md` row 16 / the sign-off response's own item 16):
-still `BUILT, NOT YET RUN ON REAL DATA`, and that status is currently
-accurate for a genuine empty-scene run specifically (the quiet-sitting run
-does not satisfy it, per the renaming above).
+| Figure | Value | Artefact |
+|---|---|---|
+| **False-signal events (the single most important number this control produces)** | **Zero.** Exhaustively checked across all 17,888 real per-sample records: `face_detected` False every time, `pose_detected` False every time, every `composite` value (v_bf/v_es/v_pd) null every time, every `covariate` value null every time, `yaw_deg` null every time, `calibrated` False every time | `logs/null_input_a9820674-83db-442b-9523-8cf795bab4b8.jsonl`, full per-sample scan, this task |
+| Missing-row-with-reason vs. value | **All 17,888 sample rows are missing, none carry a value.** At the sample level, missingness is represented by `face_detected`/`pose_detected` = `false` plus null fields (`controls/null_input.py`'s own sample schema does not carry a per-sample `missingness_reason` string field — that richer pattern lives in `features/signal_quality.py` and was not wired into this tool). At the AGGREGATE level, every one of the four dispersion figures and the calibration reference itself DOES carry an explicit, fixed-vocabulary reason | Same log, `null_input_summary` and `null_input_calibration_complete` records |
+| Missingness reasons — documented or generic? | **Documented, not generic.** Every signal's dispersion: `zero_dispersion_reason: "insufficient_samples"`. The calibration reference: `missingness_flag: true, missingness_reason: "not_yet_calibrated"` — both drawn from `schema/canonical_log_v1.json`'s fixed enum, and `"not_yet_calibrated"` is the first time this specific reason has ever actually been emitted by this repository (previously declared in the schema, never triggered) | Same log |
+| `detect_rate` | **0.0** (0/17,888) | Same log, `null_input_summary` |
+| Calibration | **Correctly reports `calibration_completed: false`** — the first real-world confirmation of the "AFTER THE PHYSICAL RUN" task's calibrator fix behaving correctly on genuinely degenerate live data, not just a synthetic unit test | Same log |
+| `excursion_count` / false-event rate | `0` for all four signals, but **not a meaningful "clean" result** — `monitoring_minutes: 0.0` and `false_event_rate_per_minute: null` for every signal, because calibration never completed and the excursion detector never had a baseline to compare against. Reported as structurally not-yet-computable, not as a rate of zero | Same log |
+
+**How this differs from the quiet-sitting baseline, so the two are never
+conflated again:**
+
+| | Quiet-sitting baseline (§3) | Empty-scene control (this section) |
+|---|---|---|
+| Subject present? | Yes | No |
+| `detect_rate` | 0.295 (3,612/12,231) | **0.0** (0/17,888) |
+| Detection pattern | Erratic — 0% at start/end, up to 99.7% mid-session | **Flat zero, the entire 10 minutes** |
+| Dispersion figures | Real (std/mad_scaled computed per signal) | **None — `insufficient_samples`, n=0, every signal** |
+| Calibration | Degenerate by bad luck of timing (real subject present, but zero real samples fell in the 25s window) | Degenerate because no subject was ever present at all — a structurally different cause |
+| What it answers | What the pipeline reports about a real, present, resting person | **The false-signal floor — what the pipeline reports with nothing there at all** |
+
+Raw video: **none was ever written to disk** — `controls/null_input.py`
+processes every frame in-memory and discards it immediately, by design, the
+same as every prior run of this tool. Confirmed by a repository-wide scan
+for `.mp4`/`.avi`/`.mov` files, before and after this run: zero, both times.
+There is nothing to delete because nothing raw was ever written.
+
+Repo status updated this task: `docs/MATRIX_ROW_MAP.md` row 16 and the
+sign-off response's own item 16 now read `RETURNED · EVIDENCED` and
+distinguish the two controls by name.
 
 ---
 
@@ -154,24 +174,22 @@ attempts differed ≈2× in magnitude)**. Full three-way breakdown:
 | What each covers | [1]/[2]: whether `x_core.py`/`episodes.py` import or call anything defined in `attention.py`/`audio.py`, directly or transitively. [3]: whether real end-to-end computation still works with `attention`/`audio` poisoned to raise on any attribute access. [4]: whether a repo-root module either re-exports across blocks (a "shim") or, as of the audio task, IS direct U_t content itself (`DIRECT_UT_MODULES = {"audio_acquisition"}`) | Same file | Same |
 | Forbidden edges (6 total) | `(x_core,attention)`, `(x_core,audio)`, `(episodes,attention)`, `(episodes,audio)`, `(context,attention)`, `(context,audio)` | `tests/test_feature_separation.py` lines 97–113 | Same |
 | Which were demonstrated failing before being relied on | **All six**, plus the separate `DIRECT_UT_MODULES` check. The first four: `docs/D1_DEPENDENCY_MAP.md` §6 (a real, pasted failure from a deliberately introduced `ATTENTION_ORIENTED_SCORE_THRESHOLD` import). The two `context` edges: `docs/ROI_FEASIBILITY.md` §4.2 (a temporary `features.attention`/`features.audio` import into `context.py`, each independently made check 1 fail with the exact expected path message, then reverted). `audio_acquisition` as direct U_t content: `docs/AUDIO_ACQUISITION.md` §5.2 (a temporary `import audio_acquisition` into `x_core.py` failed check 4 with the exact expected message, reverted) | Cited documents | Various, see each |
-| Golden regression hash | **`f7fa0575fba2959b9c21e88314e2fef645e8aa66fe11443102288db9dc1792b8`** (current, matches the committed golden file — re-run live today) | `tests/test_refactor_snapshot.py` | Today. **See the note below** — this is NOT the hash this task's own Step 0 names |
+| Golden regression hash | **`f7fa0575fba2959b9c21e88314e2fef645e8aa66fe11443102288db9dc1792b8`** (current, matches the committed golden file — re-run live today) | `tests/test_refactor_snapshot.py` | Today. Supersedes `4f9c0f1786c18e8dbe5e3048b8b6b6e280cf6c434b9c53b119344746fc31bcff` — see the note below |
 | Verification pass result | **27 of 27** checkable implementation-status claims in the sign-off response **VERIFIED** against live test re-runs | `docs/RESPONSE_VERIFICATION.md` §1 | 2026-09-04, re-checked in the addendum same date |
 
-**⚠️ Golden hash discrepancy, flagged rather than silently resolved.** This
-task's own Step 0 states the golden SHA256 "must be unchanged:
-`4f9c0f1786c18e8dbe5e3048b8b6b6e280cf6c434b9c53b119344746fc31bcff`." That is
-the hash from BEFORE the "AFTER THE PHYSICAL RUN" task's Task 1.3 fix (the
-`NeutralCalibrator` degenerate-reference bug), which was explicitly
-authorized in that task's own prompt, changed the calibration reference's
-output shape by two new fields, and was already regenerated, diffed
-(confirmed the ONLY change was those two fields), and committed
-(`44c02be`) before this task began. The CURRENT hash
-(`f7fa0575...`) is what a fresh run of the golden test matches today,
-confirmed live this task. Re-running against the OLD hash would report a
-false mismatch for a change already authorized and committed in a prior
-task — reported here explicitly rather than either silently substituting
-the new hash for the old one in this document, or silently suppressing the
-discrepancy.
+**Golden hash supersession — settled, and now recorded durably.** The
+golden SHA256 changed once, from `4f9c0f1786c18e8dbe5e3048b8b6b6e280cf6c434b9c53b119344746fc31bcff`
+to `f7fa0575fba2959b9c21e88314e2fef645e8aa66fe11443102288db9dc1792b8`, at
+commit `44c02be` — the "AFTER THE PHYSICAL RUN" task's authorised,
+one-time fix to `NeutralCalibrator`'s degenerate-reference bug, which added
+two new fields to the calibration reference's output and was diffed to
+confirm nothing else on the validated path moved. **This is no longer
+carried only in a commit message or a prior session's own report**: it is
+now recorded, in the same words, in `docs/GATE0_PROVENANCE.md` (a new,
+dated supersession note), `CLAUDE.md`'s own "STANDING VERIFICATION HABITS"
+section, and `docs/PROJECT_STATE.md` §1 — a client (or a future session)
+finding a changed hash in any one of the three finds the same explanation,
+not a bare number.
 
 ---
 
@@ -179,22 +197,30 @@ discrepancy.
 
 **Status counts, re-derived directly from the response document's own §4
 table this task** (not carried forward from any previous statement,
-including this document's own draft above until just now):
+including this document's own earlier draft, superseded by this task's own
+Task 2.2 change to row 16):
 
 | Status | Count |
 |---|---|
-| `RETURNED · EVIDENCED` | **11** |
-| `RETURNED · BUILT, NOT YET RUN ON REAL DATA` | **7** |
-| Plain `RETURNED` | **9** |
-| `DECISION REQUIRED` | **3** |
+| `RETURNED · EVIDENCED` | **12** (was 11 before this task) |
+| `RETURNED · BUILT, NOT YET RUN ON REAL DATA` | **6** (was 7) |
+| Plain `RETURNED` | **9** (unchanged) |
+| `DECISION REQUIRED` | **3** (unchanged) |
 | **Total** | **30** |
 
-Artefact: `docs/MATRIX_ROW_MAP.md` line 21 and `docs/RESPONSE_VERIFICATION.md`
-§5's addendum, both independently re-counted from the response's own §4
-table (`docs/preregistration/D0PA1_Section19_SignOff_Response.docx`) rather
-than taken on the document's own §6 summary text — checked this task by
-extracting the document's raw text directly and confirming the count is
-not carried forward from a stale prior statement.
+**Row 16 (null-input control) moved from `BUILT, NOT YET RUN ON REAL DATA`
+to `EVIDENCED` this task** — the empty-scene control (§4 above) was finally
+run, with a real, clean, zero-false-signal result. Updated in both the
+response document's own §4 table and its §4/§6 body text (both status
+mentions for item 16, and the §6 summary sentence/tally), and in
+`docs/MATRIX_ROW_MAP.md` row 16 and its own top-of-file count line — all
+four locations checked to agree after the edit, not assumed to.
+
+Artefact: `docs/MATRIX_ROW_MAP.md` line 21 and its row-16 entry;
+`docs/preregistration/D0PA1_Section19_SignOff_Response.docx` §4/§6, edited
+this task; both re-extracted and re-counted directly from the document's
+raw text after editing, not assumed correct from the edit script's own
+intent.
 
 ---
 
@@ -208,7 +234,7 @@ not carried forward from a stale prior statement.
 | 4 | δ = 0.20 × 0.272 ≈ 0.054, rounds to 0.05 | **CONFIRMED verbatim**, extracted directly from the sign-off response document's own text | `docs/preregistration/D0PA1_Section19_SignOff_Response.docx` |
 | 5 | Longest soak on record ≈41 minutes | **CONFIRMED exactly** (2486.9s = 41.45 min) and confirmed to genuinely be the longest — the only other two soak_summary records on record are 90.7s and 80.5s, both from this engagement's own later, unsuccessful extended-soak attempts | `logs/soak_log.jsonl`, all `soak_summary` records, re-scanned live this task |
 | 6 | 27 claims verified, 27 to the stated figures | **WRONG as stated, in its second half.** "27 of 27 checkable claims VERIFIED" is the document's own accurate headline (confirmed). But NOT all 27 matched their stated figures on first check — one was found UNDERSTATED (3 checks claimed, 4 actual) and needed a later revision to correct; the object-store "returns clean" claim was found NOT currently true (a dangling tree object existed) and needed a repository action before it held. "Verified" and "verified exactly as first stated, with nothing needing correction" are different claims — the first is true, the second is not | `docs/RESPONSE_VERIFICATION.md` §1 (row 4.1: "UNDERSTATED"), §3.2 (fsck), §5 (addendum) |
-| 7 | 11 evidenced, 7 built-not-run, 9 definitions, 3 decisions | **CONFIRMED exactly** — 11+7+9+3=30 | `docs/MATRIX_ROW_MAP.md` line 21 |
+| 7 | 11 evidenced, 7 built-not-run, 9 definitions, 3 decisions | **CONFIRMED exactly at the time it was checked** — 11+7+9+3=30. **Now superseded by this task's own Task 2.2**: row 16 moved to EVIDENCED once the empty-scene control was run, making the current, correct count **12/6/9/3** — see §8 above | `docs/MATRIX_ROW_MAP.md` line 21 (as it read at check time); §8 above for the current count |
 | 8 | ROI aggregation passes 9/9 against a synthetic supplier | **CONFIRMED** — re-ran live this task, 9/9 PASS | `tests/test_roi_aggregation.py`, re-run today |
 | 9 | 1 of 11 sessions affected by the calibrator bug, already caveated, never sent | **CONFIRMED**, with an additional check this task didn't skip: searched both client-facing `.docx` files directly for the affected session, the bug, and the excursion figure — every hit found ("null-input," "excursion," "calibrator") is a GENERIC, pre-existing reference to the control's own design/row name, not to this session's actual run or its bug. Nothing built on the affected figure has ever appeared in a document intended for the client | `logs/*.jsonl` scan; `docs/preregistration/*.docx` direct text extraction, this task |
 | 10 | Only one camera exists; simultaneous two-camera capture not possible | **CONFIRMED, re-verified live this task** (indices 1–3 all fail to open; only index 0 opens) | Live `cv2.VideoCapture` probe, this task |
@@ -377,19 +403,11 @@ of thing is split into two rows, per this task's own instruction.
 - D3/D7's three-session, fixed-protocol, matched-unit reliability data
   (the subject-time half of the split item above)
 - 10 real one-minute blink clips + manual frame-by-frame counts
-- The genuine empty-scene control does NOT need subject time (that is its
-  whole point) — **it needs machine time only**, see below; it is listed
-  there, not here, specifically because conflating "needs a human present"
-  with "needs a human absent" would misclassify it
 - Cross-person confirmation of the pitch/ROI finding (the same ≥8-person
   Gate-2-style protocol already specified in `docs/ROI_FEASIBILITY.md` §6)
 
 ### Needs nothing but machine time
 
-- **The empty-scene control itself** — camera on, nobody in frame, ten
-  minutes. Genuinely the cheapest remaining item; not run yet only because
-  the task that scoped it was interrupted before reaching it, not because
-  anything blocks it
 - **A real audio/video sync measurement re-attempt with a different visual
   event** (a light flash rather than clap motion, per
   `docs/AUDIO_ACQUISITION.md` §4's own stated likely fix) — needs a
@@ -402,8 +420,16 @@ of thing is split into two rows, per this task's own instruction.
   (`cv2.getWindowProperty`-based shutdown falsely triggering under a
   backgrounded launch context) is specific to how this engagement's own
   sessions invoke it, not to the soak itself
-- Rewording `§4.11`'s residual "clean object store" bullet to match `§4.27`
-  (item 6 in the corrections record above)
-- Updating `docs/MATRIX_ROW_MAP.md` row 16 and the response's own item 16
-  now that the quiet-sitting run (though not a true empty-scene run) has
-  happened — a small, accurate-status-text fix, no new capture needed
+
+**Done since this list was first written ("THE LAST GAP BEFORE THE
+DOCUMENTS GO" task) — kept here, struck through in spirit rather than
+silently deleted, so a reader comparing this list against an earlier
+version can see what moved and why:**
+
+- ~~The empty-scene control itself~~ — **RUN.** See §4 above: zero
+  false-signal events across 17,888 real frames, ten real minutes.
+- ~~Rewording §4.11's residual "clean object store" bullet~~ — **FIXED**,
+  to the same durable wording §4.27 already used.
+- ~~Updating `docs/MATRIX_ROW_MAP.md` row 16 and the response's own item
+  16~~ — **DONE.** Both now read `EVIDENCED` and name the two controls
+  separately (§4 and §8 above).
