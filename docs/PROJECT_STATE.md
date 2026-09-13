@@ -19,7 +19,29 @@ documents, read in that order, answer nearly everything a fresh session will ask
 
 ## 1. Current commit and where this phase stands
 
-**HEAD at time of writing:** `b9ea218` — "docs: add client figures pack --
+**HEAD at time of writing:** `95d2367` — "feat: run the genuine empty-scene
+control; row 16 EVIDENCED; figures pack closed out" (the "THE LAST GAP
+BEFORE THE DOCUMENTS GO" task: ran `controls/null_input.py` for real,
+camera on, no subject, 10 real minutes — the empty-scene control this
+engagement had never actually run. Result: zero false-signal events,
+exhaustively checked across all 17,888 real per-sample records — no face,
+no pose, no composite/covariate value, no yaw reading, ever.
+`calibration_completed: false`, correctly — the first real-world
+confirmation of the prior task's `NeutralCalibrator` fix behaving correctly
+on genuinely degenerate live data. No raw video was ever written (this
+control processes every frame in-memory by design). Fixed the sign-off
+response's stale §4.11 "clean object store" bullet to the durable wording
+§4.27 already uses, and updated row 16 (null-input control) — in both
+`docs/MATRIX_ROW_MAP.md` and the response document's own §4/§6 — to
+`EVIDENCED`, naming the quiet-sitting baseline and the empty-scene control
+separately for the first time, since the row's own original text
+conflated them (matrix counts now 12/6/9/3, up from 11/7/9/3). Closed out
+`docs/CLIENT_FIGURES.md`'s empty-scene section with the real result;
+confirmed exactly two NOT TRACEABLE gaps remain (the audio sync figure,
+real reliability figures) — no third. Also recorded the golden-hash
+supersession durably in `docs/GATE0_PROVENANCE.md` (new dated note),
+`CLAUDE.md`, and this file's own §1, per that task's own Step 0.
+Prior: `b9ea218` — "docs: add client figures pack --
 traced figures, corrections record, audio scope-change record, outstanding
 items" (the "FIGURES PACK FOR THE CLIENT DOCUMENTS" task, documentation
 only: assembled `docs/CLIENT_FIGURES.md` from artefacts already in this
