@@ -407,13 +407,22 @@ retain, and build acquisition. This is recorded here as a fact, not
 characterised: **retaining audio is a substantive scope change against
 `D0PA1 POC Scope & Acceptance v0.5.1` (frozen) and the sign-off response's
 own proposed direction, and per the client's own §18, requires documented
-change control.** That change-control process has not yet run — this
-document, CLAUDE.md's update, and `docs/PROJECT_STATE.md`'s update are the
-engineering record that the decision exists and what it produced; they are
-not the change-control record itself, which is a separate, not-yet-done
-step (the same distinction `docs/preregistration/README.md` already draws
-between a dated commit recording a change and the client's own sign-off
-process for it).
+change control.** This document, CLAUDE.md's update, and
+`docs/PROJECT_STATE.md`'s update are the engineering record that the
+decision exists and what it produced; they are **not** the change-control
+record itself — that distinction still holds (the same one
+`docs/preregistration/README.md` draws between a dated commit recording a
+change and the client's own sign-off process for it), but it is no longer
+quite accurate to call the change-control record "a separate, not-yet-done
+step" with nothing behind it. **A draft now exists**, at
+`docs/preregistration/D0PA1_Section18_ChangeControl_Audio_DRAFT.md`
+(reference CC-001) — proposed by the vendor, **not reviewed, not signed,
+not in force**. Its §8 cost-and-schedule impact section is deliberately
+left blank pending the vendor, per its own stated discipline (a change
+control signed with an empty impact field is how unpriced work becomes
+contractual). **The client's own §18 process has still not run** — nothing
+in the draft takes effect by existing, and this sentence should not be
+read as claiming otherwise.
 
 ---
 

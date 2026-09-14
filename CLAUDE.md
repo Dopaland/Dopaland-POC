@@ -711,6 +711,11 @@ code — do not delete it — but it stays marked as such.
   demo's own EXPERIMENTAL SIGNALS strip. Pitch, the blended
   `orientation_score`, and `oriented` are still never shown. Not
   composited into V/A; not called "attention" anywhere in the UI.
+- **Both client-facing preregistration documents now carry this corrected
+  wording too** — `D0PA1_Section19_SignOff_Response.docx` §4.14 and
+  `D0PA1_Build_Status_Report.docx` §5.4 (the latter's section heading
+  itself previously asserted the retracted claim). A future session does
+  not need to re-open the question of whether they were updated.
 
 ### Gaze direction (L/R/C) + blink rate — NEW, EXPERIMENTAL, not POC
 

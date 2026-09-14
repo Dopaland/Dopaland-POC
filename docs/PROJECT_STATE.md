@@ -154,6 +154,40 @@ Prior: `720af64` — "docs: record check-2 context gap and pitch-mechanism
 correction in state docs" (the "PITCH: SEPARATE THE FINDING FROM ITS
 EXPLANATION" task).)
 
+### Preregistration document corrections — three closure tasks, not yet committed
+
+Three sequential tasks (this engagement's "D0PA1 closure work," "Task 1c
+redo," and "two `.docx` fixes" tasks) corrected both client-facing
+preregistration documents. **Neither `.docx` has been committed as of this
+writing** — the working tree carries the edits; the HEAD-pointer chain above
+will be updated once they are.
+
+- **Both preregistration `.docx` files are now free of the retracted pitch
+  claim.** `D0PA1_Section19_SignOff_Response.docx` §4.14: the two
+  asserted-as-fact paragraphs were replaced with four retraction
+  paragraphs; a redundant fifth paragraph left standing by the first pass
+  (making the same point as the new closing paragraph) was subsequently
+  removed entirely, not blanked. `D0PA1_Build_Status_Report.docx` §5.4:
+  the section heading itself ("Attention pitch detection is structurally
+  unreliable") and its two body paragraphs were replaced with a corrected
+  heading and three retraction paragraphs. A final multi-term sweep of
+  both documents (`0.1°`, `structurally unreliable`, `chin-to-chest`,
+  `not fixable`, `oriented-rate stayed at 1.0`) found every surviving hit
+  sitting inside retraction language, never asserted as current fact.
+- **Two internal contradictions were also fixed in the sign-off response's
+  closing section**: "Eight rows are implemented and tested but have
+  never touched real data" corrected to "Six rows" — independently
+  counted against `docs/MATRIX_ROW_MAP.md`'s response-status column before
+  editing (rows 3, 4, 9, 15, 18, 30) rather than taken on request — and
+  the stale clause "the null-input control has no camera run" removed,
+  since it contradicted that same document's own §4.16 and §6 (both
+  null-input runs — quiet-sitting baseline and empty-scene control — have
+  in fact been performed against a real camera).
+- **`docs/MATRIX_ROW_MAP.md` row 14's citation of §4.14 was checked directly
+  and is correct** — it was briefly suspected of being wrong as a
+  consequence of the same false-negative audit method (below), and was
+  **not** changed.
+
 **The repository-side work is complete for this phase.** "Complete" here has a
 specific, narrow meaning, not a general one: **everything that can be built without
 the client's task harness, real recordings, or a client decision has been built,
@@ -623,6 +657,19 @@ itself supply:**
 - **The actual retention period and storage location** (`docs/PRIVACY_AND_RETENTION.md`)
   — the mechanism is built and defaults to dry-run; both values are engineering
   placeholders, not proposed policy.
+- **CC-001 — the §18 change control for audio retention** (draft at
+  `docs/preregistration/D0PA1_Section18_ChangeControl_Audio_DRAFT.md`), reversing
+  the sign-off response's own recommendation to formally remove `Δ_audio`.
+  Drafted; awaiting vendor review, a cost-and-schedule figure (§8, deliberately
+  left blank pending the vendor), and Gargi's signature. **Its consequence is
+  blocking, stated plainly so it is not read as a formality**: even once signed,
+  retention alone does not lift §10.9's disqualification — that needs the
+  clock-synchronisation measurement between audio and video (CC-001-A, the
+  light-flash sync re-attempt, itself unrun), which does not exist. `Δ_audio` is
+  not yet computable regardless of what has been built. The draft also proposes
+  a consequential §19 matrix reclassification (rows 19/23 off `DECISION
+  REQUIRED`) — **proposed only, not applied to `docs/MATRIX_ROW_MAP.md`**, since
+  that requires the client's confirmation, not a repository edit.
 
 ---
 
@@ -747,3 +794,19 @@ itself supply:**
   re-runs found real, fixable discrepancies in a document that read as complete on
   its own terms. Re-verify against the repository, every time, the same way
   `docs/RESPONSE_VERIFICATION.md` did.
+- **Never audit a `.docx` in this repository using `python-docx`'s
+  `Document.paragraphs` alone.** It enumerates body-level paragraphs only and
+  silently excludes every paragraph inside a table cell. Substantial parts of
+  both preregistration documents live inside `w:tbl` elements. Any search,
+  audit or verification of these documents must enumerate every `<w:p>` in
+  `word/document.xml` regardless of ancestry — and a verification pass must
+  not use the same method as the edit pass, or it inherits the same blind
+  spot. A clean result from a method that cannot see half the document is
+  not a clean result. This cost two rounds and produced a confident false
+  negative about a client-facing document (the retracted pitch claim was
+  reported as absent from the repository entirely, when it was present in
+  two places, one of them a section heading). A substring search for an
+  exact phrase is also insufficient on its own: `D0PA1_Build_Status_Report.docx`
+  said "not fixable **with** a single webcam" where
+  `D0PA1_Section19_SignOff_Response.docx` said "**within**" — only a
+  multi-term search caught it.

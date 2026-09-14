@@ -364,6 +364,21 @@ class SoakTracker:
         self._summary_written = False  # guards against writing soak_summary twice (clean exit + atexit fallback)
         self.write_ok = False  # set True only once a real write to disk is confirmed
 
+        # D0PA1 closure work, Task 4: an ADDITIVE checkpoint record, own
+        # record type ("soak_checkpoint"), own 60s cadence -- separate from
+        # soak_sample/soak_summary above so their existing shape (already
+        # relied on by docs/PROJECT_STATE.md's own citations) never changes.
+        # Driven off this same maybe_report() call site rather than a new
+        # thread or timer, so "opt-in via the existing --soak flag only, no
+        # other run path change" holds structurally: this state is only
+        # ever touched from inside a SoakTracker instance, which SOAK_MODE
+        # gates from existing at all.
+        self.checkpoint_interval_seconds = 60.0
+        self._checkpoint_last_report_time = self.start_time
+        self._checkpoint_frames_total = 0
+        self._checkpoint_fps_samples = []
+        self._checkpoint_detect_rate_samples = []
+
         # Directory creation and the first write are the ONLY way to know
         # up front whether logging can actually work (bad path, no
         # permission, read-only mount, ...). Both are wrapped so a
@@ -523,6 +538,44 @@ class SoakTracker:
                 f"[Soak] t={now - self.start_time:.0f}s capture_fps={capture_fps:.1f} "
                 f"processing={processing_rate} mem_mb={mem_mb} threads_alive={both_alive}"
             )
+
+            # D0PA1 closure work, Task 4: checkpoint accumulation, additive
+            # only -- reuses this call's own capture_fps/mem_mb, adds one
+            # more read (detection_rate) from the same latest_ui_state dict
+            # processing_rate above already reads under ui_lock. G1: these
+            # are recorded as observed, never compared to any bound.
+            with ui_lock:
+                detection_rate = latest_ui_state.get("last_window", {}).get("detection_rate")
+            self._checkpoint_frames_total += frames_seen
+            self._checkpoint_fps_samples.append(capture_fps)
+            if detection_rate is not None:
+                self._checkpoint_detect_rate_samples.append(detection_rate)
+
+            if now - self._checkpoint_last_report_time >= self.checkpoint_interval_seconds:
+                fps_median_60s = float(np.median(self._checkpoint_fps_samples)) if self._checkpoint_fps_samples else None
+                detect_rate_60s = (
+                    sum(self._checkpoint_detect_rate_samples) / len(self._checkpoint_detect_rate_samples)
+                    if self._checkpoint_detect_rate_samples else None
+                )
+                self._write(
+                    {
+                        "record_type": "soak_checkpoint",
+                        "ts_utc": datetime.now(timezone.utc).isoformat(),
+                        "elapsed_s": round(now - self.start_time, 1),
+                        "frames_total": self._checkpoint_frames_total,
+                        "fps_median_60s": round(fps_median_60s, 2) if fps_median_60s is not None else None,
+                        "rss_mb": round(mem_mb, 1) if mem_mb is not None else None,
+                        "detect_rate_60s": round(detect_rate_60s, 4) if detect_rate_60s is not None else None,
+                    }
+                )
+                print(
+                    f"[Soak checkpoint] elapsed_s={now - self.start_time:.0f} "
+                    f"frames_total={self._checkpoint_frames_total} fps_median_60s={fps_median_60s} "
+                    f"rss_mb={mem_mb} detect_rate_60s={detect_rate_60s}"
+                )
+                self._checkpoint_last_report_time = now
+                self._checkpoint_fps_samples = []
+                self._checkpoint_detect_rate_samples = []
         except Exception as exc:  # instrumentation must never crash the demo it's watching
             self.any_exception = True
             print(f"[Soak] sample failed: {exc}")

@@ -269,7 +269,7 @@ additional retraction.
 | 5 | Five rows carry implementing code / inspectable artefacts (§6 summary) | Eleven do, by the document's own §4 table | `docs/RESPONSE_VERIFICATION.md` §3.1, corrected to eleven in §5's addendum, independently re-derived to match | Never |
 | 6 | "The object store... returns clean" (unqualified) | Pruned after hook verification; a dangling object from ordinary commit activity is not evidence of anything | `docs/RESPONSE_VERIFICATION.md` §3.2, reworded in §4.27 of the corrected response — **but §4.11's own bullet list still reads the old unqualified phrase, a residual gap not fully corrected** (§5's addendum) | Never |
 | 7 | The vertical (pitch) magnitude ceiling was ≈2× (required exceeds achievable) | Retracted within `docs/ROI_FEASIBILITY.md` itself — later real measurement found pitch reaching 31.2° incidentally, far above every requirement | `docs/ROI_FEASIBILITY.md`, "RETRACTION" section — corrected in the SAME repository state it was introduced, never left it | Never |
-| 8 | Pitch "stayed ~0.1°" on a "verified" maximal chin-to-chest look-down — described as structural, unfixable | Real graded maximal attempts (this engagement, "PHYSICAL RUN SESSION" task) register pitch up to −43.1°; the "verified" claim had no documented verification method anywhere, was numerically inconsistent (~0.1° vs. a separately-measured ≤4.4°), and the investigation that produced the ≤4.4° figure explicitly declined to rule out the subject simply not moving enough. **See the detailed answer below** | Multi-session: first flagged as unverifiable (`docs/ROI_FEASIBILITY.md` §2.4a, "PITCH: SEPARATE THE FINDING FROM ITS EXPLANATION" task), then directly refuted by real data | Never — CLAUDE.md and `docs/PROJECT_STATE.md` both carried it, neither is client-facing |
+| 8 | Pitch "stayed ~0.1°" on a "verified" maximal chin-to-chest look-down — described as structural, unfixable | Real graded maximal attempts (this engagement, "PHYSICAL RUN SESSION" task) register pitch up to −43.1°; the "verified" claim had no documented verification method anywhere, was numerically inconsistent (~0.1° vs. a separately-measured ≤4.4°), and the investigation that produced the ≤4.4° figure explicitly declined to rule out the subject simply not moving enough. **See the detailed answer below** | Multi-session: first flagged as unverifiable (`docs/ROI_FEASIBILITY.md` §2.4a, "PITCH: SEPARATE THE FINDING FROM ITS EXPLANATION" task), then directly refuted by real data — **and its full reach was itself only found in a later pass, see below** | At the time this row was first written: never (`CLAUDE.md` and `docs/PROJECT_STATE.md` both carried it, neither client-facing). **That was incomplete** — it also lived in `D0PA1_Section19_SignOff_Response.docx` §4.14 and `D0PA1_Build_Status_Report.docx` §5.4, both client-facing and both unsent. Still never sent; the finding was that the correction's own reach was underestimated, not that the claim reached the client. |
 | 9 | A logged audio level (`peak_abs ≈3.05e-5`) was "genuine captured evidence... real (very quiet) room level" | That exact value is the 16-bit PCM quantization floor an OS-blocked/silent stream returns — very likely the same artefact, not real ambient sound | Found by testing microphone content access directly the following session (two mics, two host APIs, all returning exact zero or the same floor) | `docs/AUDIO_ACQUISITION.md` §7.3 | Never |
 | 10 | The quiet-sitting-subject-present run was called "the null-input control" | It required a present human by the module's own design; a true null/empty-scene input is a different, still-outstanding question (§4 above) | This engagement's own "AFTER THE PHYSICAL RUN" task, Task 3.1 | Never |
 
@@ -299,11 +299,40 @@ and what was built on it:**
   flag for the client's own attention-validity criterion) cites the pitch
   finding as its reason; and CLAUDE.md's own "Attention /
   screen-orientation" section used it to justify treating pitch as
-  permanently unfixable rather than an open mechanism question. **None of
-  this downstream reasoning has been retracted wholesale** — the
-  PRACTICAL conclusion (vertical ROI attribution is not deliverable) is
-  unchanged through every correction; what moved, twice, is the reason
-  claimed for it.
+  permanently unfixable rather than an open mechanism question. **The
+  sign-off response's own §4.14 pre-declaration and CLAUDE.md's
+  screen-orientation section now both carry the corrected reasoning** (two
+  later tasks in this same engagement). None of this downstream reasoning
+  has been retracted wholesale — the PRACTICAL conclusion (vertical ROI
+  attribution is not deliverable) is unchanged through every correction;
+  what moved, twice, is the reason claimed for it. **The D8 elevated-risk
+  pre-declaration itself stands, on the revised premise**: not that pitch
+  cannot register at all, but that face-detection rate collapses during
+  look-down (0.08%–27.5% across the graded attempts), which is what makes
+  `oriented_rate` read close to 1.0 — a missingness artefact, not evidence
+  of orientation.
+- **The correction's own reach was found late, in a later pass, and that
+  is itself part of this record.** The claim did not live only in
+  `CLAUDE.md`, `stage1_step4_vectors.py`, and `docs/PROJECT_STATE.md` — it
+  also lived in `D0PA1_Section19_SignOff_Response.docx` §4.14 and
+  `D0PA1_Build_Status_Report.docx` §5.4, both client-facing, both unsent.
+  In the Build Status Report the claim was not merely present in body
+  text — it was the section's own **heading** ("Attention pitch detection
+  is structurally unreliable"). Both instances survived a first, dedicated
+  correction pass because they sit **inside `w:tbl` elements**, and the
+  audit method used (`python-docx`'s `Document.paragraphs`) enumerates
+  body-level paragraphs only and silently excludes every paragraph inside
+  a table cell — the first retry reported the text as absent from the
+  repository entirely, a false negative produced by the audit tool, not
+  evidence the text was actually gone. A second pass, enumerating every
+  `<w:p>` in `word/document.xml` directly regardless of ancestry, found
+  both. **Both documents are now corrected — no instance of the retracted
+  figure or mechanism survives in either, outside the sentences that
+  explicitly retract them** (verified by a further multi-term sweep, since
+  a single exact-phrase search is also insufficient: the Build Status
+  Report said "not fixable **with** a single webcam" where the sign-off
+  response said "**within**"). This is the same claim, entry #8, with its
+  true reach now documented — not an eleventh correction.
 
 ---
 

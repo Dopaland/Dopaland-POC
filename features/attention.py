@@ -141,12 +141,18 @@ def compute_v_so(normalized_pts, yaw_deg, pitch_deg):
     rationale (glasses-robust-by-construction, no calibration needed,
     honest-framing rule). Summary:
 
-    PILOT-ONLY, NOT POC-ready: pitch_deg's contribution below is UNRELIABLE
-    by structural limit of single-camera landmark head-pose (face
-    foreshortening on look-down degrades the landmark data, not a bug in
-    this formula or in yaw_pitch_roll_from_matrix) -- do NOT attempt to
-    "fix" pitch. yaw_deg's contribution is reliable. Do not change the
-    computation below on the strength of this comment.
+    PILOT-ONLY, NOT POC-ready: pitch_deg's contribution below is NOT
+    USABLE for ROI attribution. The previous wording here -- "UNRELIABLE
+    by structural limit of single-camera landmark head-pose ... not a bug
+    in this formula" -- is RETRACTED as a settled mechanism claim. See the
+    RETRACTED block in stage1_step4_vectors.py's module docstring and
+    docs/PROJECT_STATE.md. Real graded-intensity capture registered pitch
+    up to -43.1deg, so the "~0.1deg" premise that claim rested on is
+    false. The evidenced problem is that FACE DETECTION RATE collapses
+    during look-down (0.08%-27.5%), which makes oriented_rate read near
+    1.0 out of MISSINGNESS, not orientation. yaw_deg's contribution is
+    reliable. Do NOT change the computation below on the strength of this
+    comment, and do not tune pitch (G2).
 
     PRIMARY = head pose. yaw_deg/pitch_deg are NOT recomputed here --
     passed in straight from yaw_pitch_roll_from_matrix(matrix) (now in
