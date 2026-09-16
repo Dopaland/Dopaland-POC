@@ -104,3 +104,9 @@ Thumbs.db
 
 # --- Local tooling state, not a client artefact ---
 .claude/
+
+# --- Frozen scoring/acceptance rules (Gate 2, orientation, soak, ...) must
+# never enter history -- same convention as GATE2_SCORING_RULE.md, kept
+# outside the repo. This folder has recurred twice holding exactly that
+# content; ignored here as a backstop against `git add -A` sweeping it in. ---
+Claude outputs/
