@@ -19,7 +19,32 @@ documents, read in that order, answer nearly everything a fresh session will ask
 
 ## 1. Current commit and where this phase stands
 
-**HEAD at time of writing:** `95d2367` — "feat: run the genuine empty-scene
+**HEAD at time of writing:** `45b5f57` — "docs: add A/V sync operator
+runsheet and this task's own prompt records" (the "D0PA1 — Next Two Tasks,
+Part 1" commit task: closed the "not yet committed" gap this section used
+to carry — see below — and swept up everything that had accumulated
+uncommitted across several tasks. G4 check, golden snapshot, feature
+separation and the full test suite all re-verified passing before and
+after. Five commits, grouped by logical change rather than one batch,
+though two of them (`e724167`, `87d7002`) predate this task and are coarser
+than this task's own would have been — not re-split, since rewriting
+already-landed history to look tidier is not something this task does.
+Prior: `92352e3` — "docs: remove superseded SOAK_OPERATOR_RUNSHEET.md" (the
+in-repo procedure-only copy, superseded once the merged procedure+frozen-
+rule runsheet was established as living outside the repo).
+Prior: `d9f00d6` — "chore: ignore Claude outputs/ to backstop frozen-rule
+repo-hygiene rule" (a folder holding the frozen soak acceptance rule itself
+had appeared twice, untracked, inside the repo tree — ignored as a
+backstop against an accidental `git add -A`).
+Prior: `87d7002` — "docs: add held audio-terminal-read prompt and CC002
+change-control draft".
+Prior: `e724167` — "chore: D0PA1 closure batch -- soak_checkpoint record,
+pitch-claim retraction, av-sync flash tool" (this is the commit that
+resolved the "not yet committed" gap below: both client-facing `.docx`
+files' pitch-claim retraction and internal-contradiction fixes, the
+`soak_checkpoint` record type, and the `av_sync_flash.py` instrument all
+landed here as one batch).
+Prior: `95d2367` — "feat: run the genuine empty-scene
 control; row 16 EVIDENCED; figures pack closed out" (the "THE LAST GAP
 BEFORE THE DOCUMENTS GO" task: ran `controls/null_input.py` for real,
 camera on, no subject, 10 real minutes — the empty-scene control this
@@ -154,13 +179,13 @@ Prior: `720af64` — "docs: record check-2 context gap and pitch-mechanism
 correction in state docs" (the "PITCH: SEPARATE THE FINDING FROM ITS
 EXPLANATION" task).)
 
-### Preregistration document corrections — three closure tasks, not yet committed
+### Preregistration document corrections — three closure tasks, committed in `e724167`
 
 Three sequential tasks (this engagement's "D0PA1 closure work," "Task 1c
 redo," and "two `.docx` fixes" tasks) corrected both client-facing
-preregistration documents. **Neither `.docx` has been committed as of this
-writing** — the working tree carries the edits; the HEAD-pointer chain above
-will be updated once they are.
+preregistration documents. **Both `.docx` files were committed in
+`e724167`**, folded into that batch commit rather than split out on their
+own — see the HEAD-pointer chain above.
 
 - **Both preregistration `.docx` files are now free of the retracted pitch
   claim.** `D0PA1_Section19_SignOff_Response.docx` §4.14: the two
