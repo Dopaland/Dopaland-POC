@@ -19,7 +19,41 @@ documents, read in that order, answer nearly everything a fresh session will ask
 
 ## 1. Current commit and where this phase stands
 
-**HEAD at time of writing:** `45b5f57` — "docs: add A/V sync operator
+**HEAD at time of writing:** `1881ac0` — "docs: add A/V sync attempt 8/9
+prompt records and this task's own prompts" (the "one heading fix, then
+commit" task: fixed CC-001-A's own appendix heading, which still read
+"the outstanding sync measurement" after a prior task replaced its body
+wholesale with a closure record — that prior task's own instruction to
+leave the heading untouched was itself wrong once the body no longer
+matched it. Swept both client-facing `.docx` files and
+`docs/MATRIX_ROW_MAP.md` for any other stale heading/label/caption
+describing the sync measurement as outstanding or pending — found none,
+at the XML level including table-nested paragraphs, not just via
+`python-docx`'s own paragraph enumeration. Then committed everything that
+had accumulated uncommitted across the last several sync-related tasks,
+in four logical commits rather than one batch — see below.)
+Prior: `569ca1c` — "docs: record A/V sync as a documented omission in
+CC-001" (CC-001 §6(a) replaced with the closure record; CC-001-A's body
+replaced with a closure record; §7's row-23 basis text updated to say
+closed-as-omission rather than outstanding; `docs/MATRIX_ROW_MAP.md` row
+23's stale "five attempts across two sessions" corrected to the real
+count. Proposed status/counts in both documents left untouched — that
+reclassification is still the client's to confirm. CC-001 §8/§9
+untouched.)
+Prior: `efa5201` — "docs: record soak closure and A/V sync disposition"
+(this file's own "Soak and sync outcomes" section below, and
+`docs/CLIENT_FIGURES.md`'s corresponding §6/§10/§12 updates — written
+before the commits below existed, hence originally labelled "not yet
+committed"; that label is now closed, see below.)
+Prior: `e38ddc7` — "feat: A/V sync attempts 8-9 -- diagnostic mode,
+reference-edge fix, corrected diagnostic max" (the `av_sync_flash.py`/
+`tests/test_av_sync_flash.py` code itself — see this section's own
+detailed account below for what attempts 8 and 9 each found and fixed).
+Prior: `80beea0` — "docs: update PROJECT_STATE.md HEAD pointer to this
+task's own commits" (closed the "not yet committed" gap the
+preregistration-corrections subsection below carried, advancing HEAD from
+`95d2367` to `45b5f57`).
+Prior: `45b5f57` — "docs: add A/V sync operator
 runsheet and this task's own prompt records" (the "D0PA1 — Next Two Tasks,
 Part 1" commit task: closed the "not yet committed" gap this section used
 to carry — see below — and swept up everything that had accumulated
@@ -179,16 +213,19 @@ Prior: `720af64` — "docs: record check-2 context gap and pitch-mechanism
 correction in state docs" (the "PITCH: SEPARATE THE FINDING FROM ITS
 EXPLANATION" task).)
 
-### Soak and sync outcomes, recorded this task — working tree, NOT YET COMMITTED
+### Soak and sync outcomes — committed in `e38ddc7`/`efa5201`/`569ca1c`/`1881ac0`
 
-This subsection is deliberately outside the HEAD-pointer chain above: it
-records session work (three interactive soak runs, nine A/V sync attempts,
-several code fixes to `av_sync_flash.py`/`tests/test_av_sync_flash.py`)
-that exists in this conversation and in the working tree but has not been
-committed as of this writing — this task's own instruction is to record,
-not to commit. A future commit-recording task should fold this into the
-chain above with real hashes, the same way the "not yet committed" gap
-above was eventually closed.
+This subsection recorded session work (three interactive soak runs, nine
+A/V sync attempts, several code fixes to
+`av_sync_flash.py`/`tests/test_av_sync_flash.py`) that existed only in
+this conversation and the uncommitted working tree at the time it was
+first written. **That gap is now closed** — the same "not yet committed"
+pattern this file's own HEAD-pointer chain above already records once —
+via four commits: `e38ddc7` (the `av_sync_flash.py`/test code itself),
+`efa5201` (this section and `docs/CLIENT_FIGURES.md`'s corresponding
+updates), `569ca1c` (CC-001's documented-omission record and
+`docs/MATRIX_ROW_MAP.md` row 23), and `1881ac0` (the process-prompt
+records for the sync work). Folded into the HEAD-pointer chain above.
 
 **The extended stability soak is closed.** Three interactive runs, against
 a frozen acceptance rule kept OUTSIDE this repository (same convention as
