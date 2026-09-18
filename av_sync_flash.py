@@ -25,12 +25,60 @@ step, which is exactly why this script never calls it. This script does not
 import or reuse anything from the validated path (G5) -- it opens its own,
 independent cv2.VideoCapture and does its own grayscale conversion.
 
-NOT A STROBE: the flash is a single one-shot pulse (config.flash_frames
-consecutive rendered white frames, then reverts) inside one emission event,
-never a repeating on/off pattern -- so it has no "rate" in the photosensitive-
-epilepsy sense at all. Events themselves are spaced config.event_interval_seconds
-apart (default 30s = 0.033 Hz), far below the 3-60 Hz band the task's own
+NOT A STROBE: the flash is a single one-shot pulse (config.flash_duration_ms
+of held white, then reverts) inside one emission event, never a repeating
+on/off pattern -- so it has no "rate" in the photosensitive-epilepsy sense
+at all. Events themselves are spaced config.event_interval_seconds apart
+(default 30s = 0.033 Hz), far below the 3-60 Hz band the task's own
 instruction names. Both are true by construction, not by a runtime check.
+
+ATTEMPT 8 -- STIMULUS LENGTHENED, OFFSET REFERENCE CHANGED: the diagnostic
+run (session 0e6b2a1a) found the flash's prior ~3-rendered-frames duration
+was short enough, against a ~33ms camera exposure period, that whether the
+flash landed inside a captured exposure was close to a coin flip -- the
+most plausible mechanical explanation for that run's bimodal video
+response (8/19 emissions ~0 excess over baseline, 9/19 at 8-24x). The flash
+is now HELD WHITE for config.flash_duration_ms (~500ms default) instead of
+a fixed frame count -- this only guarantees the crossing happens; it does
+not add ambiguity to WHEN, since the onset detector still fires on the
+FIRST sample crossing threshold, same as ever. The click is similarly
+lengthened (config.click_duration_s) with a short, FIXED-length attack/
+decay (config.click_ramp_ms, independent of total duration -- a longer
+click must not mean a slower onset). Pairing and the reported offset now
+use the CONFIRMED emission timestamps (flash_render_completed_ts,
+audio_first_callback_ts) as each channel's own reference, not the single
+scheduled timestamp -- this cancels the emitter's own render/play jitter
+(69-159ms video, 61-91ms audio, per the diagnostic run) out of the
+reported offset, which up to this attempt had jitter of that size sitting
+inside every number below the 33ms floor it was supposed to resolve. See
+compute_run_summary()'s docstring for the exact arithmetic. Every record
+from this attempt (attempt 8) was stamped "offset_reference": "confirmed"
+so it is never mistaken for the same quantity sessions 04d5cb0f and
+0e6b2a1a reported (those used "offset_reference": "scheduled", stamped
+retroactively true of their method, not present in their actual logs).
+
+ATTEMPT 9 -- TWO DEFECTS FOUND BY READING CODE, BOTH FIXED: (1) attempt 8's
+video reference, flash_render_completed_ts, was assigned AFTER the hold
+loop exited -- it marked the flash's END, while audio_first_callback_ts
+marks the click's START. Opposite edges of their stimuli biased every
+attempt-8 offset by approximately -flash_duration_ms (predicted -500ms,
+observed -502.5ms in session a6ce084e). Fixed: the emitter now records
+flash_first_frame_ts (the true start edge, taken right after the FIRST
+white frame is presented) as a SEPARATE field from flash_hold_ended_ts
+(the old end-of-hold moment, kept because it is genuinely useful for
+confirming the hold lasted its configured duration); pairing now uses
+flash_first_frame_ts. (2) compute_diagnostic_window's max_value_in_window
+spanned the WHOLE +/-1s window, including time before the stimulus, so a
+pre-stimulus ambient noise event could be reported as though it were the
+stimulus's own response -- confirmed for two emissions in session
+a6ce084e whose "peaks" landed 0.75-0.98s BEFORE their own reference.
+Fixed: max_value_in_window is now computed over the post-reference portion
+only; the pre-reference portion's own max is reported separately as
+pre_reference_max_value, specifically so this failure mode is visible
+rather than silently repeated. Every record from this attempt is stamped
+"offset_reference": "confirmed_v2" -- DELIBERATELY DIFFERENT from attempt
+8's "confirmed", because attempt 8's video reference was defective and the
+two are not the same quantity, not even approximately.
 
 G1 -- NO PASS/FAIL, NO THRESHOLD-AS-VERDICT, NO "ACCEPTABLE SYNC" ANYWHERE
 IN THIS FILE. K_v and K_a (the two onset-detection sensitivity multipliers)
@@ -87,6 +135,10 @@ WINDOW_TITLE = "av_sync_flash"
 MISSINGNESS_REASONS = (
     "no_video_onset_within_window",
     "no_audio_onset_within_window",
+    "no_audio_confirmation_timestamp",  # attempt 8: the audio output callback never fired for
+                                         # this emission, so there is no reference to pair against
+                                         # at all -- distinct from "the click played but no onset
+                                         # was found," which is no_audio_onset_within_window.
 )
 
 
@@ -101,8 +153,15 @@ class AVSyncConfig:
     duration_minutes: float = 10.0
     event_interval_seconds: float = 30.0
     min_events: int = 20
-    flash_frames: int = 3
-    pairing_window_ms: float = 500.0
+    # Attempt 8: HELD DURATION, not a frame count -- a fixed frame count's
+    # real-world duration depends on how fast imshow()/waitKey(1) actually
+    # run, which is why 3 frames turned out to be a near-coin-flip against
+    # a 33ms camera exposure period (session 0e6b2a1a's bimodal video
+    # response). ~500ms guarantees many exposures land inside it.
+    flash_duration_ms: float = 500.0
+    pairing_window_ms: float = 500.0  # UNCHANGED this attempt -- see module docstring's "ON THE
+                                       # PAIRING WINDOW" reasoning: the prior 512ms IQR came from
+                                       # only 3 matched events and is not evidence of anything.
 
     k_v: float = 6.0  # video (luminance) onset sensitivity, in robust-MAD multiples
     k_a: float = 6.0  # audio (energy) onset sensitivity, in robust-MAD multiples
@@ -115,8 +174,26 @@ class AVSyncConfig:
     audio_channels: int = 1
 
     camera_index: int = 0
-    click_duration_s: float = 0.01
+    # Attempt 8: lengthened from 10ms so many 5ms audio hops sit fully
+    # inside the click instead of straddling its boundary (the same
+    # "coin flip vs frame period" mechanism as the flash, applied to hops
+    # instead of camera frames) -- misses in 0e6b2a1a tracked a raised
+    # ambient baseline/MAD, and more full-strength hops gives the RMS
+    # detector more chances to see the click clearly above that baseline.
+    click_duration_s: float = 0.15
     click_freq_hz: float = 2000.0
+    # Already at full digital scale (a unit-amplitude sine cannot go
+    # higher without clipping) -- made an explicit, versioned parameter
+    # rather than an implicit hardcoded 1.0, per this attempt's instruction
+    # to raise it. The real lever for audio registration is the duration
+    # increase above, not amplitude, which had no headroom left; reported
+    # honestly rather than claimed as a bigger lever than it is.
+    click_amplitude: float = 1.0
+    # FIXED length regardless of click_duration_s -- a longer click must
+    # not mean a slower attack, since the onset detector fires on the
+    # first sample to cross threshold and a gradual ramp would delay
+    # exactly that instant.
+    click_ramp_ms: float = 2.0
 
     subject_id: str = "UNSET_OPERATOR_MUST_PROVIDE"
     context_id: str = "av_sync_flash"
@@ -176,32 +253,57 @@ def find_onsets(samples, timestamps, k, baseline_window, refractory_seconds, min
     return onsets
 
 
-def pair_emissions(emission_timestamps, video_onsets, audio_onsets, pairing_window_seconds):
-    """For each emission, the NEAREST video onset and the NEAREST audio
-    onset within +/- pairing_window_seconds, independently -- a video
-    match and an audio match are found separately, so one channel missing
-    never disqualifies the other. Every emission produces exactly one
-    record; an unmatched channel is missingness-with-a-reason, never a
-    dropped row (D0PA1 hard constraint #8)."""
+def pair_emissions(scheduled_timestamps, video_reference_timestamps, audio_reference_timestamps,
+                    video_onsets, audio_onsets, pairing_window_seconds):
+    """For each emission, the NEAREST video onset to that emission's OWN
+    confirmed video reference (flash_first_frame_ts -- the flash's START
+    edge, ATTEMPT 9: was flash_render_completed_ts, its END edge, until
+    Check 1 found that biased every offset by -flash_duration_ms), and the
+    NEAREST audio onset to its OWN confirmed audio reference
+    (audio_first_callback_ts) -- found independently, so one channel
+    missing never disqualifies the other. Every emission produces exactly
+    one record; an unmatched channel is missingness-with-a-reason, never a
+    dropped row (D0PA1 hard constraint #8).
 
-    def nearest_within(onsets, emission_t):
-        candidates = [o for o in onsets if abs(o - emission_t) <= pairing_window_seconds]
+    ATTEMPT 8 CHANGE: prior to this, both channels were paired against the
+    single SCHEDULED emission timestamp. Pairing against each channel's
+    own CONFIRMED reference instead is what lets compute_run_summary()
+    cancel the emitter's own render/play jitter out of the reported offset
+    -- see that function's docstring for the arithmetic this enables.
+    scheduled_timestamps is carried through only for bookkeeping (elapsed-
+    time-since-start, human-readable logs); it plays no role in matching.
+
+    A None audio_reference_timestamps entry (the output callback never
+    fired for that emission -- see _play_click_with_confirmation) makes
+    that emission's audio side immediately missing with its own reason,
+    no search attempted, never a crash."""
+
+    def nearest_within(onsets, reference_t):
+        if reference_t is None:
+            return None
+        candidates = [o for o in onsets if abs(o - reference_t) <= pairing_window_seconds]
         if not candidates:
             return None
-        return min(candidates, key=lambda o: abs(o - emission_t))
+        return min(candidates, key=lambda o: abs(o - reference_t))
 
     records = []
-    for e in emission_timestamps:
-        v = nearest_within(video_onsets, e)
-        a = nearest_within(audio_onsets, e)
+    for e, vref, aref in zip(scheduled_timestamps, video_reference_timestamps, audio_reference_timestamps):
+        v = nearest_within(video_onsets, vref)
+        a = nearest_within(audio_onsets, aref)
+        if aref is None:
+            a_reason = "no_audio_confirmation_timestamp"
+        else:
+            a_reason = None if a is not None else "no_audio_onset_within_window"
         records.append({
-            "emission_ts": e,
+            "emission_scheduled_ts": e,
+            "video_reference_ts": vref,
+            "audio_reference_ts": aref,
             "video_onset_ts": v,
             "video_missingness_flag": v is None,
             "video_missingness_reason": None if v is not None else "no_video_onset_within_window",
             "audio_onset_ts": a,
             "audio_missingness_flag": a is None,
-            "audio_missingness_reason": None if a is not None else "no_audio_onset_within_window",
+            "audio_missingness_reason": a_reason,
         })
     return records
 
@@ -210,7 +312,29 @@ def compute_run_summary(records, stream_start_ts, camera_fps):
     """Numbers only -- no pass/fail, no "acceptable sync" (G1). Computed
     only over PAIRED events (both channels present); how many that is, out
     of how many emissions, is reported explicitly so the denominator is
-    never hidden. offset = video_onset - audio_onset, in milliseconds.
+    never hidden.
+
+    ATTEMPT 8 CHANGE -- offset is no longer video_onset - audio_onset.
+    Each record now carries its own video_reference_ts
+    (flash_first_frame_ts as of ATTEMPT 9 -- was flash_render_completed_ts
+    in attempt 8, found defective, see pair_emissions()'s docstring) and
+    audio_reference_ts (audio_first_callback_ts), so:
+
+        video_latency = video_onset_ts - video_reference_ts
+        audio_latency = audio_onset_ts - audio_reference_ts
+        offset        = video_latency - audio_latency
+
+    Expanding that: offset = (video_onset_ts - audio_onset_ts) -
+    (video_reference_ts - audio_reference_ts). The first term is the old
+    formula; the second is exactly the emitter's own render/play jitter
+    (69-159ms video, 61-91ms audio in session 0e6b2a1a) -- this
+    subtraction is what removes it, leaving only the difference in each
+    channel's OWN capture+detection latency, which is the quantity this
+    measurement is actually for. When video_reference_ts equals
+    audio_reference_ts (zero emitter jitter), this is numerically
+    identical to the old formula -- it is a generalisation, not a
+    different measurement in the zero-jitter case.
+
     Theil-Sen (scipy.stats.theilslopes) is used for the drift slope because
     it is robust to the occasional bad pairing a nearest-neighbour match can
     produce, unlike ordinary least squares. frame_period_floor_ms is
@@ -227,6 +351,11 @@ def compute_run_summary(records, stream_start_ts, camera_fps):
         "n_video_missing": sum(1 for r in records if r["video_missingness_flag"]),
         "n_audio_missing": sum(1 for r in records if r["audio_missingness_flag"]),
         "frame_period_floor_ms": frame_period_floor_ms,
+        "offset_reference": "confirmed_v2",  # ATTEMPT 9 -- must match run()'s own av_sync_run_start
+                                              # stamp exactly (this dict is spread into
+                                              # av_sync_summary via **summary): "confirmed" alone
+                                              # is attempt 8's defective-video-reference quantity,
+                                              # see module docstring's "ATTEMPT 9" note
         "offset_median_ms": None,
         "offset_iqr_ms": None,
         "offset_mad_scaled_ms": None,
@@ -238,8 +367,11 @@ def compute_run_summary(records, stream_start_ts, camera_fps):
         summary["note"] = "insufficient_samples -- fewer than 2 paired events, no spread or drift figure computed"
         return summary
 
-    offsets_ms = np.array([(r["video_onset_ts"] - r["audio_onset_ts"]) * 1000.0 for r in paired])
-    elapsed_s = np.array([r["emission_ts"] - stream_start_ts for r in paired])
+    offsets_ms = np.array([
+        ((r["video_onset_ts"] - r["video_reference_ts"]) - (r["audio_onset_ts"] - r["audio_reference_ts"])) * 1000.0
+        for r in paired
+    ])
+    elapsed_s = np.array([r["emission_scheduled_ts"] - stream_start_ts for r in paired])
 
     median, mad_scaled = robust_baseline_stats(offsets_ms)
     q75, q25 = np.percentile(offsets_ms, [75, 25])
@@ -260,16 +392,137 @@ def compute_run_summary(records, stream_start_ts, camera_fps):
     return summary
 
 
-def synthesize_click(sample_rate_hz, duration_s, freq_hz):
-    """A short sine-burst click with a linear fade in/out envelope (avoids
-    a hard edge, which would itself be a broadband click confusable with
-    what we are trying to measure the timing of). Deterministic, no data-
-    dependent tuning (G2 does not apply to a stimulus generator -- there is
-    no "result" here to tune toward)."""
+def compute_diagnostic_window(samples, timestamps, onsets, k, baseline_window, emission_ts,
+                               window_seconds=1.0, min_baseline_n=None):
+    """DIAGNOSTIC-ONLY, read-only inspection of the SAME rolling-baseline
+    state find_onsets() computes for one channel around one emission. This
+    function decides nothing and fires nothing -- `onsets` must be the
+    unmodified output of a real find_onsets() call; this only reports
+    whether one of those already-decided onsets happened to land in the
+    window (G1: no new threshold, no verdict; G2: k is read, never chosen
+    or fitted here).
+
+    baseline_median_pre / baseline_mad_scaled_pre are the rolling baseline
+    as of the last sample STRICTLY BEFORE the window opens
+    (emission_ts - window_seconds) -- the pre-stimulus baseline, not
+    contaminated by the flash/click itself, which is what the live
+    detector actually compares in-window samples against (find_onsets
+    computes its threshold from samples strictly preceding the one being
+    tested, never the current or a future sample).
+
+    threshold_absolute = baseline_median_pre + k*baseline_mad_scaled_pre,
+    i.e. the exact value a sample would have had to exceed to fire, in the
+    channel's own raw units. max_to_threshold_ratio near 1 means the peak
+    came close to firing (a tuning question); near 0 means no real step
+    exists in this window at all (a physics question) -- these are
+    reported as numbers only, the distinction is for a human to draw.
+
+    ATTEMPT 9 FIX (Check 2 found this defective): max_value_in_window is
+    now computed ONLY over samples at or after emission_ts -- the
+    stimulus's own response, not whatever happened anywhere in the ±1s
+    window. Previously it spanned the whole window including time BEFORE
+    the stimulus, so a pre-stimulus ambient noise event could dominate the
+    max and be reported as though it were the stimulus's response (this is
+    exactly what happened for two emissions in session a6ce084e: their
+    "peaks" landed 0.75-0.98s BEFORE their own reference timestamp). The
+    pre-reference portion of the window is UNCHANGED in its other role --
+    it still feeds nothing into max_value_in_window, but its own max is
+    now reported separately as pre_reference_max_value, specifically so a
+    pre-stimulus event bigger than the real response is visible rather
+    than silently inflating anything (the exact failure mode this fix
+    closes).
+
+    Returns insufficient_baseline=True (never a fabricated number) if the
+    rolling baseline had not warmed up (fewer than min_baseline_n samples)
+    before the window opened."""
+    if min_baseline_n is None:
+        min_baseline_n = max(10, baseline_window // 4)
+
+    window_lo = emission_ts - window_seconds
+    window_hi = emission_ts + window_seconds
+
+    baseline = deque(maxlen=baseline_window)
+    baseline_median_pre = None
+    baseline_mad_scaled_pre = None
+    window_values = []
+    window_timestamps = []
+    pre_reference_values = []   # window_lo <= t < emission_ts -- NOT the response
+    post_reference_values = []  # emission_ts <= t <= window_hi -- the actual response
+
+    for s, t in zip(samples, timestamps):
+        if t < window_lo:
+            baseline.append(s)
+            continue
+        if t > window_hi:
+            break  # samples are time-ordered -- nothing further is in-window
+        if baseline_median_pre is None and len(baseline) >= min_baseline_n:
+            baseline_median_pre, baseline_mad_scaled_pre = robust_baseline_stats(baseline)
+        window_values.append(s)
+        window_timestamps.append(t)
+        if t < emission_ts:
+            pre_reference_values.append(s)
+        else:
+            post_reference_values.append(s)
+
+    # Fallback for a window with NO in-window samples at all (e.g. it falls
+    # entirely after capture stopped) -- the loop above only computes the
+    # baseline snapshot when it reaches an in-window sample, so without
+    # this it would report insufficient_baseline=True even when the
+    # pre-window baseline was, in fact, fully warmed.
+    if baseline_median_pre is None and len(baseline) >= min_baseline_n:
+        baseline_median_pre, baseline_mad_scaled_pre = robust_baseline_stats(baseline)
+
+    max_value = max(post_reference_values) if post_reference_values else None
+    pre_reference_max_value = max(pre_reference_values) if pre_reference_values else None
+    threshold_absolute = (
+        baseline_median_pre + k * baseline_mad_scaled_pre
+        if baseline_median_pre is not None and baseline_mad_scaled_pre is not None
+        else None
+    )
+    ratio = (
+        max_value / threshold_absolute
+        if max_value is not None and threshold_absolute not in (None, 0)
+        else None
+    )
+    onset_fired_in_window = any(window_lo <= o <= window_hi for o in onsets)
+
+    return {
+        "window_seconds": window_seconds,
+        "n_samples_in_window": len(window_values),
+        "timestamps": window_timestamps,
+        "values": window_values,
+        "baseline_median_pre": baseline_median_pre,
+        "baseline_mad_scaled_pre": baseline_mad_scaled_pre,
+        "threshold_absolute": threshold_absolute,
+        "max_value_in_window": max_value,  # ATTEMPT 9: post-reference only, see docstring
+        "pre_reference_max_value": pre_reference_max_value,  # NEW -- visible, never silently folded in
+        "max_to_threshold_ratio": ratio,
+        "onset_fired_in_window": onset_fired_in_window,
+        "insufficient_baseline": baseline_median_pre is None,
+    }
+
+
+def synthesize_click(sample_rate_hz, duration_s, freq_hz, amplitude=1.0, ramp_ms=2.0):
+    """A sine-burst click with a linear fade in/out envelope (avoids a hard
+    edge, which would itself be a broadband click confusable with what we
+    are trying to measure the timing of). Deterministic, no data-dependent
+    tuning (G2 does not apply to a stimulus generator -- there is no
+    "result" here to tune toward).
+
+    ATTEMPT 8: ramp_ms is a FIXED duration in milliseconds, not a fraction
+    of the total click length as it was before -- a longer click (now
+    config.click_duration_s=0.15 by default, up from 0.01) must keep a
+    SHARP onset, since the onset detector fires on the first sample to
+    cross threshold and a ramp that grows with total duration would delay
+    exactly that instant. amplitude scales the sine before the envelope is
+    applied; the caller is responsible for keeping it within [-1, 1] to
+    avoid clipping (AVSyncConfig.click_amplitude defaults to 1.0, already
+    the maximum a normalised signal can carry)."""
     n = max(1, int(sample_rate_hz * duration_s))
     t = np.arange(n) / sample_rate_hz
-    tone = np.sin(2 * np.pi * freq_hz * t)
-    ramp = min(n // 4, 1) if n < 4 else n // 4
+    tone = amplitude * np.sin(2 * np.pi * freq_hz * t)
+    ramp = max(1, int(sample_rate_hz * ramp_ms / 1000.0)) if n >= 2 else 0
+    ramp = min(ramp, n // 2)
     envelope = np.ones(n)
     if ramp > 0:
         envelope[:ramp] = np.linspace(0.0, 1.0, ramp)
@@ -387,31 +640,137 @@ class AudioEnergyCapture:
             return list(self.samples), list(self.timestamps)
 
 
-def _emit_flash_and_click(config):
-    """Simultaneously: play a short click through the default output
-    device, and render a full-screen white flash for config.flash_frames
-    frames via a plain cv2 window (no video capture in this function --
-    that is VideoLuminanceCapture's own, independent camera handle).
-    Returns the software emission timestamp (perf_counter, recorded as
-    close to both triggers as a single Python call sequence allows)."""
-    import cv2
+def _play_click_with_confirmation(click, sample_rate_hz):
+    """Plays the click through its OWN short-lived sd.OutputStream with a
+    callback, instead of a fire-and-forget sd.play(), so we get a real
+    answer to "did the output callback consume the buffer, and when"
+    rather than assuming it silently worked. Returns the perf_counter
+    timestamp of the FIRST callback invocation (when the audio subsystem
+    actually started pulling data), or None if no callback fired within a
+    short deadline (itself a diagnostic fact, not an error to hide).
+
+    ATTEMPT 8: promoted from --diagnose-only to the path EVERY run uses --
+    this confirmed timestamp is now the pairing reference for the audio
+    channel (see pair_emissions()/compute_run_summary()), not only a
+    --diagnose trace field.
+
+    Does not block the emission loop for the click's full duration: it
+    waits only long enough for the first callback (typically sub-
+    millisecond), then lets a short-lived background thread close the
+    stream once the click has had time to finish playing."""
     import sounddevice as sd
 
-    click = synthesize_click(config.audio_sample_rate_hz, config.click_duration_s, config.click_freq_hz)
+    state = {"first_callback_ts": None, "pos": 0}
+
+    def _callback(outdata, frames, time_info, status):
+        if state["first_callback_ts"] is None:
+            state["first_callback_ts"] = time.perf_counter()
+        pos = state["pos"]
+        end = pos + frames
+        chunk = click[pos:end]
+        if len(chunk) < frames:
+            outdata[:len(chunk), 0] = chunk
+            outdata[len(chunk):, 0] = 0.0
+        else:
+            outdata[:, 0] = chunk
+        state["pos"] = end
+
+    try:
+        stream = sd.OutputStream(samplerate=sample_rate_hz, channels=1, dtype="float32", callback=_callback)
+        stream.start()
+    except Exception:
+        return None  # missingness, not a crash -- Part C will see audio_first_callback_ts: null
+
+    deadline = time.perf_counter() + 0.1
+    while state["first_callback_ts"] is None and time.perf_counter() < deadline:
+        time.sleep(0.001)
+
+    def _close_after(stream_ref, delay_s):
+        time.sleep(delay_s)
+        try:
+            stream_ref.stop()
+            stream_ref.close()
+        except Exception:
+            pass
+
+    threading.Thread(target=_close_after, args=(stream, len(click) / sample_rate_hz + 0.05), daemon=True).start()
+    return state["first_callback_ts"]
+
+
+def _emit_flash_and_click(config):
+    """The ONE emitter, used identically whether or not --diagnose is set
+    (attempt 8 merges what used to be a plain emitter and a
+    --diagnose-only one: confirmation evidence is no longer a diagnostic
+    extra, it is the pairing reference every run needs -- see
+    pair_emissions()). Plays the click through its own confirmed-callback
+    stream (_play_click_with_confirmation) and holds a full-screen white
+    flash for config.flash_duration_ms (a HELD DURATION, not a frame
+    count -- see AVSyncConfig.flash_duration_ms and the module docstring's
+    "ATTEMPT 8" note for why).
+
+    window_visible_flag reads cv2.getWindowProperty(..., WND_PROP_VISIBLE)
+    for the log only -- it is NEVER used to decide anything (no branch
+    reads it), unlike the getWindowProperty-based SHUTDOWN logic elsewhere
+    in this repo that is known to false-trigger under a backgrounded
+    launch context (see the soak runsheet). A read-only log field carries
+    none of that risk; nothing here controls process lifetime.
+
+    ATTEMPT 9 FIX (Check 1 found this defective): what used to be a single
+    "flash_render_completed_ts", assigned AFTER the hold loop exited, has
+    been split into two honestly-named fields --
+    flash_first_frame_ts (assigned right after the FIRST white frame is
+    presented, the actual start edge the video onset detector responds
+    to) and flash_hold_ended_ts (assigned after the hold loop exits, kept
+    because it is genuinely useful for confirming the hold lasted its
+    configured duration -- just no longer used as the pairing reference).
+    Using the end-of-hold timestamp as the video reference biased every
+    attempt-8 offset by approximately -flash_duration_ms, because the
+    audio reference (audio_first_callback_ts, below) marks the START of
+    the click, not its end -- the two references were marking opposite
+    edges of their stimuli. run() now pairs video against
+    flash_first_frame_ts.
+
+    Returns a dict of the scheduled timestamp, the two flash timestamps,
+    and the CONFIRMED audio timestamp -- "an emission was scheduled" alone
+    cannot establish that it actually happened, which is why these are
+    measured rather than assumed."""
+    import cv2
+
+    click = synthesize_click(
+        config.audio_sample_rate_hz, config.click_duration_s, config.click_freq_hz,
+        amplitude=config.click_amplitude, ramp_ms=config.click_ramp_ms,
+    )
     white = np.full((600, 800, 3), 255, dtype=np.uint8)
     black = np.zeros((600, 800, 3), dtype=np.uint8)
 
-    emission_ts = time.perf_counter()
-    sd.play(click, samplerate=config.audio_sample_rate_hz, blocking=False)
-    for _ in range(config.flash_frames):
+    emission_scheduled_ts = time.perf_counter()
+    audio_first_callback_ts = _play_click_with_confirmation(click, config.audio_sample_rate_hz)
+
+    flash_end = time.perf_counter() + config.flash_duration_ms / 1000.0
+    flash_first_frame_ts = None
+    while time.perf_counter() < flash_end:
         cv2.imshow(WINDOW_TITLE, white)
         cv2.waitKey(1)
+        if flash_first_frame_ts is None:
+            flash_first_frame_ts = time.perf_counter()  # the start edge -- ATTEMPT 9's pairing reference
+    flash_hold_ended_ts = time.perf_counter()  # end-of-hold, kept for hold-duration confirmation only
+    try:
+        window_visible_flag = float(cv2.getWindowProperty(WINDOW_TITLE, cv2.WND_PROP_VISIBLE))
+    except Exception:
+        window_visible_flag = None
     cv2.imshow(WINDOW_TITLE, black)
     cv2.waitKey(1)
-    return emission_ts
+
+    return {
+        "emission_scheduled_ts": emission_scheduled_ts,
+        "flash_first_frame_ts": flash_first_frame_ts,
+        "flash_hold_ended_ts": flash_hold_ended_ts,
+        "window_visible_flag": window_visible_flag,
+        "audio_first_callback_ts": audio_first_callback_ts,
+    }
 
 
-def run(config):
+def run(config, diagnose=False):
     """Orchestrates one full session: starts the two independent capture
     threads, emits config.min_events flashes/clicks on
     config.event_interval_seconds spacing (for at least
@@ -435,11 +794,12 @@ def run(config):
 
     stream_start = time.perf_counter()
     n_events = max(config.min_events, int((config.duration_minutes * 60.0) / config.event_interval_seconds))
-    emission_timestamps = []
+    emission_diagnostics = []  # ALWAYS populated now -- confirmation is no longer diagnose-only
     print(f"[av_sync_flash] emitting {n_events} events, one every {config.event_interval_seconds:.0f}s "
-          f"({n_events * config.event_interval_seconds / 60.0:.1f} min total)")
+          f"({n_events * config.event_interval_seconds / 60.0:.1f} min total)"
+          + (" [DIAGNOSE MODE -- extra per-emission traces logged]" if diagnose else ""))
     for i in range(n_events):
-        emission_timestamps.append(_emit_flash_and_click(config))
+        emission_diagnostics.append(_emit_flash_and_click(config))
         print(f"[av_sync_flash] event {i + 1}/{n_events} emitted")
         if i < n_events - 1:
             time.sleep(config.event_interval_seconds)
@@ -454,7 +814,14 @@ def run(config):
     video_onsets = find_onsets(video_samples, video_ts, config.k_v, config.video_baseline_window_frames, config.refractory_seconds)
     audio_onsets = find_onsets(audio_samples, audio_ts, config.k_a, config.audio_baseline_window_hops, config.refractory_seconds)
 
-    records = pair_emissions(emission_timestamps, video_onsets, audio_onsets, config.pairing_window_ms / 1000.0)
+    scheduled_timestamps = [d["emission_scheduled_ts"] for d in emission_diagnostics]
+    video_reference_timestamps = [d["flash_first_frame_ts"] for d in emission_diagnostics]  # ATTEMPT 9 fix: start edge, not end-of-hold
+    audio_reference_timestamps = [d["audio_first_callback_ts"] for d in emission_diagnostics]
+
+    records = pair_emissions(
+        scheduled_timestamps, video_reference_timestamps, audio_reference_timestamps,
+        video_onsets, audio_onsets, config.pairing_window_ms / 1000.0,
+    )
     summary = compute_run_summary(records, stream_start, video.actual_fps)
 
     os.makedirs(LOG_DIR, exist_ok=True)
@@ -467,6 +834,12 @@ def run(config):
             "subject_id": config.subject_id,
             "context_id": config.context_id,
             "device_id": config.device_id,
+            "diagnose": diagnose,
+            "offset_reference": "confirmed_v2",  # attempt 9 -- see module docstring's "ATTEMPT 9" note.
+                                                  # MUST differ from attempt 8's "confirmed": that
+                                                  # label's video reference (flash_render_completed_ts,
+                                                  # end-of-hold) was found defective by Check 1 and is
+                                                  # NOT the same quantity as v2's flash_first_frame_ts.
             "config": dataclasses.asdict(config),
             "config_hash": config.config_hash(),
             "ts_utc": datetime.now(timezone.utc).isoformat(),
@@ -479,6 +852,36 @@ def run(config):
                 "event_index": i,
                 **r,
             }) + "\n")
+        if diagnose:
+            for i, diag in enumerate(emission_diagnostics):
+                # Diagnostic traces are centred on each channel's OWN
+                # confirmed reference (same one pairing uses) -- ATTEMPT 9:
+                # video now centres on flash_first_frame_ts (the start
+                # edge), not the old end-of-hold timestamp. This changes
+                # WHICH samples fall in the pre-/post-reference split
+                # inside compute_diagnostic_window (itself also fixed this
+                # attempt -- see that function's docstring for Check 2).
+                video_window = compute_diagnostic_window(
+                    video_samples, video_ts, video_onsets, config.k_v,
+                    config.video_baseline_window_frames, diag["flash_first_frame_ts"],
+                )
+                audio_window = compute_diagnostic_window(
+                    audio_samples, audio_ts, audio_onsets, config.k_a,
+                    config.audio_baseline_window_hops, diag["audio_first_callback_ts"],
+                ) if diag["audio_first_callback_ts"] is not None else None
+                f.write(json.dumps({
+                    "schema_version": SCHEMA_VERSION,
+                    "record_type": "av_sync_diagnostic_emission",
+                    "session_id": session_id,
+                    "event_index": i,
+                    "emission_scheduled_ts": diag["emission_scheduled_ts"],
+                    "flash_first_frame_ts": diag["flash_first_frame_ts"],
+                    "flash_hold_ended_ts": diag["flash_hold_ended_ts"],
+                    "window_visible_flag": diag["window_visible_flag"],
+                    "audio_first_callback_ts": diag["audio_first_callback_ts"],
+                    "video_trace": video_window,
+                    "audio_trace": audio_window,
+                }) + "\n")
         f.write(json.dumps({
             "schema_version": SCHEMA_VERSION,
             "record_type": "av_sync_summary",
@@ -501,6 +904,11 @@ if __name__ == "__main__":
     parser.add_argument("--min-events", type=int, default=20)
     parser.add_argument("--k-v", type=float, default=6.0)
     parser.add_argument("--k-a", type=float, default=6.0)
+    parser.add_argument("--diagnose", action="store_true",
+                         help="Diagnostic mode: log emission-confirmation and threshold-context "
+                              "traces per event (av_sync_diagnostic_emission records). Adds "
+                              "logging only -- does not change detection logic, k_v/k_a, or any "
+                              "default. Without this flag, behaviour is unchanged.")
     args = parser.parse_args()
 
     cfg = AVSyncConfig(
@@ -511,4 +919,4 @@ if __name__ == "__main__":
         k_a=args.k_a,
         subject_id=args.subject_id,
     )
-    run(cfg)
+    run(cfg, diagnose=args.diagnose)
