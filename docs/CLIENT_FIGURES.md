@@ -160,7 +160,8 @@ attempts differed ≈2× in magnitude)**. Full three-way breakdown:
 
 | Figure | Value | Artefact | Date |
 |---|---|---|---|
-| Sync offset, spread, drift | **NOT MEASURED.** Attempted 5 times ("PHYSICAL RUN SESSION," real hardware, real human clapping) with real clap-correlated audio detected every time, but no video-motion-detection threshold across 5 iterations produced a trustworthy match (either too sensitive — false matches from general motion — or too strict — 0–3 events, unusable). The one run that DID produce matched pairs (40ms mean / 281ms std) is explicitly NOT reported as a result, per this engagement's own instruction not to present a noisy match as real data. A genuine empty-scene-style re-attempt (Task 5 of "AFTER THE PHYSICAL RUN") was never run either | `docs/AUDIO_ACQUISITION.md` §4, §7 | Attempted across 3 sessions total; never succeeded |
+| Sync offset, spread, drift | **NOT MEASURED (superseded below — SEE NEXT ROW for the current, final disposition).** Attempted 5 times ("PHYSICAL RUN SESSION," real hardware, real human clapping) with real clap-correlated audio detected every time, but no video-motion-detection threshold across 5 iterations produced a trustworthy match (either too sensitive — false matches from general motion — or too strict — 0–3 events, unusable). The one run that DID produce matched pairs (40ms mean / 281ms std) is explicitly NOT reported as a result, per this engagement's own instruction not to present a noisy match as real data. A genuine empty-scene-style re-attempt (Task 5 of "AFTER THE PHYSICAL RUN") was never run either | `docs/AUDIO_ACQUISITION.md` §4, §7 | Attempted across 3 sessions total as of this row; never succeeded |
+| **Sync offset, spread, drift — FINAL DISPOSITION, documented omission** | Nine attempts total across five sessions (the five above, plus four more using a purpose-built `av_sync_flash.py` instrument, stimulus changed twice more: brief flash → 500ms held flash). **Video-side registration was diagnosed and fixed** — 19/19 emissions register cleanly at 19×–72× threshold in the final attempt; the mechanism was flash duration (a ~3-frame flash against a ~33ms exposure period made detection a near coin-flip). Two code defects were found by review and corrected before the final attempt: a video/audio reference-timestamp edge mismatch (biased every offset by ≈−500ms) and a diagnostic statistic that could report pre-stimulus noise as the stimulus's own response. **Audio-side registration still fails, and the cause is NOT characterised** — an earlier attribution to ambient noise rested on the now-corrected, previously-contaminated statistic and is withdrawn, not replaced with a new cause. **Checked directly from the code this task:** the clap-era audio detector (percentile-based threshold) and the click-era detector (`find_onsets`, causal rolling-median+MAD) are different algorithms — a clap being detected by the old one says nothing about whether the same detector would detect a click, so the narrower "detector works, only the click fails" claim is not supportable and is not made. **Δ_audio cannot be computed; §10.9's condition is not lifted by the acquisition build alone.** Closed under a pre-declared, final stopping condition — no further attempts proposed | `docs/AUDIO_ACQUISITION.md` §4, §7 (history); this session's own record, currently only in `docs/PROJECT_STATE.md`'s "Soak and sync outcomes" section and conversation — `av_sync_flash.py`/`tests/test_av_sync_flash.py` carry the code, uncommitted as of this writing | Nine attempts, five sessions; closed this task |
 | Audio thread's effect on pipeline frame rate | T1 (capture-equivalent): 29.998→29.997 fps (Δ −0.001); T2 (processing-equivalent): 8.374→8.374 fps (Δ ≈0) | `docs/AUDIO_ACQUISITION.md` §3, "FPS-impact proof" table | "AUDIO PART A" task |
 | **Caveat on what that FPS measurement actually exercised** | This used a **synthetic** two-thread harness reproducing the real architecture's TIMING SHAPE (T1 at a fixed 30fps target, T2 sleeping 120ms/frame — CLAUDE.md's own previously-measured Gate-1 figure, reused exactly) — NOT the real webcam or real MediaPipe FaceLandmarker/PoseLandmarker detection. The AUDIO side was real (real `AudioAcquisitionThread`, real default microphone). **This is evidence about thread contention under a timing-realistic synthetic load, not a measurement of the real webcam pipeline's real FPS with real detection alongside real audio capture** — that specific combination was never measured and should not be inferred from this table | Same document, same section | Same |
 
@@ -334,6 +335,25 @@ and what was built on it:**
   response said "**within**"). This is the same claim, entry #8, with its
   true reach now documented — not an eleventh correction.
 
+**A noted internal finding, not counted as an eleventh correction — the
+classification is open, and that is a human call, not this session's:**
+during the nine-attempt A/V sync work, an omission-text draft attributing
+the audio-side registration failure to "elevated ambient noise" was
+prepared for CC-001, on the basis of a diagnostic statistic
+(`compute_diagnostic_window`'s `max_value_in_window`) that a later code
+review found could report pre-stimulus noise as though it were the
+stimulus's own response. The attribution was withdrawn before it reached
+CC-001 or any client-facing document — **it never left this repository,
+the same category the ten corrections above already occupy.** Whether
+withdrawing an internal draft before it reached a client document counts
+as an eleventh correction (a wrong claim, caught and fixed) or as a
+different category (an internal working note that did its job — surfacing
+the finding via a check made before, not after, sending anything) is left
+open here for the methodology owner to decide. **The count above stays at
+ten** pending that decision. See `docs/PROJECT_STATE.md`'s "Soak and sync
+outcomes" section and §6 above for the full record of what was found and
+corrected.
+
 ---
 
 ## 11. Task 4 — the audio scope-change record
@@ -437,18 +457,8 @@ of thing is split into two rows, per this task's own instruction.
 
 ### Needs nothing but machine time
 
-- **A real audio/video sync measurement re-attempt with a different visual
-  event** (a light flash rather than clap motion, per
-  `docs/AUDIO_ACQUISITION.md` §4's own stated likely fix) — needs a
-  cooperating human briefly, but the METHOD change itself (not more subject
-  time) is what's actually missing; classified here rather than under
-  "needs subject time" because the blocker is methodological, not a time
-  commitment
-- **An extended stability soak run from an interactive terminal** — the
-  soak code itself is ready; the blocker found this engagement
-  (`cv2.getWindowProperty`-based shutdown falsely triggering under a
-  backgrounded launch context) is specific to how this engagement's own
-  sessions invoke it, not to the soak itself
+**Empty as of this task — both items below were closed this session.**
+Neither disappeared; see where each actually landed, immediately below.
 
 **Done since this list was first written ("THE LAST GAP BEFORE THE
 DOCUMENTS GO" task) — kept here, struck through in spirit rather than
@@ -457,6 +467,35 @@ version can see what moved and why:**
 
 - ~~The empty-scene control itself~~ — **RUN.** See §4 above: zero
   false-signal events across 17,888 real frames, ten real minutes.
+- ~~An extended stability soak run from an interactive terminal~~ — **RUN,
+  three times, and CLOSED under its own frozen rule's stopping condition.**
+  Not a PASS — 73.2 min INCONCLUSIVE, 140.2 min VOID (scene-validity
+  precondition failed both times) — but no longer outstanding as an
+  action: the launch-context blocker that produced this bucket's original
+  entry is resolved (both later runs reached 73 and 140 minutes with clean
+  exits), and the rule's own stopping condition means no fourth run is
+  planned without a new reason. Full detail in
+  `docs/PROJECT_STATE.md`'s "Soak and sync outcomes" section. The standing
+  claim remains the POC-era 41-minute soak — this closure does not upgrade
+  it.
+
+**Dispositioned this task, NOT resolved, deliberately kept as its own
+outstanding item rather than merged into "Done" above — this is the
+distinction this list's own instruction says matters:**
+
+- **A real audio/video sync measurement re-attempt with a different
+  visual event** — attempted, four more times (nine total across five
+  sessions), with two real code defects found and fixed along the way and
+  video-side registration fully resolved as a genuine result. Audio-side
+  registration still fails and **the cause is not characterised** — an
+  earlier ambient-noise attribution was withdrawn (see §10's noted
+  internal finding) and not replaced with a new one. This item no longer
+  "needs machine time" because no further attempts are planned — it is
+  closed as a line of work, under a pre-declared stopping condition, and
+  recorded as a **documented omission under the client's §21** (infeasibility
+  stated rather than implemented), not as a solved measurement. Δ_audio
+  remains not computable. Full detail in `docs/PROJECT_STATE.md`'s "Soak
+  and sync outcomes" section and §6/§10 above.
 - ~~Rewording §4.11's residual "clean object store" bullet~~ — **FIXED**,
   to the same durable wording §4.27 already used.
 - ~~Updating `docs/MATRIX_ROW_MAP.md` row 16 and the response's own item

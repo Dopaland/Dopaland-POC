@@ -179,6 +179,126 @@ Prior: `720af64` — "docs: record check-2 context gap and pitch-mechanism
 correction in state docs" (the "PITCH: SEPARATE THE FINDING FROM ITS
 EXPLANATION" task).)
 
+### Soak and sync outcomes, recorded this task — working tree, NOT YET COMMITTED
+
+This subsection is deliberately outside the HEAD-pointer chain above: it
+records session work (three interactive soak runs, nine A/V sync attempts,
+several code fixes to `av_sync_flash.py`/`tests/test_av_sync_flash.py`)
+that exists in this conversation and in the working tree but has not been
+committed as of this writing — this task's own instruction is to record,
+not to commit. A future commit-recording task should fold this into the
+chain above with real hashes, the same way the "not yet committed" gap
+above was eventually closed.
+
+**The extended stability soak is closed.** Three interactive runs, against
+a frozen acceptance rule kept OUTSIDE this repository (same convention as
+`GATE2_SCORING_RULE.md`/`ORIENTATION_SCORING_RULE.md` — not copied in
+here; three revisions, v1–v3, exist there):
+
+- **2026-09-14, 73.2 min**, stopped by operator, `clean_exit: true`.
+  Verdict **INCONCLUSIVE** under the then-current rule (no scene-validity
+  precondition existed yet). `detect_rate` ≈0 for 71 of 73 minutes — the
+  printed photo used as the scene had slipped from frame.
+- **2026-09-16, 140.2 min**, stopped by operator, `clean_exit: true`.
+  Verdict **VOID** under the scene-validity precondition added after the
+  first run: mean `detect_rate_60s` 0.493 against a required ≥0.90 — the
+  "scene" was a person present intermittently, not an unattended screen.
+  The five criteria were still computed and are recorded here, but capped
+  by VOID, never counted as passes: FPS drift ratio 1.015, FPS floor
+  19.7/24.76 fps, memory Δ +2.1MB over 130 min, no leak signature across 4
+  windows, liveness clean.
+- **Closed under the rule's own pre-declared stopping condition** — no
+  fourth run without a new reason (a capture-path code change, a client
+  request, or a specific stability concern that actually arises).
+
+**Two statements stand, and must be kept apart, per the frozen rule's own
+B.5/B.4 wording:**
+
+1. **The only validated stability claim:** *"stability demonstrated over a
+   41-minute continuous soak"* (POC era, passed against POC criteria).
+2. **Raw observation, not a pre-registered result:** two interactive runs
+   of 73.2 and 140.2 minutes, both clean exits, no FPS drift, no floor
+   breach, no memory growth, no stalls — under intermittent or near-zero
+   detection load, neither satisfying the scene-validity precondition.
+   True and useful; never to be written as a stability result.
+
+**Also recorded, closing two open questions:** the ~90-second
+self-termination seen in earlier attempts is established as
+launch-context dependent, not a code defect — both interactive runs above
+reached 73 and 140 minutes with clean exits, and `stage3_demo_ui.py`'s
+`cv2.getWindowProperty`-based shutdown logic was never modified (G5). FPS
+under genuine detection load is ~29 (28.9–29.8 fps at `detect_rate ≈
+1.0`), matching the POC baseline — the 2026-09-14 run's low 20.66 floor
+was a startup-ramp artefact, not a regression.
+
+---
+
+**A/V synchronisation is now a documented omission, not an open
+attempt.** Nine attempts across five sessions:
+
+- Stimulus changed twice: hand-clap with frame-difference motion
+  detection → a brief global luminance flash → a 500ms held flash with a
+  lengthened, full-amplitude click.
+- **Two defects found by code review and corrected before the final
+  attempt.** (1) The video reference timestamp
+  (`flash_render_completed_ts`, now `flash_first_frame_ts`) was assigned
+  after the flash's hold ended, while the audio reference
+  (`audio_first_callback_ts`) marks the click's start — opposite edges of
+  their stimuli, biasing every offset by ≈−`flash_duration_ms` (predicted
+  −500ms, observed −502.5ms in the attempt this was found in). (2) The
+  diagnostic's `max_value_in_window` spanned the whole ±1s window
+  including time before the stimulus, so a pre-stimulus ambient-noise
+  event could be reported as though it were the stimulus's own response —
+  confirmed for two specific emissions whose "peaks" landed 0.75–0.98s
+  before their own reference. Both fixed; `av_sync_flash.py` now also
+  reports `pre_reference_max_value` per emission so this failure mode is
+  visible rather than silently repeated.
+- **Video-side registration was diagnosed and fixed — a real, durable
+  result.** 19/19 emissions register cleanly at 19×–72× the detection
+  threshold in the final attempt. The mechanism was the flash's real-world
+  duration: a ~3-frame flash against a ~33ms camera exposure period made
+  whether it landed inside a captured frame close to a coin flip; holding
+  it for ~500ms resolved this completely.
+- **Emitter confirmed working** in every attempt from the diagnostic
+  session onward — flash-render and audio-callback timestamps recorded
+  directly (own confirmed-callback audio stream, `cv2.getWindowProperty`
+  read only into a log field, never used for control flow), never
+  assumed.
+- **Audio-side registration fails, and the cause is NOT characterised.**
+  An earlier attribution to ambient noise rested on the diagnostic
+  statistic later found to measure pre-stimulus noise rather than the
+  stimulus's response, and does not stand. It is **not** replaced with a
+  new cause. "We do not know why" is the supportable statement.
+  - **Checked this task, directly from the code, per this task's own
+    instruction to verify rather than assume:** whether the audio onset
+    detector is the same across the hand-clap era (attempts 1–5) and the
+    speaker-click era (attempts 6–9). **It is not.** The clap-era attempts
+    used a percentile-based threshold (`docs/AUDIO_ACQUISITION.md` §4
+    describes the working version; §7 records it being "moved to a
+    percentile-based threshold with an absolute floor" after an earlier
+    thresholding bug). `av_sync_flash.py`'s `find_onsets` is a different
+    algorithm: a causal rolling-median + k×MAD detector with refractory
+    gating. No script from the clap era survives in this repository to
+    compare directly — only the described mechanism does, and it is
+    described differently. Because the two detectors differ, a clap being
+    reliably detected by the old one does not establish anything about
+    whether the same detector would or would not detect a click. **The
+    narrower claim — "the detector registers real acoustic transients,
+    only the click reaching the microphone at a detectable level is what
+    fails" — is not supportable from this evidence and is not made.** The
+    broader "audio-side registration fails, cause not characterised"
+    statement is the one that stands.
+- **Consequence:** Δ_audio cannot be computed. §10.9's condition is
+  **not** lifted by the acquisition build alone — a working acquisition
+  pipeline is not the same as a working synchronisation measurement.
+- **Closed under a pre-declared, final stopping condition.** No further
+  attempts proposed, no further diagnostics proposed.
+
+This closes both items that were previously the entire contents of
+`docs/CLIENT_FIGURES.md` §12's "Needs nothing but machine time" bucket —
+see that document's own updated §12 for the disposition, and its §6/§10
+for the fuller audio record.
+
 ### Preregistration document corrections — three closure tasks, committed in `e724167`
 
 Three sequential tasks (this engagement's "D0PA1 closure work," "Task 1c
