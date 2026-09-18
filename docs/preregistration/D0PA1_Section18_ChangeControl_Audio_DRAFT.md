@@ -89,14 +89,38 @@ The engineering documents record that the change exists and what it produced.
 
 The response's own §4.23 set two conditions for retention. Their current state:
 
-**(a) A documented clock-synchronisation method between audio and video, with
-measured drift — NOT SATISFIED.**
-Five attempts across two sessions. Audio-side transient detection succeeded every
-time; video-side motion detection never produced a trustworthy match — too
-sensitive gave false matches from ordinary motion, too strict gave 0–3 events. One
-run's noisy figures were deliberately not reported as a result. **No offset, spread
-or drift figure exists.** A redesigned light-flash attempt is specified and not yet
-run (see CC-001-A).
+**(a) A documented clock-synchronisation method between audio and video, with measured drift —
+NOT SATISFIED, AND CLOSED AS A DOCUMENTED OMISSION.**
+
+Nine attempts across five sessions did not produce a usable measurement. The stimulus changed
+twice — hand clap with motion detection, then a brief luminance flash, then a 500 ms held flash
+with a lengthened click. Two defects were found by code review and corrected before the final
+attempt: the video reference timestamp marked the *end* of the flash while the audio reference
+marked the *start*, biasing every offset by approximately one flash duration (predicted
+−500 ms, observed −502.5 ms); and the diagnostic statistic used to characterise response
+strength spanned the full window including pre-stimulus time, so ambient noise could be
+reported as the stimulus response.
+
+**Video-side registration was diagnosed and fixed** — a real and durable result. Nineteen of
+nineteen evaluable emissions register cleanly at 19×–72× the detection threshold. The mechanism
+was flash duration: a ~3-frame flash against a ~33 ms camera exposure period made detection
+close to a coin flip, and a 500 ms held flash removed the problem entirely. Emitter operation
+is confirmed directly from the diagnostic session onward — flash render and audio callback
+timestamps are recorded, not assumed.
+
+**Audio-side registration fails, and the cause is not characterised.** An earlier attribution to
+ambient noise rested on the diagnostic statistic since found defective; it does not stand and is
+not replaced with another. There is a specific reason the cause cannot be recovered from this
+record: **the stimulus and the onset detector changed together at attempt 6** — attempts 1–5
+used a hand clap with a percentile-threshold detector, attempts 6–9 a speaker-emitted click with
+a rolling-median-plus-MAD detector — and no attempt isolates one from the other.
+
+**Consequence:** Δ_audio cannot be computed. §10.9's condition is not lifted by the acquisition
+build alone. A working acquisition pipeline is not a working synchronisation measurement.
+
+This is stated under your §21 request that infeasibility be reported rather than implemented. It
+is a legitimate, evidenced outcome: the video half is solved, the audio half is not, and why it
+is not is honestly unknown. No further attempts are proposed.
 
 **(b) Recorded microphone availability, audio quality and missingness per session —
 INSTRUMENT ONLY.**
@@ -117,7 +141,7 @@ The vendor proposes, the client confirms; these are **not applied** until signed
 | Row | Current | Proposed | Basis |
 |---|---|---|---|
 | 19 · Modality ablation | DECISION REQUIRED | RETURNED | Contingency on Decision A is discharged. `δ_audio = 0.05` proposed on the same reasoning as the other components, to be revisited once acquisition quality is known — an unmeasured modality's achievable contribution cannot be sensibly bounded in advance. |
-| 23 · Audio acquisition | DECISION REQUIRED | RETURNED *(conditional)* | Acquisition is built and has been exercised against a real microphone. The sync measurement under §6(a) is outstanding and blocking. Not EVIDENCED, because the condition the row's own text sets is unmet. |
+| 23 · Audio acquisition | DECISION REQUIRED | RETURNED *(conditional)* | Acquisition is built and has been exercised against a real microphone. The sync measurement under §6(a) is now closed as a documented omission, not outstanding work — the condition remains unmet, and no further attempt is proposed. Not EVIDENCED, because the condition the row's own text sets is unmet. |
 
 **Resulting §19 counts if confirmed:**
 12 EVIDENCED · 6 BUILT, NOT YET RUN ON REAL DATA · **11** RETURNED · **1** DECISION
@@ -148,16 +172,12 @@ contractual.
 
 ---
 
-## Appendix — CC-001-A: the outstanding sync measurement
+## Appendix — CC-001-A: the sync measurement, closed as a documented omission
 
-Raised here so that the unmet condition in §6(a) has a named owner and a defined
-completion test rather than sitting as a general gap.
+**Closed.** Nine attempts across five sessions; see §6(a). The completion test defined here —
+a reported offset with a stated spread across ≥ 20 matched events plus a drift estimate — was
+not met: the best attempt produced 6 matched events of 20, the final attempt 2 of 20.
 
-- **Blocking:** Δ_audio computation; row 23 reaching EVIDENCED; §10.9 clearance.
-- **Blocked on:** nothing but machine time and one physical run.
-- **Method:** specified separately in the closure pack (`D0PA1_PENDING_CLOSURE_PACK.md`,
-  Part D). The detection rule is pre-registered **before** the run, per G1.
-- **Completion test:** a reported offset with a stated spread across ≥ 20 matched
-  events and a drift estimate across the run, or an explicit statement that the
-  measurement failed again and why. A noisy number reported as a result is worse
-  than a documented failure.
+The alternative outcome this appendix allowed for — "an explicit statement that the
+measurement failed again and why" — is what was delivered, with the qualification that the *why* is
+established only for the video half. This item is closed and requires no further work.
