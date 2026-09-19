@@ -61,22 +61,53 @@ checkout's actual `logs/` path) exist so the mechanism above is testable end-to-
 
 ---
 
+## DECIDED — `D0PA1_Client_SignOff_001.md` §5 (2026-09-18)
+
+**This section supersedes, for RAW MEDIA specifically, the two "not yet implemented"
+items that used to head this list.** The scope of the decision is precise and must not
+be over-read: it decides raw video/audio retention and location. It does **not**
+decide derived-feature logs' own retention or location — those remain exactly as
+described further below, unaddressed, "no change" per the sign-off record's own §5.2.
+
+- **Raw media retention period: 90 days, then automatic deletion.** `RAW_MEDIA_RETENTION_DAYS = 90.0`
+  in `privacy/retention.py` — a named, separate constant, deliberately NOT a change to
+  `RetentionConfig`'s own bare class-level default (`365.0`, unchanged, still the
+  generic placeholder governing whatever `storage_location` a caller points it at).
+  Applying 90 days silently to that default would misrepresent derived-logs retention
+  as decided when the client's own record says the opposite. A caller retaining raw
+  media constructs `RetentionConfig(retention_days=RAW_MEDIA_RETENTION_DAYS,
+  storage_location=<resolved config>)` explicitly.
+- **Raw media storage location: a defined folder outside `C:\Dopaland-POC`, per
+  modality, via an environment variable — no committed literal, ever.** Video now has
+  its own module, `privacy/video_storage_config.py`, mirroring
+  `privacy/audio_storage_config.py`'s already-stricter pattern exactly:
+  `D0PA1_VIDEO_RAW_STORAGE_LOCATION` read at call time, no default, raises loudly if
+  unset. **The unified-raw-media-root proposal below is explicitly NOT what was
+  decided** — the sign-off record's own §6 lists it as still open. Two independent,
+  per-modality environment variables is the decided-and-implemented state; unifying
+  them under one root remains a proposal, not applied.
+- **Reason recorded in the sign-off record itself, not re-derived here:** a 90-day
+  retention window means raw media exists for 90 days, and inside a git working tree
+  a stray `git add -f` / `--no-verify` / unset `core.hooksPath` / fresh clone / GUI
+  staging each bypass `.gitignore` and the pre-commit guard — under G4 a repository
+  that has ever held such media is compromised permanently. Moving raw media outside
+  the tree removes the only mechanism by which a 90-day window becomes an irreversible
+  one; the guards remain a second layer, not the only one.
+
 ## NOT YET IMPLEMENTED (policy, not code)
 
-- **The actual retention period.** No retention period has been proposed to or agreed
-  with the client. `365.0` days is an engineering placeholder for testing the
-  mechanism, not a recommendation. Whatever period is eventually decided is a config
-  value the mechanism above already accepts — no code change is needed to apply it,
-  only a decision.
-- **The actual storage location — explicitly an open decision, not this task's to
-  make.** Per this task's own instruction (4.2): derived-feature logs currently sit
-  inside this repository's working directory (`logs/`), untracked but physically
-  present — which is not the same as living outside the repository in a
-  separately-controlled, access-controlled location. `PROVENANCE.md` already records
-  this as an open item; this document does not resolve it, and `logs/` was not moved
-  as part of this task. `RetentionConfig.storage_location` takes the current path as
-  its default specifically so the mechanism works today without presupposing an
-  answer to where data should actually live.
+- **Derived-feature logs' own retention period — separate from, and unaddressed by,
+  the raw-media decision above.** No retention period has been proposed to or agreed
+  with the client for `logs/` itself. `RetentionConfig`'s bare default of `365.0` days
+  remains an engineering placeholder for testing the mechanism, not a recommendation.
+  Whatever period is eventually decided is a config value the mechanism above already
+  accepts — no code change is needed to apply it, only a decision.
+- **Derived-feature logs' own storage location — separate from, and unaddressed by,
+  the raw-media decision above; the client's own §5.2 says "no change."** Derived-
+  feature logs currently sit inside this repository's working directory (`logs/`),
+  untracked but physically present, and stay there — low risk, since they carry no
+  imagery, only numeric values and anonymous participant codes. `RetentionConfig.storage_location`
+  keeps the current path as its default for exactly this reason.
 - **Access control.** No access-control mechanism (file permissions, encryption at
   rest, a controlled-access store) exists anywhere in this repository. This is
   unaddressed, not partially addressed.
@@ -87,12 +118,14 @@ checkout's actual `logs/` path) exist so the mechanism above is testable end-to-
   null in all of them, and 32 distinct `person_label` values, all anonymous codes).
   What does not exist is a *written pseudonymisation policy document* — the code
   behaviour and a stated policy are not the same artefact, and only the former exists.
-- **Raw video/audio retention rule.** There is no raw video or audio anywhere in this
-  repository (verified by content-scan, not just extension — see `PROVENANCE.md` and
-  `docs/PRIVACY_EVIDENCE.md`'s magic-byte scan), so there is currently nothing for a
-  raw-media-specific retention rule to govern. If raw recordings are collected under
-  the confirmatory study, a retention rule for them specifically — separate from the
-  derived-feature retention mechanism above — remains to be written.
+- **Raw video/audio retention rule — the RULE is now decided (see "DECIDED" above,
+  90 days, per-modality outside-repo location); nothing exists yet for it to
+  GOVERN.** There is still no raw video or audio anywhere in this repository
+  (verified by content-scan, not just extension — see `PROVENANCE.md` and
+  `docs/PRIVACY_EVIDENCE.md`'s magic-byte scan). The rule is written and the config
+  mechanism accepts it (`RAW_MEDIA_RETENTION_DAYS`, `privacy/video_storage_config.py`,
+  `privacy/audio_storage_config.py`); applying it to a real raw-media collection is
+  what remains, once the confirmatory study actually records any.
 - **The feature-extraction-and-deletion rule connecting the two** ("if waveforms are
   discarded after feature extraction, document the transformation and the deletion
   rule so the claim is verifiable" — the client's own §17 wording). No raw-to-feature
@@ -102,6 +135,19 @@ checkout's actual `logs/` path) exist so the mechanism above is testable end-to-
   extraction-and-immediate-deletion procedure itself is not yet designed.
 
 ## Named open item: raw media of BOTH kinds has no decided, documented home (Task 4, "ENVIRONMENT AUDIT, SYNC MEASUREMENT, G5 RIPPLE CHECK")
+
+**Superseded for the LOCATION half, by `D0PA1_Client_SignOff_001.md` §5.2
+(2026-09-18) — see "DECIDED" above.** Video now has its own module,
+`privacy/video_storage_config.py`, matching audio's env-var-only,
+raises-if-unset pattern exactly. The section immediately below is the
+historical record of the gap as that earlier task found it (video on a
+permissive `logs/`-default placeholder, audio on a strict env-var) — kept
+for its own record, not rewritten, since the finding was real and the
+reasoning for naming it as one gap still explains why the fix mirrors the
+existing audio pattern rather than inventing a third. What it does NOT
+supersede: the unified-single-root proposal below remains exactly as
+proposed and unapplied — the client's own §6 leaves that specific question
+open.
 
 **Stated as one named gap, not two separate ones, because it is the same
 unresolved decision showing up twice:**
@@ -163,9 +209,13 @@ this repository's to resolve by writing code:
    choice.
 
 This proposal is not applied anywhere in code. `privacy/audio_storage_config.py`
-keeps its own env var as built this phase; unifying it under a shared root
-variable, if that is the direction chosen, is future work contingent on the
-decision, not assumed here.
+keeps its own env var, and `privacy/video_storage_config.py` (added once the
+client decided raw media's location and retention, §5.2) was built to
+MIRROR that same per-modality pattern, not to implement this unification —
+two independently-named variables is the decided-and-implemented state, not
+the one root this section proposes. Unifying them under a shared root
+variable, if that is the direction chosen, is future work contingent on
+that separate decision, not assumed here.
 
 ## What must NOT be done with this document
 

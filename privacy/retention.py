@@ -57,6 +57,21 @@ DEFAULT_DELETION_LOG_PATH = os.path.join(REPO_ROOT, "logs", "deletion_log.jsonl"
 # deletions would defeat the point of keeping one).
 NEVER_DELETE_BASENAMES = {"deletion_log.jsonl", "variant_log.jsonl"}
 
+# ACCEPTED by the client, D0PA1_Client_SignOff_001.md sec5.1 (2026-09-18): the
+# retention period for RAW MEDIA specifically -- video, and audio if any is
+# ever recorded. NOT a decision about derived-feature logs' own retention,
+# which remains unaddressed (see module docstring / docs/PRIVACY_AND_RETENTION.md
+# -- "no change" per that same record's sec5.2). This is deliberately a
+# separate, explicitly-named constant rather than a change to
+# RetentionConfig's own class-level default: that default's storage_location
+# (logs/, the derived-feature directory) is a DIFFERENT bucket than raw
+# media, and silently applying 90 days to it would misrepresent an
+# undecided retention as a decided one. A caller retaining raw media should
+# construct RetentionConfig(retention_days=RAW_MEDIA_RETENTION_DAYS,
+# storage_location=<resolved from privacy.video_storage_config /
+# privacy.audio_storage_config>) explicitly.
+RAW_MEDIA_RETENTION_DAYS = 90.0
+
 
 @dataclass(frozen=True)
 class RetentionConfig:

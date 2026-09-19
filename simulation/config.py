@@ -100,6 +100,41 @@ class PreRegisteredConfig:
     # and inspectable even when the active window_rule ignores it.
     baseline_rolling_window_sessions: int = 3
 
+    # ACCEPTED by the client, `docs/preregistration/D0PA1_Client_SignOff_001.md`
+    # §2 (2026-09-18) -- the four component decision thresholds and the
+    # leakage diagnostic threshold, all in NATS (the study's primary metric
+    # is negative multiclass log loss; converting a nats-derived threshold
+    # to macro-F1 is explicitly forbidden by the sign-off response §4.7 --
+    # see that sign-off record's own §1 for the conversion-error this
+    # correction fixed in both the response document and
+    # docs/MATRIX_ROW_MAP.md row 9).
+    #
+    # G1: these are read by NO decision logic anywhere in this repository.
+    # `simulation.precision.compute_delta`/`bootstrap_ci_on_delta` and
+    # `controls.leakage` compute and return delta_point/CI numbers only; a
+    # human applies the RETAIN/DROP/INCONCLUSIVE rule and the leakage
+    # gross-error check against these frozen values AFTER collection, per
+    # the sign-off record's own §2.3 decision-rule block. Grep this
+    # repository for `delta_gate3`/`delta_attention`/`delta_audio`/
+    # `delta_latent`/`leakage_diagnostic_threshold_nats` outside this
+    # dataclass's own definition and config_hash(): there is no such
+    # reference -- these fields exist for provenance (so a run's
+    # config_hash captures which frozen thresholds were in force), not for
+    # any code path to compare against.
+    #
+    # Coincide by argument, not by default (sign-off record §2.2): each
+    # component clears the same 20%-of-baseline-structure bar because each
+    # carries a comparable build/validation/failure-mode cost.
+    delta_gate3: float = 0.05
+    delta_attention: float = 0.05
+    delta_audio: float = 0.05  # accepted conditionally -- see §2.4(b): Delta_audio
+                                # is not currently computable (A/V sync is a
+                                # documented omission, CC-001 §6(a)); this value is
+                                # fixed in advance should synchronisation ever be
+                                # measured, not an assertion that it will be.
+    delta_latent: float = 0.05  # exploratory status unchanged by acceptance
+    leakage_diagnostic_threshold_nats: float = 0.10  # = 2 x delta_gate3
+
     def config_hash(self):
         """Same pattern as controls/null_input.py's NullInputConfig --
         a short, stable hash of the config's own JSON representation,

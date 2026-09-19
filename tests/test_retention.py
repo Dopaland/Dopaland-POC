@@ -18,7 +18,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-from privacy.retention import RetentionConfig, scan_expired_files, run_retention, NEVER_DELETE_BASENAMES
+from privacy.retention import RetentionConfig, scan_expired_files, run_retention, NEVER_DELETE_BASENAMES, RAW_MEDIA_RETENTION_DAYS
 
 
 def _make_scratch_dir():
@@ -134,6 +134,25 @@ def check_config_hash_reproducible_and_sensitive():
     return (a.config_hash() == b.config_hash() and a.config_hash() != c.config_hash()), (a.config_hash(), c.config_hash())
 
 
+def check_raw_media_retention_days_matches_signoff_and_does_not_leak_into_default():
+    """D0PA1_Client_SignOff_001.md sec5.1 (2026-09-18): RAW_MEDIA_RETENTION_DAYS
+    must equal the accepted 90-day figure, must be config_hash-sensitive when
+    actually used, and -- the important negative check -- RetentionConfig's
+    own bare, zero-argument default must be UNCHANGED by this constant's
+    existence, since that default governs the derived-logs bucket whose own
+    retention the sign-off record explicitly leaves undecided ("no change")."""
+    ok = RAW_MEDIA_RETENTION_DAYS == 90.0
+    bare_default = RetentionConfig()
+    ok = ok and bare_default.retention_days == 365.0  # unchanged -- still the generic placeholder
+    raw_media_cfg = RetentionConfig(retention_days=RAW_MEDIA_RETENTION_DAYS, storage_location="X:\\somewhere_outside_the_repo")
+    ok = ok and raw_media_cfg.config_hash() != bare_default.config_hash()
+    return ok, {
+        "RAW_MEDIA_RETENTION_DAYS": RAW_MEDIA_RETENTION_DAYS,
+        "bare_default_retention_days": bare_default.retention_days,
+        "hashes_differ": raw_media_cfg.config_hash() != bare_default.config_hash(),
+    }
+
+
 def check_cli_requires_explicit_execute_flag():
     """Structural check, not a subprocess run: confirms argparse's --execute is
     store_true (absent by default => dry_run stays True) by reading the module
@@ -155,6 +174,7 @@ if __name__ == "__main__":
         ("real run deletes expired, keeps fresh, logs correctly", check_real_run_deletes_expired_keeps_fresh_and_logs_both_correctly),
         ("missing storage_location -> empty scan, not an error", check_missing_storage_location_returns_empty_not_error),
         ("config_hash reproducible + sensitive to change", check_config_hash_reproducible_and_sensitive),
+        ("RAW_MEDIA_RETENTION_DAYS matches sign-off, doesn't leak into the bare default", check_raw_media_retention_days_matches_signoff_and_does_not_leak_into_default),
         ("CLI requires explicit --execute to disable dry-run", check_cli_requires_explicit_execute_flag),
     ]
     for i, (name, fn) in enumerate(checks, 1):

@@ -6,8 +6,8 @@ frame-by-frame blink count over N one-minute clips. G1: this harness
 computes and reports numbers (event precision/recall/F1, per-clip count
 Bland-Altman). It NEVER compares a computed value to a criterion and
 NEVER returns a pass/fail -- see BlinkPositiveConfig's own docstring for
-where the proposed criterion values live and why they are never read
-back by any function in this file.
+where the client-accepted criterion values (D0PA1_Client_SignOff_001.md
+§3) live and why they are never read back by any function in this file.
 
 3.4 -- SCOPE LIMIT, stated here and repeated in docs/CONTROLS.md: this
 validates blink-count DETECTION only. It establishes no psychological
@@ -54,22 +54,27 @@ from analysis.reliability import compute_bland_altman_pair, plot_bland_altman_sv
 # in time two events must be to count as the same blink), not a verdict.
 # `criterion_event_f1` / `criterion_count_tolerance_fraction` /
 # `criterion_count_min_clips_fraction` are DIFFERENT: they are the
-# PROPOSED pass criterion values, stored here ONLY so they travel with
+# pass criterion values, stored here ONLY so they travel with
 # every report as pre-registered, hashed numbers a human can read
 # alongside the computed metrics. NO function in this file reads them
 # back to make a comparison -- grep this file: there is no
 # `config.criterion_event_f1` reference anywhere outside this dataclass's
 # own definition and its config_hash(). Wiring them in as defaults is
 # this task's explicit instruction; comparing them to anything is not.
+#
+# ACCEPTED by the client, `D0PA1_Client_SignOff_001.md` §3 (2026-09-18) --
+# no value below changed at signature; the values proposed here were
+# accepted exactly as stored. Frozen from that date: not revisable in
+# light of results (§7 of that record).
 # ============================================================
 
 @dataclass(frozen=True)
 class BlinkPositiveConfig:
     matching_tolerance_ms: float = 150.0
 
-    # PROPOSED criterion values (this task's own proposal, not a decision
-    # made by this code) -- stored, hashed, NEVER compared against
-    # anything by any function in this module.
+    # ACCEPTED criterion values (D0PA1_Client_SignOff_001.md §3) -- stored,
+    # hashed, NEVER compared against anything by any function in this
+    # module (G1: a human applies these after collection).
     criterion_event_f1: float = 0.80
     criterion_count_tolerance_fraction: float = 0.20
     criterion_count_min_clips_fraction: float = 0.80  # "at least 8 of 10 clips"
