@@ -412,6 +412,14 @@ def _run_mode_a(video_path, fps):
     calibrator = x_core.NeutralCalibrator()
 
     timeline = []
+    # Per-frame (timestamp, aperture) export -- RETENTION only, not a new
+    # computation: es_components["aperture"] is already computed below on
+    # every frame and was previously discarded once folded into the
+    # window-averaged v_es composite. Collected unconditionally, every
+    # frame, including calibration-phase frames and no-face frames
+    # (aperture_this_frame stays None on the latter) -- a missing frame is
+    # information (G3), never interpolated or dropped.
+    aperture_stream = []
     frame_index = 0
     n_frames_total = 0
     n_frames_face_detected = 0
@@ -445,6 +453,7 @@ def _run_mode_a(video_path, fps):
             window_composite = {"v_bf": None, "v_es": None, "v_pd": None}
             window_covariate = {"v_jc": None, "v_bf_convergence_ratio": None, "v_es_cheek_raise": None}
             window_yaw = None
+            aperture_this_frame = None
 
             if face_result.face_landmarks and face_result.facial_transformation_matrixes:
                 lms = face_result.face_landmarks[0]
@@ -463,7 +472,17 @@ def _run_mode_a(video_path, fps):
                 window_covariate["v_bf_convergence_ratio"] = bf_components["convergence_ratio"]
                 window_covariate["v_es_cheek_raise"] = es_components["cheek_raise"]
                 window_yaw = yaw
+                aperture_this_frame = es_components["aperture"]
                 n_frames_face_detected += 1
+
+            # Retained every frame, unconditionally -- same (t, aperture)
+            # shape stage3_demo_ui.py's own experimental log already uses,
+            # per this task's own instruction to match it rather than
+            # invent a second schema.
+            aperture_stream.append({
+                "t": round(video_time, 3),
+                "aperture": round(aperture_this_frame, 4) if aperture_this_frame is not None else None,
+            })
 
             if pose_result.pose_world_landmarks:
                 world = pose_result.pose_world_landmarks[0]
@@ -519,6 +538,7 @@ def _run_mode_a(video_path, fps):
                 "result": _failed_result(
                     video_path, fps, video_duration_sec, "A_calibrated", "no_frames_readable",
                     ["no frames were read from the video"],
+                    aperture_stream=aperture_stream,
                 ),
             }
         return {
@@ -548,6 +568,7 @@ def _run_mode_a(video_path, fps):
         "result": _ok_result(
             video_path, fps, video_duration_sec, calibrator.reference,
             calibration_frames_total, calibration_frames_detected, timeline,
+            aperture_stream=aperture_stream,
         ),
     }
 
@@ -576,6 +597,7 @@ def _run_mode_b(video_path, fps, fallback_reasons):
     window_acc = episodes.WindowAccumulator()
 
     timeline = []
+    aperture_stream = []  # same retained per-frame export as Mode A -- see that function's own comment
     face_samples = []  # for _detect_face_instability -- position/scale per detected frame
     frame_diag_px = None
     frame_index = 0
@@ -612,6 +634,7 @@ def _run_mode_b(video_path, fps, fallback_reasons):
             window_composite = {"v_bf": None, "v_es": None, "v_pd": None}
             window_covariate = {"v_jc": None, "v_bf_convergence_ratio": None, "v_es_cheek_raise": None}
             window_yaw = None
+            aperture_this_frame = None
             n_faces_this_frame = len(face_result.face_landmarks) if face_result.face_landmarks else 0
 
             if face_result.face_landmarks and face_result.facial_transformation_matrixes:
@@ -631,6 +654,7 @@ def _run_mode_b(video_path, fps, fallback_reasons):
                 window_covariate["v_bf_convergence_ratio"] = bf_components["convergence_ratio"]
                 window_covariate["v_es_cheek_raise"] = es_components["cheek_raise"]
                 window_yaw = yaw
+                aperture_this_frame = es_components["aperture"]
                 n_frames_face_detected += 1
 
                 # Raw (non-pose-normalized) iris midpoint in pixel space --
@@ -656,6 +680,13 @@ def _run_mode_b(video_path, fps, fallback_reasons):
                 v_pd, _pd_components = x_core.compute_v_pd(pd_buffer, nose_pos, shoulder_mid, video_time)
                 window_composite["v_pd"] = v_pd
 
+            # Retained every frame, unconditionally -- same shape/reasoning
+            # as Mode A's own aperture_stream.append() above.
+            aperture_stream.append({
+                "t": round(video_time, 3),
+                "aperture": round(aperture_this_frame, 4) if aperture_this_frame is not None else None,
+            })
+
             # No calibration phase at all: window_composite (raw composite
             # readings) IS what gets windowed directly -- the population-
             # default mean of 0.0 means "deviation from baseline" equals
@@ -680,6 +711,7 @@ def _run_mode_b(video_path, fps, fallback_reasons):
         return _failed_result(
             video_path, fps, video_duration_sec, "B_uncalibrated", "no_frames_readable",
             ["no frames were read from the video"],
+            aperture_stream=aperture_stream,
         )
 
     face_instability = _detect_face_instability(face_samples, frame_diag_px)
@@ -687,6 +719,7 @@ def _run_mode_b(video_path, fps, fallback_reasons):
     return _mode_b_result(
         video_path, fps, video_duration_sec, n_frames_total, n_frames_face_detected,
         timeline, face_instability, fallback_reasons,
+        aperture_stream=aperture_stream,
     )
 
 
@@ -701,7 +734,8 @@ def _honest_framing_note():
 
 
 def _failed_result(video_path, fps, video_duration_sec, mode, failure_code, reasons,
-                    calibration_frames_total=0, calibration_frames_detected=0, reference=None):
+                    calibration_frames_total=0, calibration_frames_detected=0, reference=None,
+                    aperture_stream=None):
     result = {
         "schema_version": SCHEMA_VERSION,
         "record_type": "video_analysis",
@@ -718,6 +752,10 @@ def _failed_result(video_path, fps, video_duration_sec, mode, failure_code, reas
         "aggregates": None,
         "notable_moments": [],
         "honest_framing": {"note": _honest_framing_note()},
+        # Additive (Change 1) -- retained per-frame (t, aperture), never a
+        # new computation. Present even on a failed result (typically
+        # empty, since a hard fail means no frames were read at all).
+        "aperture_stream": aperture_stream if aperture_stream is not None else [],
     }
     if mode == "A_calibrated":
         result["calibration"] = {
@@ -731,11 +769,14 @@ def _failed_result(video_path, fps, video_duration_sec, mode, failure_code, reas
     return result
 
 
-def _ok_result(video_path, fps, video_duration_sec, reference, calibration_frames_total, calibration_frames_detected, timeline):
+def _ok_result(video_path, fps, video_duration_sec, reference, calibration_frames_total, calibration_frames_detected, timeline,
+                aperture_stream=None):
     """MODE A result. Unchanged from Step 1 other than adding the
     top-level "validated": True field (Step 2 puts the same field on
     Mode B's result, set to False, as the single flag downstream code
-    can rely on regardless of mode)."""
+    can rely on regardless of mode) and, this task, the additive
+    "aperture_stream" field (Change 1) -- a retained per-frame export,
+    not a new computed value."""
     valid_windows = [w for w in timeline if not w["low_confidence"]]
     valence_vals = [w["valence_z_es"] for w in valid_windows if w["valence_z_es"] is not None]
     arousal_vals = [w["arousal_z_pd"] for w in valid_windows if w["arousal_z_pd"] is not None]
@@ -794,11 +835,12 @@ def _ok_result(video_path, fps, video_duration_sec, reference, calibration_frame
         "aggregates": aggregates,
         "notable_moments": notable_moments,
         "honest_framing": {"note": _honest_framing_note()},
+        "aperture_stream": aperture_stream if aperture_stream is not None else [],
     }
 
 
 def _mode_b_result(video_path, fps, video_duration_sec, n_frames_total, n_frames_face_detected,
-                    timeline, face_instability, fallback_reasons):
+                    timeline, face_instability, fallback_reasons, aperture_stream=None):
     """MODE B result (Step 2). Field names mirror _ok_result's shape
     where the concept is identical (timestamps, quality flags, notable
     moments), but every VALUE field is named *_relative rather than
@@ -859,6 +901,7 @@ def _mode_b_result(video_path, fps, video_duration_sec, n_frames_total, n_frames
         "aggregates": aggregates,
         "notable_moments": notable_moments,
         "honest_framing": {"note": _honest_framing_note()},
+        "aperture_stream": aperture_stream if aperture_stream is not None else [],
     }
 
 
@@ -1113,6 +1156,7 @@ def _minimal_failed_result(video_path, failure_code, reasons):
         "aggregates": None,
         "notable_moments": [],
         "honest_framing": {"note": _honest_framing_note()},
+        "aperture_stream": [],
     }
 
 
@@ -1136,6 +1180,18 @@ def _analyze_and_report(video_path, force_uncalibrated, use_live):
     except Exception as exc:  # a batch run must survive one bad video -- see docstring
         print(f">>> ERROR: unhandled exception while analyzing {video_path}: {type(exc).__name__}: {exc}")
         return _minimal_failed_result(video_path, "unhandled_exception", [f"{type(exc).__name__}: {exc}"])
+
+
+def aperture_stream_as_tuples(aperture_stream):
+    """Converts this module's own {"t": ..., "aperture": ...} per-sample
+    schema (matching stage3_demo_ui.py's experimental log exactly, per
+    this task's own instruction to match rather than invent a second
+    one) into the (timestamp_seconds, aperture_or_None) tuple list
+    controls.blink_positive.run_detector_on_aperture_stream expects.
+    This is the one, obvious conversion point -- a caller passes
+    result["aperture_stream"] through this and into
+    run_detector_on_aperture_stream with no further reshaping."""
+    return [(sample["t"], sample["aperture"]) for sample in aperture_stream]
 
 
 def _write_result_file(video_path, result):

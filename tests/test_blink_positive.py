@@ -30,7 +30,7 @@ if REPO_ROOT not in sys.path:
 
 from controls.blink_positive import (
     BlinkPositiveConfig, ClipManifestEntry, build_clip_manifest,
-    write_manual_count_template, load_manual_count,
+    write_manual_count_template, load_manual_count, AMBIGUOUS_SECTION_MARKER,
     run_detector_on_aperture_stream, match_events, compute_event_metrics,
     compute_count_agreement, evaluate_one_clip, evaluate_run, format_blink_report,
 )
@@ -57,18 +57,59 @@ def check_manual_count_template_round_trip():
         with open(path, encoding="utf-8") as f:
             raw = f.read()
         has_instructions = "Watch the clip frame by frame" in raw
-        # Simulate a human filling it in: append 3 blink timestamps.
-        with open(path, "a", encoding="utf-8") as f:
-            f.write("counted_by: J. Reviewer\n".replace("counted_by:", "# counted_by:"))
-            f.write("5.2\n12.75\n40.0\n")
+        has_ambiguous_section = AMBIGUOUS_SECTION_MARKER in raw
+        # Simulate a human filling it in: confirmed timestamps go BEFORE
+        # the ambiguous marker the template already ends with, so insert
+        # rather than blindly append -- exactly where a human typing into
+        # the file top-to-bottom would put them.
+        filled = raw.replace(
+            "blink_timestamp_seconds\n",
+            "blink_timestamp_seconds\n5.2\n12.75\n40.0\n",
+            1,
+        ).replace(
+            "# counted_by: <your name or initials>",
+            "# counted_by: J. Reviewer",
+        )
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(filled)
         loaded = load_manual_count(path)
         ok = (
             has_instructions
+            and has_ambiguous_section
             and loaded["clip_id"] == "clip_01"
             and loaded["counted_by"] == "J. Reviewer"
             and loaded["blink_timestamps_seconds"] == [5.2, 12.75, 40.0]
+            and loaded["ambiguous_timestamps_seconds"] == []
         )
-        return ok, {"has_instructions": has_instructions, "loaded": loaded}
+        return ok, {"has_instructions": has_instructions, "has_ambiguous_section": has_ambiguous_section, "loaded": loaded}
+
+
+def check_ambiguous_entries_load_separately_and_never_join_confirmed_count():
+    """The actual point of Change 2: an ambiguous entry must appear in
+    ambiguous_timestamps_seconds and NOWHERE in blink_timestamps_seconds
+    -- not counted as a blink, not counted as a non-blink, just visible."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "clip_02.csv")
+        write_manual_count_template("clip_02", path)
+        with open(path, encoding="utf-8") as f:
+            raw = f.read()
+        filled = raw.replace(
+            "blink_timestamp_seconds\n",
+            "blink_timestamp_seconds\n5.2\n12.75\n",
+            1,
+        ).replace(
+            f"{AMBIGUOUS_SECTION_MARKER}\n",
+            f"{AMBIGUOUS_SECTION_MARKER}\n8.4\n22.0\n33.33\n",
+            1,
+        )
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(filled)
+        loaded = load_manual_count(path)
+        ok = loaded["blink_timestamps_seconds"] == [5.2, 12.75]
+        ok = ok and loaded["ambiguous_timestamps_seconds"] == [8.4, 22.0, 33.33]
+        # None of the ambiguous values leaked into the confirmed list.
+        ok = ok and not (set(loaded["ambiguous_timestamps_seconds"]) & set(loaded["blink_timestamps_seconds"]))
+        return ok, loaded
 
 
 # ============================================================
@@ -267,6 +308,7 @@ if __name__ == "__main__":
     checks = [
         ("CLIP MANIFEST STARTS HONEST (not_yet_recorded, no file_path)", check_clip_manifest_starts_honest),
         ("MANUAL-COUNT TEMPLATE: write/fill/load round-trip", check_manual_count_template_round_trip),
+        ("MANUAL-COUNT TEMPLATE: ambiguous entries load separately, never join confirmed count", check_ambiguous_entries_load_separately_and_never_join_confirmed_count),
         ("EVENT MATCHING: basic + tolerance boundary", check_matching_basic_and_tolerance_boundary),
         ("EVENT MATCHING: diff exactly equal to tolerance is inclusive", check_matching_exact_tolerance_boundary_is_inclusive),
         ("EVENT MATCHING: greedy nearest-neighbor, not first-found", check_matching_greedy_nearest_not_first_found),

@@ -134,24 +134,53 @@ MANUAL_COUNT_TEMPLATE_HEADER = (
     "blink_timestamp_seconds\n"
 )
 
+# The frozen counting rule (BLINK_CONTROL_AND_COMMIT.md) requires ambiguous
+# cases -- partial closures, uncertain single-eye closures, borderline
+# durations -- logged separately and counted as NEITHER a blink nor a
+# non-blink. This second section is appended after the confirmed-blink
+# section so a human fills the file top-to-bottom: confirmed entries
+# first, then ambiguous ones below this marker. Kept as a second plain
+# section rather than a second CSV column so the primary list -- the one
+# most entries go in -- stays exactly as simple as it always was.
+AMBIGUOUS_SECTION_MARKER = "# ambiguous_timestamp_seconds"
+
+MANUAL_COUNT_AMBIGUOUS_SECTION = (
+    "\n"
+    "# AMBIGUOUS cases go below this line, not above it. Same time format as\n"
+    "# above. These are reported but NEVER counted as a blink or a non-blink\n"
+    "# either way -- see the frozen counting rule.\n"
+    f"{AMBIGUOUS_SECTION_MARKER}\n"
+)
+
 
 def write_manual_count_template(clip_id, path):
     """Writes a ready-to-fill CSV template. A human opens this in any text
-    editor or spreadsheet program, adds one row per blink they observe,
-    and saves it -- no code editing required."""
+    editor or spreadsheet program, adds one row per blink they observe
+    under the first header and one row per ambiguous case under the
+    second, and saves it -- no code editing required."""
     with open(path, "w", encoding="utf-8", newline="") as f:
         f.write(MANUAL_COUNT_TEMPLATE_HEADER.format(clip_id=clip_id))
+        f.write(MANUAL_COUNT_AMBIGUOUS_SECTION)
     return path
 
 
 def load_manual_count(path):
     """Reads a filled-in template back. Returns {"clip_id", "counted_by",
-    "blink_timestamps_seconds": sorted list of float}. Lines starting with
-    '#' (including a filled-in 'counted_by:' line) are metadata, not data
-    -- parsed out, not fed to the matcher as a timestamp."""
+    "blink_timestamps_seconds": sorted list of float,
+    "ambiguous_timestamps_seconds": sorted list of float}. Lines starting
+    with '#' are metadata/section markers, not data -- parsed out, not fed
+    to the matcher as a timestamp -- EXCEPT that the exact
+    AMBIGUOUS_SECTION_MARKER line switches every bare-float line after it
+    into ambiguous_timestamps_seconds instead of blink_timestamps_seconds.
+    Ambiguous entries never enter the confirmed list in either direction
+    (Change 2's own point) -- they exist so the ambiguity count is visible
+    and reportable, never so it can be silently folded into a decision
+    either way."""
     clip_id = None
     counted_by = None
     timestamps = []
+    ambiguous_timestamps = []
+    in_ambiguous_section = False
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -163,11 +192,22 @@ def load_manual_count(path):
                 elif line.startswith("# counted_by:"):
                     val = line.split(":", 1)[1].strip()
                     counted_by = val if val and not val.startswith("<") else None
+                elif line == AMBIGUOUS_SECTION_MARKER:
+                    in_ambiguous_section = True
                 continue
             if line == "blink_timestamp_seconds":
                 continue  # header row
-            timestamps.append(float(line))
-    return {"clip_id": clip_id, "counted_by": counted_by, "blink_timestamps_seconds": sorted(timestamps)}
+            value = float(line)
+            if in_ambiguous_section:
+                ambiguous_timestamps.append(value)
+            else:
+                timestamps.append(value)
+    return {
+        "clip_id": clip_id,
+        "counted_by": counted_by,
+        "blink_timestamps_seconds": sorted(timestamps),
+        "ambiguous_timestamps_seconds": sorted(ambiguous_timestamps),
+    }
 
 
 # ============================================================
