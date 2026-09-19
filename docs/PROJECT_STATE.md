@@ -822,6 +822,28 @@ itself supply:**
 
 ### Needs a client decision
 
+**⚠️ Four of the six items below are now CLOSED, per
+`docs/preregistration/D0PA1_Client_SignOff_001.md` (signed 2026-09-18) — kept
+here un-rewritten, as this document's own established practice, with the
+closure recorded here rather than blended into the historical bullets:**
+the δ-threshold/blink-criterion sign-off (§2/§3 of that record — the
+synthetic-recovery threshold and the eight stopping/exclusion rules were
+NOT part of it and remain open), the retention-period/storage-location
+decision (§5 — 90 days, split location; derived-logs retention itself is
+unaddressed, "no change"), and the §19 row 19/23 reclassification (§4,
+confirming what CC-001 §7 proposed — CC-001 ITSELF remains unsigned, a
+separate instrument, see the bullet below). Full implementation detail:
+`simulation/config.py`'s new frozen δ fields, `privacy/retention.py`'s new
+`RAW_MEDIA_RETENTION_DAYS`, `privacy/video_storage_config.py` (new,
+mirroring `privacy/audio_storage_config.py`), and
+`docs/MATRIX_ROW_MAP.md`/the response `.docx`'s updated rows 19/23 and
+counts (now 12/6/11/1). Also applied: §1 of that same record caught and
+fixed a real nats/macro-F1 unit-conversion error in the response's own
+§4.7 leakage-control threshold (was "0.10 macro-F1 points", corrected to
+"0.10 nats" — `δ_Gate3` is defined in nats and the document itself forbids
+converting it to macro-F1), duplicated in `docs/MATRIX_ROW_MAP.md` row 9
+and fixed there too.
+
 - **Second-camera sensor swap** — pending hardware procurement and an FPS feasibility
   test on the actual capture hardware (Decision B); must happen *during* real
   collection or the opportunity is permanently lost.

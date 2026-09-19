@@ -433,14 +433,45 @@ of thing is split into two rows, per this task's own instruction.
   entry since the decision — procure hardware — gates both)
 - Session length and expected ABANDON/NO_ACTION frequency (Decision C) —
   the two largest levers in the D6 precision simulation
-- Sign-off on every proposed threshold (δ_Gate3/δ_attention/δ_audio/δ_latent
-  at 0.05 nats, the blink-positive pass criterion, the synthetic-recovery
-  success threshold, the eight stopping/exclusion rules)
-- The actual retention period and storage location for raw media (both
-  currently engineering placeholders, `docs/PRIVACY_AND_RETENTION.md`)
+- The synthetic-recovery success threshold, and the eight stopping/
+  exclusion rules — **narrowed this task**: δ_Gate3/δ_attention/δ_audio/
+  δ_latent (0.05 nats) and the blink-positive pass criterion were the other
+  two items in this bucket's original "every proposed threshold" wording;
+  both are now closed, see "Done since this list was first written" below
 - The unified raw-media-root proposal (`docs/PRIVACY_AND_RETENTION.md`'s
-  proposed, not decided, pattern)
-- The audio scope change's own §18 change-control sign-off (Task 4 above)
+  proposed, not decided, pattern) — **explicitly left open by the client's
+  own record**, `D0PA1_Client_SignOff_001.md` §6, even though the
+  per-modality retention/location decision it depends on is now made
+- The audio scope change's own §18 change-control sign-off (CC-001 itself,
+  `docs/preregistration/D0PA1_Section18_ChangeControl_Audio_DRAFT.md` §9)
+  — a **different instrument** from `D0PA1_Client_SignOff_001.md`; CC-001's
+  own signature block is still blank. `D0PA1_Client_SignOff_001.md` §4
+  confirms the §19 row 19/23 reclassification CC-001 §7 proposed, which is
+  not the same act as signing CC-001 itself
+
+**Closed this task, `D0PA1_Client_SignOff_001.md` (signed 2026-09-18) —
+removed from the bucket above rather than struck through, since they were
+never a machine-time item:**
+
+- ~~δ_Gate3/δ_attention/δ_audio/δ_latent at 0.05 nats~~ — **ACCEPTED (§2)**,
+  now frozen fields in `simulation/config.py`'s `PreRegisteredConfig`. Also
+  fixed as part of the same record: the response's own §4.7 leakage-control
+  section stated its threshold as "0.10 macro-F1 points" when δ_Gate3 is
+  defined in nats and the document itself forbids that conversion — now
+  corrected, in the response `.docx` and `docs/MATRIX_ROW_MAP.md` row 9, to
+  0.10 nats.
+- ~~The blink-positive pass criterion~~ — **ACCEPTED (§3)**, values
+  unchanged from what `controls/blink_positive.py` already stored (F1≥0.80,
+  count within ±20% on ≥8/10 clips, ±150ms matching tolerance).
+- ~~The actual retention period and storage location for raw media~~ —
+  **DECIDED (§5)**: 90 days (`RAW_MEDIA_RETENTION_DAYS` in
+  `privacy/retention.py`), and a defined folder outside `C:\Dopaland-POC`
+  per modality (`privacy/video_storage_config.py`, new this task, mirroring
+  `privacy/audio_storage_config.py`'s existing pattern). Derived-feature
+  logs' own retention/location is unaddressed by this decision — "no
+  change" per the record's own §5.2 — and remains a placeholder.
+- §19 rows 19 and 23's reclassification — **CONFIRMED (§4)**, applied in
+  `docs/MATRIX_ROW_MAP.md` and the response `.docx`; counts now 12/6/11/1.
 
 ### Needs hardware that does not exist
 
