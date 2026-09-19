@@ -36,19 +36,29 @@ document does not read that as a fresh discrepancy — it was true when
 written, one row moved on a specific, dated, cited basis, and both documents
 were updated together.
 
-**Audio decision recorded (not yet reflected in any status).** The client's
-keep-or-formally-remove decision on Δ_audio has been made — RETAINED,
-acquisition authorised — reversing the sign-off response's own §4.23
-recommendation. This is a substantive scope change against frozen Scope
-v0.5.1 and is drafted for the client's §18 change control as CC-001
-(`docs/preregistration/D0PA1_Section18_ChangeControl_Audio_DRAFT.md`), which
-is PROPOSED and NOT IN FORCE. CC-001 proposes moving rows 19 and 23 off
-DECISION REQUIRED, which would make the counts 12 / 6 / 11 / 1. **That
-reclassification is NOT applied here and must not be applied until the
-client confirms it.** The counts above remain 12 / 6 / 9 / 3, and rows 19
-and 23 remain DECISION REQUIRED. Their rationale text has been corrected to
-state what is factually true as of the audio acquisition build; correcting
-a false statement is not a status change.
+**Superseded a second time, same discipline.** Rows 19 and 23 moved off
+`DECISION REQUIRED` once the client confirmed CC-001's proposed
+reclassification (`D0PA1_Client_SignOff_001.md` §4, 2026-09-18) — see the
+"Audio decision recorded" note below for the full basis. That makes the
+CORRECT current count **12 EVIDENCED, 6 BUILT-NOT-RUN, 11 RETURNED, 1
+DECISION REQUIRED** (still 30). The "12/6/9/3" text two paragraphs above was
+true between the two supersessions; a reader comparing it against the
+actually-current document should read this note, not that one, as current.
+
+**Audio decision recorded, and now CONFIRMED (superseding the note this
+replaces).** The client's keep-or-formally-remove decision on Δ_audio was
+made — RETAINED, acquisition authorised — reversing the sign-off response's
+own §4.23 recommendation, and drafted for the client's §18 change control
+as CC-001 (`docs/preregistration/D0PA1_Section18_ChangeControl_Audio_DRAFT.md`).
+CC-001 proposed moving rows 19 and 23 off `DECISION REQUIRED`; that
+reclassification was **confirmed by the client in
+`docs/preregistration/D0PA1_Client_SignOff_001.md` §4 (signed 2026-09-18)**
+and is applied below. Counts are now **12 / 6 / 11 / 1** — the one remaining
+`DECISION REQUIRED` is row 22 (sensor swap). Row 23 is `RETURNED
+(conditional)`, not plain `RETURNED`, because the synchronisation condition
+in its own row text is unmet and is recorded as a documented omission
+(CC-001 §6(a)) rather than pending work — confirming the reclassification
+does not assert the condition is met.
 
 **Repo status vocabulary** (unchanged from the previous version of this file):
 
@@ -85,11 +95,11 @@ applied — those remain for a human, after sign-off, against real data.
 | 16 | Null-input control | EVIDENCED (updated this task — see note) | IMPLEMENTED, run against real data | Yes | `controls/null_input.py`. **Two distinct real runs now exist and must never be conflated (found and corrected this task):** (a) the **quiet-sitting baseline** — subject present, sitting still, blank screen, 10 real minutes ("PHYSICAL RUN SESSION" task) — this is what the row's own original §4.16 text ("Person still, blank screen") actually specifies, and it produced the real per-signal std/mad_scale dispersion figures (`docs/CLIENT_FIGURES.md` §3), not a genuinely-null result, since a real detected subject was present for part of the run; (b) the **empty-scene control** — camera on, no subject at all, 10 real minutes ("THE LAST GAP BEFORE THE DOCUMENTS GO" task) — a genuinely different, harder test: 0/17,888 frames detected, every signal `insufficient_samples`, `calibration_completed: false` (correctly, post the Task-1.3 calibrator fix), and **zero false-signal events of any kind across an exhaustive per-sample scan** — no face, no pose, no composite/covariate value, no yaw reading, ever, in 10 real minutes. This second run is what the row's own closing sentence ("settles this on genuinely null input") actually asked for, and it had never been run until this task. The V_pd robust-scale figures (1.6e-4 vs SD 2.6e-3, ratio ~16.75) cited in §4.16's own text are from a THIRD, unrelated real session's calibration phase (`docs/RESPONSE_VERIFICATION.md` §2) — not from either control above; the quiet-sitting baseline's own ratio is ≈3.36×, a different number from different data (`docs/CLIENT_FIGURES.md` Task-2 claim 1). |
 | 17 | Negative control | EVIDENCED | IMPLEMENTED-BUT-NEVER-RUN-ON-REAL-DATA (my earlier framing) → revised to IMPLEMENTED | Yes (after revision) | Unaware-caller verification re-confirmed live this session in two separate test files. Revising my earlier framing: this control's entire deliverable (a meaningless signal, wired in automatically) needs no real data to be complete — the response's `EVIDENCED` is the more accurate call, same reasoning as row 13. |
 | 18 | Time-shuffle | BUILT, NOT YET RUN ON REAL DATA | IMPLEMENTED-BUT-NEVER-RUN-ON-REAL-DATA | Yes | `controls/time_shuffle.py`; diagnostic-only stamping confirmed in the output itself, not just documentation. |
-| 19 | Modality ablation | DECISION REQUIRED | BLOCKED-ON-CLIENT-DECISION | Yes | Contingency on Decision A is discharged — the client retained Δ_audio. δ_audio = 0.05 proposed on the same reasoning as the other components, to be revisited once acquisition quality is known, since an unmeasured modality's achievable contribution cannot be sensibly bounded in advance. Note the dependency: the ablation cannot be run until the clock-synchronisation measurement exists (see row 23). Status held at DECISION REQUIRED: a reclassification to RETURNED is proposed in CC-001 and awaits the client's confirmation. |
+| 19 | Modality ablation | RETURNED | DEFINED-NOT-IMPLEMENTED | Yes | **Reclassified from DECISION REQUIRED, confirmed** (`D0PA1_Client_SignOff_001.md` §4, 2026-09-18) — the contingency on Decision A is discharged, the client retained Δ_audio. `δ_audio = 0.05 nats` accepted (§2) on the same reasoning as the other components. Note the dependency, unchanged by the reclassification: the ablation itself cannot be run until a clock-synchronisation measurement exists, and that measurement is now a documented omission (CC-001 §6(a), row 23) — the reclassification reflects the decision and definition being complete, not that the ablation has been run. |
 | 20 | Context stress test | RETURNED | NOT-APPLICABLE-IN-REPO | Yes | Collection-protocol item; nothing to build now. |
 | 21 | Synthetic recovery | EVIDENCED | IMPLEMENTED | Yes (reclassified) | **Resolved.** The response was updated to `EVIDENCED`, accepting the reasoning flagged in the prior version of this file: the row's entire deliverable is a synthetic study by design (per the client's own §10.7), so "never run on real data" was the wrong bar. `simulation/latent_recovery.py` is real, tested code; both metrics (Pearson r, standardised RMSE) are reported across a real sweep. The success-threshold sign-off is separately and correctly still open — a different sub-claim from whether the machinery itself is "done." |
 | 22 | Sensor swap | DECISION REQUIRED | BLOCKED-ON-CLIENT-DECISION | Yes | Pending hardware + FPS feasibility test (Decision B). |
-| 23 | Audio acquisition | DECISION REQUIRED | BLOCKED-ON-CLIENT-DECISION | Yes | Client decision made — Δ_audio RETAINED, acquisition authorised. Acquisition is built and has been exercised against a real microphone: capture thread, per-chunk integrity logging, independent consent (architecturally unreachable when declined), env-var-only storage config, privacy guard and separation guard both extended (`audio_acquisition.py`; `docs/AUDIO_ACQUISITION.md`). **No clock-synchronisation method between audio and video exists** — nine attempts across five sessions did not produce a usable measurement (video-side registration was diagnosed and fixed in the later attempts; audio-side registration still fails, cause not characterised), so no offset, spread or drift figure exists. This is now closed as a documented omission under CC-001 §6(a) (`docs/preregistration/D0PA1_Section18_ChangeControl_Audio_DRAFT.md`), not open work. §4.23's own retention condition is therefore unmet and Δ_audio is not yet computable. No audio FEATURE exists or is planned; `features/audio.py` remains an empty stub. Status held at DECISION REQUIRED: a reclassification to RETURNED (conditional) is proposed in CC-001 (`docs/preregistration/D0PA1_Section18_ChangeControl_Audio_DRAFT.md`) and awaits the client's confirmation. |
+| 23 | Audio acquisition | RETURNED (conditional) | IMPLEMENTED, condition unmet | Yes | **Reclassified from DECISION REQUIRED, confirmed** (`D0PA1_Client_SignOff_001.md` §4, 2026-09-18). Client decision made — Δ_audio RETAINED, acquisition authorised. Acquisition is built and has been exercised against a real microphone: capture thread, per-chunk integrity logging, independent consent (architecturally unreachable when declined), env-var-only storage config, privacy guard and separation guard both extended (`audio_acquisition.py`; `docs/AUDIO_ACQUISITION.md`). **No clock-synchronisation method between audio and video exists** — nine attempts across five sessions did not produce a usable measurement (video-side registration was diagnosed and fixed in the later attempts; audio-side registration still fails, cause not characterised), so no offset, spread or drift figure exists. This is closed as a documented omission under CC-001 §6(a) (`docs/preregistration/D0PA1_Section18_ChangeControl_Audio_DRAFT.md`), not open work. §4.23's own retention condition is therefore unmet and Δ_audio is not yet computable — which is exactly why the confirmed status is `RETURNED (conditional)`, not plain `RETURNED`: the reclassification reflects the client's decision, not satisfaction of the row's own condition. No audio FEATURE exists or is planned; `features/audio.py` remains an empty stub. |
 | 24 | LLM read | EVIDENCED | IMPLEMENTED | Yes | Prompt-content claim (z-scores + label + fixed text only) re-verified against the real logged exchange in `docs/PRIVACY_EVIDENCE.md` §4. |
 | 25 | V_es / V_pd wording | RETURNED | IMPLEMENTED | Yes | Exact required phrase codified in CLAUDE.md and shown in real use. Arguably `EVIDENCED` by the row-5/10 standard — same minor inconsistency noted there, not re-flagged separately. |
 | 26 | A-column verification | EVIDENCED | IMPLEMENTED | Yes | "9 VERIFIED, 2 PARTIAL, 0 NOT FOUND" re-confirmed exactly against `docs/AUDIT_A_COLUMN.md`. |
