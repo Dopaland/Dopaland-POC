@@ -321,6 +321,17 @@ down / look up" sequence — exactly what `orientation_capture.py` is built to p
 and exactly the physical-run item already listed as outstanding in
 `docs/PROJECT_STATE.md`.
 
+**Note (2026-09-24) — the three `Downloads\*.mp4` files above no longer exist.**
+They, together with the four screen recordings and their eight preview images in
+`%LOCALAPPDATA%\StreamingVideoProvider\screenrec\Records\` (fifteen files,
+954,226,695 bytes), were deleted on 2026-09-24 before this rented machine was
+returned. Deletion ran via `privacy/retention.py --retention-days 0 --execute`
+against a dedicated staging folder containing those fifteen files and nothing else.
+Each deletion is recorded with path, size and SHA256 in `logs/deletion_log.jsonl`
+(config hash `7d5558d40bff6157`). **The sampling results above can no longer be
+re-run.** The "1/9" file was never identified by name, and none of these files was
+established to be face-free — which is why they were deleted rather than kept.
+
 **What *is* available, and was used instead, is real archived measurement data
 already committed to this repository** — not raw video, but the actual numeric output
 of processing real footage, which is what the noise-floor/range questions need
