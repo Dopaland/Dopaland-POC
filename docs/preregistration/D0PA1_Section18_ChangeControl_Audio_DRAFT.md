@@ -33,7 +33,8 @@ The client's decision was the opposite: **Δ_audio is RETAINED, and audio
 acquisition is authorised.**
 
 This reverses the vendor's own written recommendation and alters the modality set
-of a frozen scope document.
+of a frozen scope document. (Vendor and client here are the same party; that is recorded
+in §9.1.)
 
 ---
 
@@ -85,7 +86,7 @@ The engineering documents record that the change exists and what it produced.
 
 ---
 
-## 6. What this change does *not* yet satisfy
+## 6. What this change does *not* satisfy
 
 The response's own §4.23 set two conditions for retention. Their current state:
 
@@ -127,9 +128,11 @@ INSTRUMENT ONLY.**
 The logging exists; no session has been collected under it.
 
 **Consequence, stated plainly:** the acquisition build does not on its own lift
-§10.9's disqualification. Until (a) is satisfied, **Δ_audio cannot be computed**,
-and retention buys a capability that is not yet usable. This record authorises the
-change; it does not claim the modality is ready.
+§10.9's disqualification. With (a) unmet — closed as a documented omission, with no work
+planned to meet it — **Δ_audio cannot be computed**, and retention buys a capability that
+is not usable in this engagement as it stands. A synchronisation measurement in a later
+phase, with different equipment, is not ruled out; it is simply not pending. This record
+authorises the change; it does not claim the modality is ready.
 
 ---
 
@@ -203,9 +206,11 @@ here.
 
 ## Appendix — CC-001-A: the sync measurement, closed as a documented omission
 
-**Closed.** Nine attempts across five sessions; see §6(a). The completion test defined here —
-a reported offset with a stated spread across ≥ 20 matched events plus a drift estimate — was
-not met: the best attempt produced 6 matched events of 20, the final attempt 2 of 20.
+**Closed.** Nine attempts across five sessions; see §6(a). The completion test is defined in
+`docs/D0PA1_PENDING_CLOSURE_PACK.md` §D.5, and in this appendix as first committed (`e724167`).
+Its measurement branch — in summary, a reported offset with a stated spread across ≥ 20 matched
+events plus a drift estimate — was not met: the best attempt produced 6 matched events of 20,
+the final attempt 2 of 20.
 
 The alternative outcome this appendix allowed for — "an explicit statement that the
 measurement failed again and why" — is what was delivered, with the qualification that the *why* is
