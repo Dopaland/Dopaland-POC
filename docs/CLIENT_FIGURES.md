@@ -492,7 +492,11 @@ never a machine-time item:**
 
 - D3/D7's three-session, fixed-protocol, matched-unit reliability data
   (the subject-time half of the split item above)
-- 10 real one-minute blink clips + manual frame-by-frame counts
+- 10 real one-minute blink clips + manual frame-by-frame counts. **Update
+  2026-09-25: clips recorded (ten subjects); the blind manual count was not
+  made. The control is not run in this engagement, by the human's decision.**
+  §19 row 15 stays BUILT-NOT-RUN with no result of any kind. It remains
+  runnable later (see `docs/MATRIX_ROW_MAP.md` row 15).
 - Cross-person confirmation of the pitch/ROI finding (the same ≥8-person
   Gate-2-style protocol already specified in `docs/ROI_FEASIBILITY.md` §6)
 

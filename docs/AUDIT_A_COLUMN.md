@@ -135,6 +135,7 @@ verification events.
 - **Artefact:** `logs/experimental_signals_log.jsonl` (128 records, spanning 2026-08-09 to 2026-08-15). This is a **real artefact from real camera sessions** — but it entirely **predates** this session's fix. Checked programmatically: **all 128 records report `blink.rate_per_min` as either `0.0` or `null`. Zero records show a nonzero blink rate.**
 - **What's missing:** a persisted log entry, generated on a real camera after the fix, showing a nonzero blink count. I do not have camera access in this environment to produce one myself. The fix is reasoned and simulation-tested (synthetic aperture sequences matching the evidence you supplied reproduce exactly 1 confirmed blink per real dip, and 0 false positives sitting still) — but "I ran synthetic Python sequences" is not the artefact standard this audit is holding everything else to, and I'm not going to pretend it is. **Reclassify as not-yet-demonstrated until a live run produces a post-fix log entry.**
 - **Now having a commit hash (`1854609`) does not change this.** The hash proves the fixed code is real and pinned; it does not supply the missing artefact. **Status remains PARTIAL.**
+- **Update 2026-09-25: still PARTIAL, and the reason is now known rather than pending.** The artefact this item lacks would have come from the blink positive control (§19 row 15), which the human decided not to run in this engagement, because the blind manual count was not made (see `docs/MATRIX_ROW_MAP.md` row 15). The per-frame aperture stream was demonstrated on real footage (`P01_clip01`), but that validates the input stream, not blink detection. No post-fix, real-camera blink count exists. **Status: PARTIAL.**
 
 ### 8. Coarse left/right/centre gaze orientation (flagged experimental / unvalidated)
 
@@ -145,6 +146,7 @@ verification events.
 - **Artefact:** the same `logs/experimental_signals_log.jsonl`. One representative window record shows `label_counts: {LEFT: 2, RIGHT: 5, CENTER: 334, UNKNOWN: 12}` — real variety across all four labels, including `UNKNOWN` firing (the glasses/occlusion path is demonstrably reachable on real data). This is genuine evidence the **mechanism** works on a real camera.
 - **What's missing:** every one of those 128 records predates the sign fix, so they demonstrate the label mechanism working, but under the **mirrored** mapping. No log entry exists yet confirming the corrected (person's-own-left-reads-"LEFT") mapping on real camera data. Same caveat as Item 7 — verified in isolated synthetic tests only.
 - **Now having a commit hash (`1854609`) does not change this.** Same reasoning as Item 7. **Status remains PARTIAL.**
+- **Update 2026-09-25: still PARTIAL, and never contingent on §19 row 15.** A task prompt recorded in `BLINK_CONTROL_AND_COMMIT.md` described Items 7 and 8 as both held at PARTIAL pending the blink positive control. That is accurate for Item 7 only: the blink control never exercises gaze. This item's missing artefact, a real-camera log confirming the corrected left/right mapping, is unchanged by row 15 not being run, and would need its own directed capture. **Status: PARTIAL.**
 
 ### 9. Consent + opt-out step
 

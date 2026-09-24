@@ -536,6 +536,20 @@ that "it probably didn't matter."
 
 ### Needs a physical run — THREE items actually run this phase ("PHYSICAL RUN SESSION")
 
+**⚠️ Blink positive control (§19 row 15): NOT RUN in this engagement, the human's decision
+(2026-09-25).** This supersedes every "zero real clips exist" statement in this section and in
+the retained prior-phase framing below. Those are kept un-rewritten, as this document's
+practice. The control was built and demonstrated as far as the aperture stream:
+- ten clips from ten subjects recorded (kept outside the repo under retention);
+- runner committed (`739fa48`) and aperture export committed (`beb8843`);
+- aperture path shown on real footage (`P01_clip01`, 98.15% non-`None`, SD 0.0371). That
+  validates the input stream, **not** blink detection.
+
+The blind manual count was not made, so no result exists: no PASS, no FAIL, no partial.
+No automated count was substituted (it would make the pipeline score itself; see
+`docs/MATRIX_ROW_MAP.md` row 15). Row 15 stays BUILT-NOT-RUN, the signed criterion stays
+frozen, and the control remains runnable later.
+
 **Task 0 gate result, stated first because it governs everything below:**
 the microphone-content-access block found last phase (exact 16-bit
 quantization floor / exact digital zero regardless of real noise) is
