@@ -865,7 +865,8 @@ and fixed there too.
   `docs/preregistration/D0PA1_Section18_ChangeControl_Audio_DRAFT.md`), reversing
   the sign-off response's own recommendation to formally remove `Δ_audio`.
   Drafted; awaiting vendor review, a cost-and-schedule figure (§8, deliberately
-  left blank pending the vendor), and Gargi's signature. **Its consequence is
+  left blank pending the vendor), and a client-side signature by DOPALAND, the same
+  party as the vendor; that limitation is disclosed in CC-001 §9.1. **Its consequence is
   blocking, stated plainly so it is not read as a formality**: even once signed,
   retention alone does not lift §10.9's disqualification — that needs the
   clock-synchronisation measurement between audio and video (CC-001-A, the

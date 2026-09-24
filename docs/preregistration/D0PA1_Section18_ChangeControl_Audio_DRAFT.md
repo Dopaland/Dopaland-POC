@@ -166,7 +166,33 @@ contractual.
 | Role | Name | Signature | Date |
 |---|---|---|---|
 | Vendor — proposed | | | |
-| Client — accepted | Gargi | | |
+| Client — accepted | DOPALAND | | |
+
+### 9.1 Signing capacity — a disclosed limitation
+
+**Proposer and signer are the same party.** This record is raised by the vendor (modeller) and
+accepted client-side by DOPALAND, which is the same solo operation. The governing documents
+assume those are different parties, and here they are not.
+
+This is recorded rather than obscured. A solo vendor cannot supply an independent signer, and
+the honest response is to state the constraint — the same basis on which the held-out blinding
+limitation is recorded.
+
+**No precedent is claimed for this.** `D0PA1_Client_SignOff_001.md` was also signed client-side
+by the same party, but its capacity note states that proposer and signer are different parties.
+That statement is inaccurate as applied. It is recorded as a correction rather than relied on
+here.
+
+**What this signature does and does not carry:**
+
+- It **authorises** the audio acquisition work described in §4, which was built under a client
+  decision and until now had no change-control record. Leaving it unsigned would mean the build
+  stands on no authorising document at all — the drift §18 exists to prevent.
+- It **adds nothing to the status of §19 rows 19 and 23.** Their reclassification was recorded
+  in `D0PA1_Client_SignOff_001.md` §4 and applied in `docs/MATRIX_ROW_MAP.md` at commit
+  `00d3a92`. This record neither confirms nor reopens them; they stand or fall on that record.
+- It does **not** assert that Δ_audio is computable. §6(a) stands: synchronisation is a
+  documented omission, and §10.9's condition is not lifted.
 
 **Nothing in this record is confirmed by appearing in it.**
 

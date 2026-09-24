@@ -2,7 +2,7 @@
 
 **CC-002 · Audio-derived terminal interpretation (demonstration and interface only)**
 
-> **STATUS: DRAFT — PROPOSED, NOT IN FORCE.** Nothing here takes effect by appearing in it.
+> **STATUS: PROPOSAL PHASE — HELD. Not submitted for signature, not withdrawn, not in force.**
 > In force only once signed under §18 (§10 below).
 >
 > **Origin, stated plainly:** this is a **vendor-originated proposal**, not a client request.
@@ -22,7 +22,7 @@
 | Frozen document affected | `D0PA1 POC Scope & Acceptance v0.5.1` |
 | Related | CC-001 (audio retention); `docs/AUDIO_ACQUISITION.md` scope line |
 | Date raised | 2026-09-16 |
-| Status | PROPOSED |
+| Status | PROPOSAL PHASE — HELD |
 
 ---
 
@@ -131,9 +131,16 @@ one — offered as a suggestion, not a selection.
 ## 8. What this does not unblock
 
 CC-001's outstanding condition is unchanged: **no clock-synchronisation method between audio
-and video exists.** Five measurement attempts across two sessions failed on the video side; no
-offset, spread or drift figure exists. Alignment of any audio-derived value to video or action
-timestamps remains impossible until that is measured.
+and video exists.** CC-001 §6(a) records it as closed as a documented omission: "Nine attempts
+across five sessions did not produce a usable measurement."
+
+The direction of that finding matters. **The video side is solved**: in CC-001 §6(a)'s words,
+"Nineteen of nineteen evaluable emissions register cleanly at 19×–72× the detection threshold",
+the mechanism being flash duration against the camera's exposure period. **The audio side
+fails, and the cause is not characterised**, because "the stimulus and the onset detector
+changed together at attempt 6", and "no attempt isolates one from the other". No offset, spread
+or drift figure exists. Alignment of any audio-derived value to video or action timestamps
+remains impossible until that is measured.
 
 For a terminal display this matters less than it would for a model input — but it must not be
 described as resolved.
@@ -150,14 +157,27 @@ quantify it here. **Quantify before signature, not after.**
 
 ---
 
-## 10. Sign-off
+## 10. Status and sign-off
+
+**This record is held at proposal phase.** It is not submitted for signature and it is not
+withdrawn. It is a vendor-originated idea, recorded so it exists in the change-control trail
+rather than in a conversation, and parked until there is a reason to raise it.
+
+Holding it costs nothing. Nothing in the pre-registration depends on it, no §19 row is blocked
+by it, and CC-001 is unaffected by its status either way.
+
+**Deliberately not submitted alongside CC-001.** CC-001 authorises work that already exists and
+had to be recorded. This is a vendor proposal for new capability. Sending them together would
+invite the necessary record to be read as opportunistic, which would not serve either of them.
+
+If it is ever raised for decision, the signature block below applies unchanged, and the privacy
+and consent change in §6 is the part that needs answering first.
 
 | Role | Name | Signature | Date |
 |---|---|---|---|
 | Vendor — proposed | | | |
-| Client — accepted / declined | Gargi | | |
+| Client — accepted / declined | | | |
 
-**Declining this is a perfectly good outcome.** It costs the engagement nothing: no dependency
-in the pre-registration rests on it, and no §19 row is blocked by it.
+**Declining this is a perfectly good outcome.** It costs the engagement nothing.
 
 **Nothing in this record is confirmed by appearing in it.**
