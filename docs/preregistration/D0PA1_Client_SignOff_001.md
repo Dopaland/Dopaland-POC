@@ -209,3 +209,22 @@ and everything downstream of the harness.
 **Nothing in this record is in force by appearing in it.** On signature, the items in §2–§5
 become the pre-registered, frozen values for this study: set before collection, applied by a
 human after it, and not revisable in light of results.
+
+---
+
+## Erratum — added 2026-09-25, after signature
+
+**The capacity note in this record is inaccurate as applied.** It states that proposer and
+signer are different parties. They are not: the values were proposed by the vendor (modeller)
+and this record was signed by DOPALAND, which is the same solo operation. A solo vendor cannot
+supply an independent signer.
+
+This is stated here rather than by amending the text above, which is signed and is not edited
+after the fact. The same limitation is disclosed in CC-001 §9.1, and both are recorded in
+`docs/CLIENT_FIGURES.md` §10.
+
+**Date discrepancy.** This record dates itself 2026-09-18 in its header and status line, and
+2026-09-19 in its signature row. The correct date is 2026-09-19.
+
+Nothing else in this record changes. The values in §2–§5 remain the frozen, pre-registered
+values, set before collection and applied by a human after it.
