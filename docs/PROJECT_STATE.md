@@ -869,12 +869,13 @@ and fixed there too.
   party as the vendor; that limitation is disclosed in CC-001 §9.1. **Its consequence is
   blocking, stated plainly so it is not read as a formality**: even once signed,
   retention alone does not lift §10.9's disqualification — that needs the
-  clock-synchronisation measurement between audio and video (CC-001-A, the
-  light-flash sync re-attempt, itself unrun), which does not exist. `Δ_audio` is
-  not yet computable regardless of what has been built. The draft also proposes
-  a consequential §19 matrix reclassification (rows 19/23 off `DECISION
-  REQUIRED`) — **proposed only, not applied to `docs/MATRIX_ROW_MAP.md`**, since
-  that requires the client's confirmation, not a repository edit.
+  clock-synchronisation measurement between audio and video (CC-001-A, now
+  closed as a documented omission — see CC-001 §6(a)), which does not exist.
+  `Δ_audio` is not yet computable regardless of what has been built. The
+  consequential §19 matrix reclassification (rows 19/23 off `DECISION REQUIRED`)
+  was **confirmed in `D0PA1_Client_SignOff_001.md` §4 and applied to
+  `docs/MATRIX_ROW_MAP.md` at `00d3a92`**; CC-001 §7 documents it, and signing
+  CC-001 adds nothing to it (§9.1).
 
 ---
 

@@ -133,17 +133,20 @@ change; it does not claim the modality is ready.
 
 ---
 
-## 7. Consequential matrix reclassification — proposed, requires client confirmation
+## 7. Consequential matrix reclassification — confirmed and applied (documented here, not requested)
 
-The client's decision resolves two rows that the response recorded as awaiting it.
-The vendor proposes, the client confirms; these are **not applied** until signed.
+The client's decision resolves two rows that the response recorded as awaiting it. That
+reclassification was **confirmed in `D0PA1_Client_SignOff_001.md` §4** and **applied at commit
+`00d3a92`** (`docs/MATRIX_ROW_MAP.md` rows 19 and 23 and its count line, plus the response
+`.docx`). This record documents the consequence; it does not request it, and signing this record
+adds nothing to it (§9.1).
 
-| Row | Current | Proposed | Basis |
+| Row | Before | After (confirmed) | Basis |
 |---|---|---|---|
-| 19 · Modality ablation | DECISION REQUIRED | RETURNED | Contingency on Decision A is discharged. `δ_audio = 0.05` proposed on the same reasoning as the other components, to be revisited once acquisition quality is known — an unmeasured modality's achievable contribution cannot be sensibly bounded in advance. |
+| 19 · Modality ablation | DECISION REQUIRED | RETURNED | Contingency on Decision A is discharged. `δ_audio = 0.05` nats (accepted, conditional, in `SignOff_001` §2) is set on the same reasoning as the other components, to be revisited once acquisition quality is known — an unmeasured modality's achievable contribution cannot be sensibly bounded in advance. |
 | 23 · Audio acquisition | DECISION REQUIRED | RETURNED *(conditional)* | Acquisition is built and has been exercised against a real microphone. The sync measurement under §6(a) is now closed as a documented omission, not outstanding work — the condition remains unmet, and no further attempt is proposed. Not EVIDENCED, because the condition the row's own text sets is unmet. |
 
-**Resulting §19 counts if confirmed:**
+**Resulting §19 counts, as recorded in `docs/MATRIX_ROW_MAP.md`:**
 12 EVIDENCED · 6 BUILT, NOT YET RUN ON REAL DATA · **11** RETURNED · **1** DECISION
 REQUIRED (row 22, sensor swap) — 30 rows, none unassigned.
 
