@@ -457,7 +457,7 @@ of thing is split into two rows, per this task's own instruction.
   confirms the §19 row 19/23 reclassification CC-001 §7 proposed, which is
   not the same act as signing CC-001 itself
 
-**Closed this task, `D0PA1_Client_SignOff_001.md` (signed 2026-09-18) —
+**Closed this task, `D0PA1_Client_SignOff_001.md` (signed 2026-09-19) —
 removed from the bucket above rather than struck through, since they were
 never a machine-time item:**
 

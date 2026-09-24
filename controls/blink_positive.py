@@ -62,7 +62,7 @@ from analysis.reliability import compute_bland_altman_pair, plot_bland_altman_sv
 # own definition and its config_hash(). Wiring them in as defaults is
 # this task's explicit instruction; comparing them to anything is not.
 #
-# ACCEPTED by the client, `D0PA1_Client_SignOff_001.md` §3 (2026-09-18) --
+# ACCEPTED by the client, `D0PA1_Client_SignOff_001.md` §3 (2026-09-19) --
 # no value below changed at signature; the values proposed here were
 # accepted exactly as stored. Frozen from that date: not revisable in
 # light of results (§7 of that record).

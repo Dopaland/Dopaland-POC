@@ -135,7 +135,7 @@ def check_config_hash_reproducible_and_sensitive():
 
 
 def check_raw_media_retention_days_matches_signoff_and_does_not_leak_into_default():
-    """D0PA1_Client_SignOff_001.md sec5.1 (2026-09-18): RAW_MEDIA_RETENTION_DAYS
+    """D0PA1_Client_SignOff_001.md sec5.1 (2026-09-19): RAW_MEDIA_RETENTION_DAYS
     must equal the accepted 90-day figure, must be config_hash-sensitive when
     actually used, and -- the important negative check -- RetentionConfig's
     own bare, zero-argument default must be UNCHANGED by this constant's

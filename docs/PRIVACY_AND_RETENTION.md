@@ -61,7 +61,7 @@ checkout's actual `logs/` path) exist so the mechanism above is testable end-to-
 
 ---
 
-## DECIDED — `D0PA1_Client_SignOff_001.md` §5 (2026-09-18)
+## DECIDED — `D0PA1_Client_SignOff_001.md` §5 (2026-09-19)
 
 **This section supersedes, for RAW MEDIA specifically, the two "not yet implemented"
 items that used to head this list.** The scope of the decision is precise and must not
@@ -137,7 +137,7 @@ described further below, unaddressed, "no change" per the sign-off record's own 
 ## Named open item: raw media of BOTH kinds has no decided, documented home (Task 4, "ENVIRONMENT AUDIT, SYNC MEASUREMENT, G5 RIPPLE CHECK")
 
 **Superseded for the LOCATION half, by `D0PA1_Client_SignOff_001.md` §5.2
-(2026-09-18) — see "DECIDED" above.** Video now has its own module,
+(2026-09-19) — see "DECIDED" above.** Video now has its own module,
 `privacy/video_storage_config.py`, matching audio's env-var-only,
 raises-if-unset pattern exactly. The section immediately below is the
 historical record of the gap as that earlier task found it (video on a

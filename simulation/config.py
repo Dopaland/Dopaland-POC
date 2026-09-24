@@ -101,7 +101,7 @@ class PreRegisteredConfig:
     baseline_rolling_window_sessions: int = 3
 
     # ACCEPTED by the client, `docs/preregistration/D0PA1_Client_SignOff_001.md`
-    # §2 (2026-09-18) -- the four component decision thresholds and the
+    # §2 (2026-09-19) -- the four component decision thresholds and the
     # leakage diagnostic threshold, all in NATS (the study's primary metric
     # is negative multiclass log loss; converting a nats-derived threshold
     # to macro-F1 is explicitly forbidden by the sign-off response §4.7 --

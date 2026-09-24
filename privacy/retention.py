@@ -57,7 +57,7 @@ DEFAULT_DELETION_LOG_PATH = os.path.join(REPO_ROOT, "logs", "deletion_log.jsonl"
 # deletions would defeat the point of keeping one).
 NEVER_DELETE_BASENAMES = {"deletion_log.jsonl", "variant_log.jsonl"}
 
-# ACCEPTED by the client, D0PA1_Client_SignOff_001.md sec5.1 (2026-09-18): the
+# ACCEPTED by the client, D0PA1_Client_SignOff_001.md sec5.1 (2026-09-19): the
 # retention period for RAW MEDIA specifically -- video, and audio if any is
 # ever recorded. NOT a decision about derived-feature logs' own retention,
 # which remains unaddressed (see module docstring / docs/PRIVACY_AND_RETENTION.md

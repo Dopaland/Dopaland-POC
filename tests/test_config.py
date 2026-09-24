@@ -33,7 +33,7 @@ def check_models_sources_eps_from_config():
 
 
 def check_client_accepted_thresholds_load_bearing_and_correct():
-    """D0PA1_Client_SignOff_001.md #2 (2026-09-18): delta_gate3,
+    """D0PA1_Client_SignOff_001.md #2 (2026-09-19): delta_gate3,
     delta_attention, delta_audio, delta_latent (0.05 nats each) and
     leakage_diagnostic_threshold_nats (0.10 nats = 2x delta_gate3) must be
     real, hashed fields -- same standard as every other PreRegisteredConfig

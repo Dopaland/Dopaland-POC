@@ -7,7 +7,7 @@ been decided anywhere in this repository -- `docs/PRIVACY_AND_RETENTION.md`
 named that gap explicitly and proposed, but did not implement, a UNIFIED
 raw-media-root variable covering both modalities.
 
-`D0PA1_Client_SignOff_001.md` §5.2 (2026-09-18) decides the POLICY -- raw
+`D0PA1_Client_SignOff_001.md` §5.2 (2026-09-19) decides the POLICY -- raw
 media (video, and audio if any is recorded) lives in a defined folder
 OUTSIDE `C:\\Dopaland-POC` for the 90-day retention period (§5.1) -- without
 deciding the unification question, which §6 of that same record explicitly

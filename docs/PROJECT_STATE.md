@@ -823,7 +823,7 @@ itself supply:**
 ### Needs a client decision
 
 **⚠️ Four of the six items below are now CLOSED, per
-`docs/preregistration/D0PA1_Client_SignOff_001.md` (signed 2026-09-18) — kept
+`docs/preregistration/D0PA1_Client_SignOff_001.md` (signed 2026-09-19) — kept
 here un-rewritten, as this document's own established practice, with the
 closure recorded here rather than blended into the historical bullets:**
 the δ-threshold/blink-criterion sign-off (§2/§3 of that record — the
