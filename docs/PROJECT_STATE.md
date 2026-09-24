@@ -831,8 +831,12 @@ synthetic-recovery threshold and the eight stopping/exclusion rules were
 NOT part of it and remain open), the retention-period/storage-location
 decision (§5 — 90 days, split location; derived-logs retention itself is
 unaddressed, "no change"), and the §19 row 19/23 reclassification (§4,
-confirming what CC-001 §7 proposed — CC-001 ITSELF remains unsigned, a
-separate instrument, see the bullet below). Full implementation detail:
+confirming what CC-001 §7 proposed — CC-001 itself is a separate
+instrument, see the bullet below). **CC-001 was then signed on 2026-09-25**,
+client-side by DOPALAND, the same party as the vendor (CC-001 §9.1). It was
+signed **without a cost or schedule figure**: its §8 records the impact as
+unquantified and open, so that part of the bullet below is still outstanding.
+Full implementation detail:
 `simulation/config.py`'s new frozen δ fields, `privacy/retention.py`'s new
 `RAW_MEDIA_RETENTION_DAYS`, `privacy/video_storage_config.py` (new,
 mirroring `privacy/audio_storage_config.py`), and
@@ -861,7 +865,9 @@ and fixed there too.
 - **The actual retention period and storage location** (`docs/PRIVACY_AND_RETENTION.md`)
   — the mechanism is built and defaults to dry-run; both values are engineering
   placeholders, not proposed policy.
-- **CC-001 — the §18 change control for audio retention** (draft at
+- *(Signed 2026-09-25, without a cost figure; see the note at the top of this
+  section. Kept below un-rewritten.)*
+  **CC-001 — the §18 change control for audio retention** (draft at
   `docs/preregistration/D0PA1_Section18_ChangeControl_Audio_DRAFT.md`), reversing
   the sign-off response's own recommendation to formally remove `Δ_audio`.
   Drafted; awaiting vendor review, a cost-and-schedule figure (§8, deliberately

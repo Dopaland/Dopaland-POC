@@ -414,15 +414,16 @@ record itself — that distinction still holds (the same one
 `docs/preregistration/README.md` draws between a dated commit recording a
 change and the client's own sign-off process for it), but it is no longer
 quite accurate to call the change-control record "a separate, not-yet-done
-step" with nothing behind it. **A draft now exists**, at
+step" with nothing behind it. **The record exists**, at
 `docs/preregistration/D0PA1_Section18_ChangeControl_Audio_DRAFT.md`
-(reference CC-001) — proposed by the vendor, **not reviewed, not signed,
-not in force**. Its §8 cost-and-schedule impact section is deliberately
-left blank pending the vendor, per its own stated discipline (a change
-control signed with an empty impact field is how unpriced work becomes
-contractual). **The client's own §18 process has still not run** — nothing
-in the draft takes effect by existing, and this sentence should not be
-read as claiming otherwise.
+(reference CC-001). It was proposed by the vendor and **signed on 2026-09-25,
+and is in force**: the client's §18 process has now run. Two limitations
+apply, both disclosed in the record itself. It was signed client-side by
+DOPALAND, the same party as the vendor (§9.1), so no independent review
+took place. And it was signed **without a cost or schedule figure**: its §8
+records the impact as unquantified and open, which is exactly the risk that
+section had warned against. Signing authorises the acquisition build; it
+does not make `Δ_audio` computable (§6(a) stands).
 
 ---
 

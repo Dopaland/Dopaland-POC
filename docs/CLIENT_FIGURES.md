@@ -273,14 +273,14 @@ additional retraction.
 | 8 | Pitch "stayed ~0.1°" on a "verified" maximal chin-to-chest look-down — described as structural, unfixable | Real graded maximal attempts (this engagement, "PHYSICAL RUN SESSION" task) register pitch up to −43.1°; the "verified" claim had no documented verification method anywhere, was numerically inconsistent (~0.1° vs. a separately-measured ≤4.4°), and the investigation that produced the ≤4.4° figure explicitly declined to rule out the subject simply not moving enough. **See the detailed answer below** | Multi-session: first flagged as unverifiable (`docs/ROI_FEASIBILITY.md` §2.4a, "PITCH: SEPARATE THE FINDING FROM ITS EXPLANATION" task), then directly refuted by real data — **and its full reach was itself only found in a later pass, see below** | At the time this row was first written: never (`CLAUDE.md` and `docs/PROJECT_STATE.md` both carried it, neither client-facing). **That was incomplete** — it also lived in `D0PA1_Section19_SignOff_Response.docx` §4.14 and `D0PA1_Build_Status_Report.docx` §5.4, both client-facing and both unsent. Still never sent; the finding was that the correction's own reach was underestimated, not that the claim reached the client. |
 | 9 | A logged audio level (`peak_abs ≈3.05e-5`) was "genuine captured evidence... real (very quiet) room level" | That exact value is the 16-bit PCM quantization floor an OS-blocked/silent stream returns — very likely the same artefact, not real ambient sound | Found by testing microphone content access directly the following session (two mics, two host APIs, all returning exact zero or the same floor) | `docs/AUDIO_ACQUISITION.md` §7.3 | Never |
 | 10 | The quiet-sitting-subject-present run was called "the null-input control" | It required a present human by the module's own design; a true null/empty-scene input is a different, still-outstanding question (§4 above) | This engagement's own "AFTER THE PHYSICAL RUN" task, Task 3.1 | Never |
-| 11 | `D0PA1_Client_SignOff_001.md`'s capacity note: "Proposer and signer are different parties, which is the structure the governing documents assume." | The record was signed `DOPALAND, by Debanjan Das`, and DOPALAND is the same solo operation as the vendor, so proposer and signer were the same party. **The document itself is not edited.** The correction is recorded here, and CC-001 §9.1 states the limitation explicitly rather than repeating the claim | Found 2026-09-25 while drafting CC-001 §9.1: a proposed §9.1 cited `SignOff_001` as precedent for disclosed same-party signing, and checking it against the source found that the source states the opposite | Not established. `SignOff_001` is itself the client-side record, and `docs/preregistration/README.md`'s "What has been SENT to the client" does not list it either way |
+| 11 | `D0PA1_Client_SignOff_001.md`'s capacity note: "Proposer and signer are different parties, which is the structure the governing documents assume." | The record was signed `DOPALAND, by Debanjan Das`, and DOPALAND is the same solo operation as the vendor, so proposer and signer were the same party. **The document itself is not amended; an erratum was appended after signature.** The correction is recorded here, and CC-001 §9.1 states the limitation explicitly rather than repeating the claim | Found 2026-09-25 while drafting CC-001 §9.1: a proposed §9.1 cited `SignOff_001` as precedent for disclosed same-party signing, and checking it against the source found that the source states the opposite | Not established. `SignOff_001` is itself the client-side record, and `docs/preregistration/README.md`'s "What has been SENT to the client" does not list it either way |
 | 12 | `D0PA1_Client_SignOff_001.md` dates itself as 2026-09-18 in its header and status line | Its signature row is dated **2026-09-19**. The record carries two dates, and which is correct is for the signatory to state; not resolved when this entry was first written. **Resolved 2026-09-25: the correct date is 2026-09-19**, stated by the signatory in an erratum *appended* to the signed record ("Erratum — added 2026-09-25, after signature"), not by amending its header, status line or signature row, which still read as signed | Found 2026-09-25, in the same check as #11 | Not established, as #11 |
 
 **Entries 11 and 12 were added 2026-09-25, after the section above was written.** The "ten" in
 this section's opening paragraph and in "The count above stays at ten" below refer to the
 original prompt's list; the record now holds twelve entries. Neither new entry is a claim that
 was made and then withdrawn in an unsent draft, as #1–#10 are: both are defects in a signed
-record, recorded here without editing that record.
+record, recorded here without amending that record.
 
 **On item 8, the one the prompt asks about specifically — how long it stood
 and what was built on it:**
@@ -450,10 +450,12 @@ of thing is split into two rows, per this task's own instruction.
   proposed, not decided, pattern) — **explicitly left open by the client's
   own record**, `D0PA1_Client_SignOff_001.md` §6, even though the
   per-modality retention/location decision it depends on is now made
-- The audio scope change's own §18 change-control sign-off (CC-001 itself,
-  `docs/preregistration/D0PA1_Section18_ChangeControl_Audio_DRAFT.md` §9)
-  — a **different instrument** from `D0PA1_Client_SignOff_001.md`; CC-001's
-  own signature block is still blank. `D0PA1_Client_SignOff_001.md` §4
+- The audio scope change's **cost and schedule figure** (CC-001 §8,
+  `docs/preregistration/D0PA1_Section18_ChangeControl_Audio_DRAFT.md`). The
+  signature itself is no longer outstanding: CC-001 was **signed 2026-09-25**
+  client-side by DOPALAND (same party, disclosed in its §9.1), but **without** a
+  cost or schedule figure, which its §8 records as unquantified and open. CC-001
+  is a **different instrument** from `D0PA1_Client_SignOff_001.md`, whose §4
   confirms the §19 row 19/23 reclassification CC-001 §7 proposed, which is
   not the same act as signing CC-001 itself
 

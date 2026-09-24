@@ -2,9 +2,10 @@
 
 **CC-001 · Retention of Δ_audio and authorisation of audio acquisition**
 
-> **STATUS: DRAFT — PROPOSED, NOT IN FORCE.**
-> Nothing in this record takes effect by appearing in it. It is in force only
-> once signed under the client's own §18 process (§9 below).
+> **STATUS: SIGNED 2026-09-25 — IN FORCE.**
+> Signed client-side by DOPALAND under the client's own §18 process (§9 below). It was
+> signed **without a cost or schedule figure** (§8), and proposer and signer are the same
+> party (§9.1). Both are disclosed, not obscured.
 
 ---
 
@@ -18,7 +19,7 @@
 | Addendum rows affected | Clarifications v0.7 — §19 rows 19 and 23; Decision A |
 | Vendor documents affected | `D0PA1_Section19_SignOff_Response.docx` §4.19, §4.23; `docs/MATRIX_ROW_MAP.md` |
 | Date raised | 2026-09-13 |
-| Status | PROPOSED |
+| Status | SIGNED 2026-09-25 |
 
 ---
 
@@ -155,15 +156,17 @@ REQUIRED (row 22, sensor swap) — 30 rows, none unassigned.
 
 ---
 
-## 8. Cost and schedule impact — to be completed before signature
+## 8. Cost and schedule impact
 
 Per Decision 30, the original Rs 45,000 figure was scoped against the webcam POC,
 not against this pre-registered study, and not against audio acquisition at all.
 
-This record states that the change carries a schedule and cost consequence. It
-deliberately **does not quantify it here.** Quantify it before signature, not after
-— a change control signed with an empty impact field is how unpriced work becomes
-contractual.
+**This record was signed on 2026-09-25 without a cost or schedule figure, by the
+signatory's decision.** The change carries a cost and schedule consequence, and that
+consequence remains **unquantified and open**. Nothing in this record prices the work,
+and the signature is not to be read as agreement to any figure, including the Rs 45,000
+above. Signing with this field unquantified is the risk this section previously warned
+against, and it is recorded here as a known and accepted gap rather than left implicit.
 
 ---
 
@@ -172,7 +175,7 @@ contractual.
 | Role | Name | Signature | Date |
 |---|---|---|---|
 | Vendor — proposed | | | |
-| Client — accepted | DOPALAND | | |
+| Client — accepting | DOPALAND, by Debanjan Das | Debanjan Das | 2026-09-25 |
 
 ### 9.1 Signing capacity — a disclosed limitation
 

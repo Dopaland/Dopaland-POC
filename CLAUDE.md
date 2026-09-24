@@ -223,10 +223,11 @@ definition to keep moving.
 acquisition is authorised and built.** This reverses the sign-off response's own
 recommendation (Decision A) to formally remove `Δ_audio` — recorded as a genuine
 **scope change against frozen `D0PA1 POC Scope & Acceptance v0.5.1`, requiring
-change control** (§18), not yet processed as such. See
-`docs/preregistration/README.md`'s change-control section and
-`docs/AUDIO_ACQUISITION.md` for the full record; this file does not characterise
-the commercial position, only that the change exists and is not yet processed.
+change control** (§18), now processed: CC-001 was signed 2026-09-25 (client-side,
+same party as the vendor, and without a cost or schedule figure; both are disclosed in
+CC-001 §9.1 and §8). See `docs/preregistration/README.md`'s change-control section
+and `docs/AUDIO_ACQUISITION.md` for the full record; this file does not characterise
+the commercial position, only that the change exists and has been signed unpriced.
 
 **What exists**, all built and tested this task, none of it wired into
 `stage1_step4_vectors.py`'s capture loop:
